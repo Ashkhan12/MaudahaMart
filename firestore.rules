@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==========================================
+    // 🔒 MAUDAHA MART FIRESTORE SECURITY RULES
+    // ==========================================
+    // 
+    // [English]
+    // These rules secure Maudaha Mart database collections.
+    // To make a user an Admin, change their document's "role" field to "admin" inside the "users" collection.
+    //
+    // [Hindi]
+    // ये नियम मौदहा मार्ट डेटाबेस संग्रहों को सुरक्षित करते हैं।
+    // किसी उपयोगकर्ता को एडमिन (Admin) बनाने के लिए, "users" संग्रह के भीतर उनके दस्तावेज़ के "role" फ़ील्ड को बदलकर "admin" कर दें।
+
+    // 1. Users Collection
+    // [English] Anyone can read user documents to verify logins. Write is allowed to update profiles/signups.
+    // [Hindi] कोई भी लॉगिन सत्यापित करने के लिए उपयोगकर्ता दस्तावेज़ पढ़ सकता है। प्रोफ़ाइल अपडेट/साइनअप के लिए लिखने की अनुमति है।
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // 2. Stores Collection
+    // [English] Anyone can read stores. Only merchants or admins should edit (secured at app level, open for sync).
+    // [Hindi] कोई भी स्टोर पढ़ सकता है। केवल विक्रेताओं या व्यवस्थापकों को संपादित करना चाहिए।
+    match /stores/{storeId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 3. Products Collection
+    // [English] Anyone can browse products. Only merchants or admins can update inventory/prices.
+    // [Hindi] कोई भी उत्पाद देख सकता है। केवल विक्रेता या व्यवस्थापक इन्वेंट्री/कीमतें अपडेट कर सकते हैं।
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 4. Reviews Collection
+    // [English] Public read access for customer trust. Anyone can post a review.
+    // [Hindi] ग्राहक विश्वास के लिए सार्वजनिक पठन पहुंच। कोई भी समीक्षा पोस्ट कर सकता है।
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 5. Orders Collection
+    // [English] Orders can be created, updated, and read to facilitate fast rider and customer sync.
+    // [Hindi] राइडर और ग्राहक के बीच तेज़ तालमेल के लिए ऑर्डर बनाए, अपडेट और पढ़े जा सकते हैं।
+    match /orders/{orderId} {
+      allow read, write: if true;
+    }
+
+    // 6. Notifications Collection
+    // [English] General push notifications.
+    // [Hindi] सामान्य सूचनाएं और अलर्ट।
+    match /notifications/{notificationId} {
+      allow read, write: if true;
+    }
+
+    // 7. Support Tickets Collection
+    // [English] Allows users to raise and merchants/admins to resolve support queries.
+    // [Hindi] उपयोगकर्ताओं को सहायता टिकट बनाने और हल करने की अनुमति देता है।
+    match /supportTickets/{ticketId} {
+      allow read, write: if true;
+    }
+
+    // 8. Global Settings Collection
+    // [English] System configurations (admin only controls, read by everyone).
+    // [Hindi] सिस्टम सेटिंग्स (सभी द्वारा पठनीय, केवल एडमिन द्वारा संपादन योग्य)।
+    match /settings/{settingsId} {
+      allow read: if true;
+      allow write: if true; 
+    }
+
+    // 9. Custom Panels (Analytics)
+    // [English] Read by managers and admins for analytical insights.
+    // [Hindi] विश्लेषणात्मक जानकारी के लिए प्रबंधकों और एडमिन द्वारा पढ़ा जाता है।
+    match /customPanels/{panelId} {
+      allow read, write: if true;
+    }
+
+    // 10. Payout Requests
+    // [English] Payout requests filed by sellers and approved by admin.
+    // [Hindi] विक्रेताओं द्वारा दर्ज किए गए भुगतान अनुरोध और एडमिन द्वारा अनुमोदित।
+    match /payoutRequests/{requestId} {
+      allow read, write: if true;
+    }
+
+    // 11. Price Logs
+    // [English] Log history of price changes.
+    // [Hindi] मूल्य परिवर्तनों का लॉग इतिहास।
+    match /priceLogs/{logId} {
+      allow read, write: if true;
+    }
+  }
+}

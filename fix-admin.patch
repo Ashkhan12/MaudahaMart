@@ -1,0 +1,191 @@
+--- src/components/AdminPortal.tsx
++++ src/components/AdminPortal.tsx
+@@ -1795,74 +1795,78 @@
+                           {getRoleBadge(usr.role || 'customer')}
+                         </div>
+                         <p className="text-[10px] text-slate-400 font-mono font-extrabold">{usr.phone}</p>
+-                        <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-                        value={activeUserDetail.role || 'customer'}
+-                        onChange={(e) => {
+-                          const newRole = e.target.value as 'customer' | 'merchant' | 'rider' | 'admin' | 'manager';
+-                          const updated = users.map(u => {
+-                            if (u.id === activeUserDetail.id) {
+-                              const newAct: UserActivity = {
+-                                id: 'act-' + Date.now(),
+-                                timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('en-US'),
+-                                action: `Authority level transitioned to "${newRole.toUpperCase()}"`,
+-                                actionHi: `अधिकार स्तर बदलकर "${newRole.toUpperCase()}" कर दिया गया`
+-                              };
+-                              return {
+-                                ...u,
+-                                role: newRole,
+-                                activities: [newAct, ...u.activities]
+-                              };
+-                            }
+-                            return u;
+-                          });
+-                          onUpdateUsers(updated);
+-                        }}
+-                        className="bg-white border border-slate-200 text-slate-800 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs cursor-pointer focus:border-amber-500 outline-none hover:bg-slate-50 transition"
+-                      >
+-                        <option value="customer">🛒 {language === 'en' ? 'User / Shopper' : 'उपयोगकर्ता / खरीदार'}</option>
+-                        <option value="merchant">🏪 {language === 'en' ? 'Merchant / Store Owner' : 'मर्चेंट / स्टोर मालिक'}</option>
+-                        <option value="rider">🚴 {language === 'en' ? 'Delivery Boy' : 'डिलीवरी बॉय'}</option>
+-                        <option value="manager">👔 {language === 'en' ? 'Manager' : 'मैनेजर'}</option>
+-                        <option value="admin">🛡️ {language === 'en' ? 'Admin' : 'एडमिन'}</option>
+-                      </select>
+-                    </div>
+-                  </div>
+-
+-                  {/* Manager Area Assignment Panel */}
+-                  {activeUserDetail.role === 'manager' && (
+-                    <div className="bg-indigo-500/5 border border-indigo-500/20 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4">
+-                      <div>
+-                        <p className="text-xs font-black text-slate-800">
+-                          {language === 'en' ? 'Assign Service Area' : 'सेवा क्षेत्र आवंटित करें'}
+-                        </p>
+-                        <p className="text-[11px] text-slate-500 mt-1">
+-                          {language === 'en' ? 'Specify the area this manager is responsible for.' : 'निर्दिष्ट करें कि यह प्रबंधक किस क्षेत्र के लिए ज़िम्मेदार है।'}
+-                        </p>
+-                      </div>
+-                      <div className="flex items-center gap-2 self-start sm:self-auto">
+-                        <input
+-                          type="text"
+-                          value={activeUserDetail.assignedArea || ''}
+-                          onChange={(e) => {
+-                            const newArea = e.target.value;
+-                            const updated = users.map(u => u.id === activeUserDetail.id ? { ...u, assignedArea: newArea } : u);
+-                            onUpdateUsers(updated);
+-                          }}
+-                          placeholder={language === 'en' ? 'Enter Area (e.g., Banda)' : 'क्षेत्र दर्ज करें'}
+-                          className="bg-white border border-slate-200 text-slate-800 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs focus:border-indigo-500 outline-none w-48"
+-                        />
+-                      </div>
+-                    </div>
+-                  )}
+-
+-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">lassName="text-[10px] font-black tracking-widest text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">USER</span>}
++                        <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-semibold inline-block truncate max-w-full">
++                          📍 {language === 'hi' ? usr.locationHi : usr.location}
++                        </span>
++                      </div>
++                      <div className="text-right shrink-0">
++                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-black block mb-1">
++                          {usr.activities.length} Actions
++                        </span>
++                        <span className="text-[9px] text-slate-400 block font-mono font-bold">
++                          {usr.searchHistory.length} searches
++                        </span>
++                      </div>
++                    </div>
++                  );
++                })
++              )}
++            </div>
++
++            {/* Right side detailed log (8 cols) */}
++            <div className="lg:col-span-8">
++              {activeUserDetail ? (
++                <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6">
++                  {/* Selected User Header */}
++                  <div className="border-b border-slate-100 pb-5 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
++                    <div>
++                      <div className="flex items-center gap-2 flex-wrap">
++                        <h3 className="text-lg font-black text-slate-800">{activeUserDetail.name}</h3>
++                        {activeUserDetail.role === 'admin' && <span className="text-[10px] font-black tracking-widest text-red-700 bg-red-100 border border-red-200 px-2 py-0.5 rounded-md">ADMIN</span>}
++                        {activeUserDetail.role === 'merchant' && <span className="text-[10px] font-black tracking-widest text-emerald-700 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md">STORE OWNER</span>}
++                        {activeUserDetail.role === 'rider' && <span className="text-[10px] font-black tracking-widest text-blue-700 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-md">RIDER</span>}
++                        {activeUserDetail.role === 'manager' && <span className="text-[10px] font-black tracking-widest text-indigo-700 bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-md">MANAGER</span>}
++                        {(activeUserDetail.role === 'customer' || !activeUserDetail.role) && <span className="text-[10px] font-black tracking-widest text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">USER</span>}
+                       </div>
+                       <p className="text-xs text-slate-500 mt-1.5 flex flex-wrap items-center gap-2 font-bold">
+                         <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded-md">📞 {activeUserDetail.phone}</span>
+                         <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded-md">📍 {language === 'hi' ? activeUserDetail.locationHi : activeUserDetail.location}</span>
+                       </p>
+                     </div>
+                     <button
+                       onClick={() => {
+                         if (confirm(language === 'en' ? 'Are you sure you want to delete this user profile?' : 'क्या आप वाकई इस उपयोगकर्ता प्रोफ़ाइल को हटाना चाहते हैं?')) {
+                           onUpdateUsers(users.filter(u => u.id !== activeUserDetail.id));
+                           setSelectedUserDetailId(null);
+                         }
+                       }}
+                       className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold border border-red-150 flex items-center gap-1.5 transition active:scale-[0.98]"
+                     >
+                       <Trash2 className="h-3.5 w-3.5" />
+                       <span>{language === 'en' ? 'Delete Profile' : 'प्रोफ़ाइल हटाएं'}</span>
+                     </button>
+                   </div>
++
+                   {/* Interactive Role Switch Panel */}
+                   <div className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
++                    <div>
++                      <p className="text-xs font-black text-slate-800">
++                        {language === 'en' ? 'Manage Shopper Role & Permissions' : 'उपयोगकर्ता की भूमिका और अनुमतियां प्रबंधित करें'}
++                      </p>
++                      <p className="text-[11px] text-slate-500 mt-1">
++                        {language === 'en' ? 'Assign rider console, store inventory, or customer panels instantly.' : 'तुरंत राइडर कंसोल, स्टोर इन्वेंट्री या उपयोगकर्ता पैनल आवंटित करें।'}
++                      </p>
++                    </div>
++                    <div className="flex items-center gap-2 self-start sm:self-auto">
++                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Set Authority:</span>
++                      <select
++                        value={activeUserDetail.role || 'customer'}
++                        onChange={(e) => {
++                          const newRole = e.target.value as 'customer' | 'merchant' | 'rider' | 'admin' | 'manager';
++                          const updated = users.map(u => {
++                            if (u.id === activeUserDetail.id) {
++                              const newAct: UserActivity = {
++                                id: 'act-' + Date.now(),
++                                timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('en-US'),
++                                action: `Authority level transitioned to "${newRole.toUpperCase()}"`,
++                                actionHi: `अधिकार स्तर बदलकर "${newRole.toUpperCase()}" कर दिया गया`
++                              };
++                              return {
++                                ...u,
++                                role: newRole,
++                                activities: [newAct, ...u.activities]
++                              };
++                            }
++                            return u;
++                          });
++                          onUpdateUsers(updated);
++                        }}
++                        className="bg-white border border-slate-200 text-slate-800 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs cursor-pointer focus:border-amber-500 outline-none hover:bg-slate-50 transition"
++                      >
++                        <option value="customer">🛒 {language === 'en' ? 'User / Shopper' : 'उपयोगकर्ता / खरीदार'}</option>
++                        <option value="merchant">🏪 {language === 'en' ? 'Merchant / Store Owner' : 'मर्चेंट / स्टोर मालिक'}</option>
++                        <option value="rider">🚴 {language === 'en' ? 'Delivery Boy' : 'डिलीवरी बॉय'}</option>
++                        <option value="manager">👔 {language === 'en' ? 'Manager' : 'मैनेजर'}</option>
++                        <option value="admin">🛡️ {language === 'en' ? 'Admin' : 'एडमिन'}</option>
++                      </select>
++                    </div>
++                  </div>
++
++                  {/* Manager Area Assignment Panel */}
++                  {activeUserDetail.role === 'manager' && (
++                    <div className="bg-indigo-500/5 border border-indigo-500/20 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4">
++                      <div>
++                        <p className="text-xs font-black text-slate-800">
++                          {language === 'en' ? 'Assign Service Area' : 'सेवा क्षेत्र आवंटित करें'}
++                        </p>
++                        <p className="text-[11px] text-slate-500 mt-1">
++                          {language === 'en' ? 'Specify the area this manager is responsible for.' : 'निर्दिष्ट करें कि यह प्रबंधक किस क्षेत्र के लिए ज़िम्मेदार है।'}
++                        </p>
++                      </div>
++                      <div className="flex items-center gap-2 self-start sm:self-auto">
++                        <input
++                          type="text"
++                          value={activeUserDetail.assignedArea || ''}
++                          onChange={(e) => {
++                            const newArea = e.target.value;
++                            const updated = users.map(u => u.id === activeUserDetail.id ? { ...u, assignedArea: newArea } : u);
++                            onUpdateUsers(updated);
++                          }}
++                          placeholder={language === 'en' ? 'Enter Area (e.g., Banda)' : 'क्षेत्र दर्ज करें'}
++                          className="bg-white border border-slate-200 text-slate-800 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs focus:border-indigo-500 outline-none w-48"
++                        />
++                      </div>
++                    </div>
++                  )}
++
++                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,0 +1,17 @@
+--- src/App.tsx
++++ src/App.tsx
+@@ -197,7 +197,14 @@
+ 
+   const [users, setUsers] = useState<RegisteredUser[]>(() => {
+     const saved = localStorage.getItem('mau_users');
+-    return saved ? JSON.parse(saved) : INITIAL_USERS;
++    if (saved) {
++      const parsedUsers: RegisteredUser[] = JSON.parse(saved);
++      // Merge missing initial users (like new managers)
++      const missingUsers = INITIAL_USERS.filter(iu => !parsedUsers.some(pu => pu.id === iu.id));
++      return [...parsedUsers, ...missingUsers];
++    }
++    return INITIAL_USERS;
+   });
+ 
+   const [activeUserId, setActiveUserId] = useState<string>(() => {
