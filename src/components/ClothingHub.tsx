@@ -23,6 +23,7 @@ import {
   Smartphone
 } from 'lucide-react';
 import { INITIAL_BOUTIQUES } from '../dataClothing';
+import UPIPayment from './UPIPayment';
 import { 
   RegisteredUser, 
   ClothingBoutique, 
@@ -72,6 +73,7 @@ export default function ClothingHub({
 
   // Payment method
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'COD'>('COD');
+  const [showUpiCheckout, setShowUpiCheckout] = useState(false);
 
   // Translations dictionary
   const t = {
@@ -302,7 +304,7 @@ export default function ClothingHub({
     }
   };
 
-  const handlePlaceOrder = () => {
+  const executePlaceOrder = (confirmedUpiId?: string) => {
     if (activeBoutiqueCart.length === 0 || !currentBoutique) return;
 
     if (subtotal < currentBoutique.minOrder) {
@@ -344,7 +346,16 @@ export default function ClothingHub({
     );
 
     setIsCartOpen(false);
+    setShowUpiCheckout(false);
     setViewMode('history');
+  };
+
+  const handleCheckoutBtn = () => {
+    if (paymentMethod === 'UPI') {
+      setShowUpiCheckout(true);
+    } else {
+      executePlaceOrder();
+    }
   };
 
   const handleReorder = (oldOrder: ClothingOrder) => {
@@ -1155,7 +1166,7 @@ export default function ClothingHub({
                     </div>
                   ) : (
                     <button
-                      onClick={handlePlaceOrder}
+                      onClick={handleCheckoutBtn}
                       className="w-full h-11 rounded-xl gradient-purple-pink text-white font-black text-xs shadow-md shadow-purple-500/10 hover:opacity-95 transition"
                     >
                       {t.placeOrder} (₹{grandTotal})
@@ -1167,6 +1178,40 @@ export default function ClothingHub({
           </>
         )}
       </AnimatePresence>
+
+      {/* Razorpay UPI Checkout Modal */}
+      {showUpiCheckout && currentBoutique && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowUpiCheckout(false)} />
+          <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl relative border border-slate-100 z-50">
+            <button
+              onClick={() => setShowUpiCheckout(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 font-extrabold font-mono text-base transition-colors duration-150 z-50"
+            >
+              ✕
+            </button>
+            <div className="p-1">
+              <div className="bg-[#3395ff] text-white p-5 text-center rounded-t-2xl">
+                <span className="text-[10px] font-black tracking-widest font-mono uppercase opacity-85">Maudaha Mart UPI Gateway</span>
+                <p className="text-2xl font-black mt-1">₹{grandTotal}</p>
+              </div>
+              <div className="p-5">
+                <UPIPayment
+                  amount={grandTotal}
+                  sellerAmount={Math.round(activeBoutiqueCart.reduce((sum, item) => sum + (item.item.price * 0.9) * item.quantity, 0))}
+                  adminAmount={Math.max(0, grandTotal - Math.round(activeBoutiqueCart.reduce((sum, item) => sum + (item.item.price * 0.9) * item.quantity, 0)))}
+                  sellerUpiId={currentBoutique.upiId || 'merchant@ybl'}
+                  adminUpiId="dingdang7081@okhdfcbank"
+                  onPaymentSuccess={(confirmedUpiId) => {
+                    executePlaceOrder(confirmedUpiId);
+                  }}
+                  language={language}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

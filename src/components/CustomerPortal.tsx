@@ -656,9 +656,20 @@ export default function CustomerPortal({
                               </div>
 
                               <div className="text-right shrink-0">
-                                <span className="text-[9px] text-slate-400 line-through block leading-none">
-                                  ₹{p.mrp}
-                                </span>
+                                <div className="flex items-center justify-end gap-1 flex-wrap">
+                                  <span className="text-[9px] text-slate-400 line-through leading-none">
+                                    ₹{p.mrp}
+                                  </span>
+                                  {(() => {
+                                    const mrp = p.mrp || Math.round((p.price || 0) * 1.25);
+                                    const discountPercent = mrp > p.price ? Math.round(((mrp - p.price) / mrp) * 100) : 0;
+                                    return discountPercent > 0 ? (
+                                      <span className="text-[8px] bg-rose-600 text-white font-extrabold px-1 rounded-sm">
+                                        {discountPercent}% {language === 'hi' ? 'छूट' : 'OFF'}
+                                      </span>
+                                    ) : null;
+                                  })()}
+                                </div>
                                 <span className="font-mono text-xs font-black text-emerald-600 block">
                                   ₹{p.price} <span className="text-[9px] text-slate-400 font-medium">/{language === 'hi' ? p.unitHi : p.unit}</span>
                                 </span>
@@ -966,7 +977,8 @@ export default function CustomerPortal({
                   </div>
                 </div>
 
-                {/* Section B: Global selling trends */}
+                {/* Section B: Global selling trends (HIDDEN based on user request) */}
+                {/* 
                 <div className="space-y-3">
                   <div className="border-b border-slate-200 pb-1.5">
                     <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
@@ -1045,6 +1057,7 @@ export default function CustomerPortal({
                     })}
                   </div>
                 </div>
+                */}
 
               </div>
             </div>
@@ -1166,7 +1179,18 @@ export default function CustomerPortal({
                         </div>
                         <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
                           <div>
-                            <span className="text-[9px] text-slate-400 line-through block leading-none">₹{p.mrp}</span>
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <span className="text-[9px] text-slate-400 line-through leading-none">₹{p.mrp}</span>
+                              {(() => {
+                                const mrp = p.mrp || Math.round((p.price || 0) * 1.25);
+                                const discountPercent = mrp > p.price ? Math.round(((mrp - p.price) / mrp) * 100) : 0;
+                                return discountPercent > 0 ? (
+                                  <span className="text-[8px] bg-rose-600 text-white font-extrabold px-1 rounded-sm">
+                                    {discountPercent}% {language === 'hi' ? 'छूट' : 'OFF'}
+                                  </span>
+                                ) : null;
+                              })()}
+                            </div>
                             <span className="text-sm font-black text-slate-800 font-mono">₹{p.price}</span>
                           </div>
                           <button
@@ -1355,9 +1379,20 @@ export default function CustomerPortal({
                                 </div>
 
                                 <div className="text-right shrink-0">
-                                  <span className="text-[9px] text-slate-400 line-through block leading-none">
-                                    ₹{p.mrp}
-                                  </span>
+                                  <div className="flex items-center justify-end gap-1 flex-wrap mb-0.5">
+                                    <span className="text-[9px] text-slate-400 line-through leading-none">
+                                      ₹{p.mrp}
+                                    </span>
+                                    {(() => {
+                                      const mrp = p.mrp || Math.round((p.price || 0) * 1.25);
+                                      const discountPercent = mrp > p.price ? Math.round(((mrp - p.price) / mrp) * 100) : 0;
+                                      return discountPercent > 0 ? (
+                                        <span className="text-[8px] bg-rose-600 text-white font-extrabold px-1 rounded-sm">
+                                          {discountPercent}% {language === 'hi' ? 'छूट' : 'OFF'}
+                                        </span>
+                                      ) : null;
+                                    })()}
+                                  </div>
                                   <span className="font-mono text-xs font-black text-emerald-600 block">
                                     ₹{p.price} <span className="text-[9px] text-slate-400 font-medium">/{language === 'hi' ? p.unitHi : p.unit}</span>
                                   </span>
@@ -1464,6 +1499,15 @@ export default function CustomerPortal({
                                 referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover group-hover:scale-102 transition duration-200"
                               />
+                              {(() => {
+                                const mrp = p.mrp || Math.round((p.price || 0) * 1.25);
+                                const discountPercent = mrp > p.price ? Math.round(((mrp - p.price) / mrp) * 100) : 0;
+                                return discountPercent > 0 ? (
+                                  <div className="absolute top-2 left-2 bg-rose-600 text-white font-black px-2 py-0.5 rounded text-[10px] tracking-tight shadow-sm z-10">
+                                    {discountPercent}% {language === 'hi' ? 'छूट' : 'OFF'}
+                                  </div>
+                                ) : null;
+                              })()}
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1521,7 +1565,18 @@ export default function CustomerPortal({
 
                           <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center">
                             <div>
-                              <span className="text-[10px] text-slate-400 block font-bold leading-none uppercase">MRP: <span className="line-through">₹{p.mrp}</span></span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] text-slate-400 block font-bold leading-none uppercase">MRP: <span className="line-through">₹{p.mrp}</span></span>
+                                {(() => {
+                                  const mrp = p.mrp || Math.round((p.price || 0) * 1.25);
+                                  const discountPercent = mrp > p.price ? Math.round(((mrp - p.price) / mrp) * 100) : 0;
+                                  return discountPercent > 0 ? (
+                                    <span className="text-[9px] bg-rose-50 text-rose-600 font-extrabold px-1.5 py-0.5 rounded-sm">
+                                      {discountPercent}% {language === 'hi' ? 'बचत' : 'SAVE'}
+                                    </span>
+                                  ) : null;
+                                })()}
+                              </div>
                               <span className="text-base font-black text-slate-800 font-mono">₹{p.price}</span>
                             </div>
 
@@ -1849,6 +1904,10 @@ export default function CustomerPortal({
               <div className="p-5">
                 <UPIPayment
                   amount={grandTotal}
+                  sellerAmount={Math.round(activeStoreCart.reduce((sum, item) => sum + (item.product.msp ?? (item.product.price * 0.9)) * item.quantity, 0))}
+                  adminAmount={Math.max(0, grandTotal - Math.round(activeStoreCart.reduce((sum, item) => sum + (item.product.msp ?? (item.product.price * 0.9)) * item.quantity, 0)))}
+                  sellerUpiId={stores.find(s => s.id === selectedStoreId)?.upiId || 'merchant@ybl'}
+                  adminUpiId="dingdang7081@okhdfcbank"
                   onPaymentSuccess={(confirmedUpiId) => {
                     executeCheckout(confirmedUpiId);
                   }}

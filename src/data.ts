@@ -86,7 +86,7 @@ export const INITIAL_STORES: Store[] = [
 export const INITIAL_PRODUCTS: Product[] = [
   // Banda Mart Products
   {
-    id: 'b1',
+    id: 'bm1',
     name: 'Banda Special Desi Ghee',
     nameHi: 'बांदा स्पेशल देसी घी',
     category: 'Oils & Spices',
@@ -744,6 +744,24 @@ export const TRANSLATIONS = {
 };
 
 export const INITIAL_USERS: RegisteredUser[] = [
+  {
+    id: 'user-owner-ash',
+    name: 'Ash (Project Owner)',
+    phone: '+91 99999 00000',
+    email: 'biengwithash@gmail.com',
+    location: 'Maudaha Central',
+    locationHi: 'मौदहा सेंट्रल',
+    role: 'admin',
+    searchHistory: [],
+    activities: [
+      {
+        id: 'act-owner-1',
+        timestamp: '2026-07-09 10:00 AM',
+        action: 'Restored owner permission rights',
+        actionHi: 'मालिक की अनुमति अधिकार बहाल किए'
+      }
+    ]
+  },
   {
     id: 'user-manager-banda',
     name: 'Banda Area Manager',

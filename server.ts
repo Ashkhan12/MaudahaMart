@@ -8,6 +8,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { INITIAL_PRODUCTS, INITIAL_STORES } from './src/data';
+import Razorpay from "razorpay";
 import { requireAuth, AuthRequest } from './src/middleware/auth.ts';
 import { upsertUser, getUser, saveOrder, getUserOrders, getAllOrders, saveSupportTicket, getUserSupportTickets, getAllSupportTickets } from './src/db/queries.ts';
 
@@ -36,15 +37,45 @@ const ai = new GoogleGenAI({
 const otpStore = new Map<string, { otp: string; expires: number }>();
 
 // Send SMS OTP Verification Code
-app.post('/api/auth/send-otp', (req, res) => {
+app.post('/api/auth/send-otp', async (req, res) => {
   try {
-    const { phone } = req.body;
+    const { phone, recaptchaToken } = req.body;
     if (!phone) {
       return res.status(400).json({ error: 'Phone number is required.' });
     }
     const cleanedPhone = phone.replace(/\D/g, '');
     if (cleanedPhone.length < 10) {
       return res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number.' });
+    }
+
+    // Google reCAPTCHA Verification
+    const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
+    if (recaptchaSecret) {
+      if (!recaptchaToken) {
+        return res.status(400).json({ error: 'reCAPTCHA verification is required.' });
+      }
+      try {
+        const verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
+        const verifyRes = await fetch(verifyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            secret: recaptchaSecret,
+            response: recaptchaToken
+          }).toString()
+        });
+        const verifyData: any = await verifyRes.json();
+        if (!verifyData.success) {
+          console.error('[reCAPTCHA Verification Failed]', verifyData);
+          return res.status(400).json({ error: 'reCAPTCHA verification failed. Please try again.' });
+        }
+        console.log('[reCAPTCHA Verification Succeeded]');
+      } catch (recaptchaErr: any) {
+        console.error('[reCAPTCHA API Error]', recaptchaErr);
+        return res.status(500).json({ error: 'Failed to verify reCAPTCHA. Please try again later.' });
+      }
+    } else {
+      console.log('[reCAPTCHA] Skipping server-side verification because RECAPTCHA_SECRET_KEY is not configured in environment.');
     }
 
     // Generate a secure 6-digit OTP
@@ -54,13 +85,197 @@ app.post('/api/auth/send-otp', (req, res) => {
     const expires = Date.now() + 5 * 60 * 1000;
     otpStore.set(cleanedPhone, { otp: generatedOtp, expires });
 
-    console.log(`\n======================================================\n[Maudaha Mart SMS Gateway] OTP sent to +91 ${cleanedPhone}\nMessage: "Your Maudaha Mart verification OTP is ${generatedOtp}. Valid for 5 mins."\n======================================================\n`);
+    let gatewayUsed = 'Console Simulator (Local Testing)';
+    let realSmsStatus = 'Not Sent (Configure TWILIO_ACCOUNT_SID or FAST2SMS_API_KEY in Secrets to send real SMS)';
+
+    const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+    const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioFrom = process.env.TWILIO_PHONE_NUMBER;
+    const fast2smsKey = process.env.FAST2SMS_API_KEY;
+
+    const vonageKey = process.env.VONAGE_API_KEY;
+    const vonageSecret = process.env.VONAGE_API_SECRET;
+    const vonageBrand = process.env.VONAGE_BRAND_NAME || 'MaudahaMart';
+
+    const msg91Key = process.env.MSG91_AUTH_KEY;
+    const msg91Template = process.env.MSG91_TEMPLATE_ID;
+
+    const plivoId = process.env.PLIVO_AUTH_ID;
+    const plivoToken = process.env.PLIVO_AUTH_TOKEN;
+    const plivoSrc = process.env.PLIVO_SOURCE_NUMBER;
+
+    if (twilioSid && twilioToken && twilioFrom) {
+      try {
+        const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
+        const auth = Buffer.from(`${twilioSid}:${twilioToken}`).toString('base64');
+        const formattedTo = cleanedPhone.startsWith('+') ? cleanedPhone : `+91${cleanedPhone}`;
+        
+        const rawFrom = twilioFrom.trim();
+        const formattedFrom = rawFrom.startsWith('+') 
+          ? rawFrom 
+          : (rawFrom.length === 10 ? `+91${rawFrom}` : `+${rawFrom}`);
+        
+        const params = new URLSearchParams();
+        params.append('To', formattedTo);
+        params.append('From', formattedFrom);
+        params.append('Body', `Your Maudaha Mart verification OTP is ${generatedOtp}. Valid for 5 mins.`);
+
+        console.log(`[SMS Gateway] Triggering Twilio API to send SMS from ${formattedFrom} to ${formattedTo}...`);
+        const twilioRes = await fetch(twilioUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: params.toString()
+        });
+
+        const data: any = await twilioRes.json();
+        if (twilioRes.ok) {
+          gatewayUsed = 'Twilio Gateway';
+          realSmsStatus = `Successfully sent! SID: ${data.sid}`;
+          console.log(`[Twilio SMS Gateway] OTP successfully sent to ${formattedTo}.`);
+        } else {
+          console.error('[Twilio SMS Error]', data);
+          realSmsStatus = `Failed: ${data.message || 'Unknown Twilio error'}`;
+        }
+      } catch (smsErr: any) {
+        console.error('[Twilio SMS Integration Error]', smsErr);
+        realSmsStatus = `Twilio network/integration error: ${smsErr.message || smsErr}`;
+      }
+    } else if (fast2smsKey) {
+      try {
+        const formattedTo = cleanedPhone.length === 10 ? cleanedPhone : cleanedPhone.slice(-10);
+        console.log(`[SMS Gateway] Triggering Fast2SMS API to send SMS to ${formattedTo}...`);
+        
+        const fast2smsRes = await fetch('https://www.fast2sms.com/dev/bulkV2', {
+          method: 'POST',
+          headers: {
+            'authorization': fast2smsKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            variables_values: generatedOtp,
+            route: 'otp',
+            numbers: formattedTo
+          })
+        });
+
+        const data: any = await fast2smsRes.json();
+        if (fast2smsRes.ok && data.return === true) {
+          gatewayUsed = 'Fast2SMS Gateway';
+          realSmsStatus = `Successfully sent! Message: ${data.message || 'OTP Sent'}`;
+          console.log(`[Fast2SMS Gateway] OTP successfully sent to ${formattedTo}.`);
+        } else {
+          console.error('[Fast2SMS SMS Error]', data);
+          realSmsStatus = `Failed: ${data.message || 'Unknown Fast2SMS error'}`;
+        }
+      } catch (smsErr: any) {
+        console.error('[Fast2SMS SMS Integration Error]', smsErr);
+        realSmsStatus = `Fast2SMS network/integration error: ${smsErr.message || smsErr}`;
+      }
+    } else if (vonageKey && vonageSecret) {
+      try {
+        const formattedTo = cleanedPhone.startsWith('+') ? cleanedPhone.replace('+', '') : `91${cleanedPhone}`;
+        console.log(`[SMS Gateway] Triggering Vonage (Nexmo) API to send SMS to ${formattedTo}...`);
+        
+        const vonageRes = await fetch('https://rest.nexmo.com/sms/json', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            api_key: vonageKey,
+            api_secret: vonageSecret,
+            from: vonageBrand,
+            to: formattedTo,
+            text: `Your Maudaha Mart verification OTP is ${generatedOtp}. Valid for 5 mins.`
+          })
+        });
+
+        const data: any = await vonageRes.json();
+        if (vonageRes.ok && data.messages && data.messages[0] && data.messages[0].status === '0') {
+          gatewayUsed = 'Vonage Gateway';
+          realSmsStatus = `Successfully sent! MsgId: ${data.messages[0]['message-id']}`;
+          console.log(`[Vonage Gateway] OTP successfully sent to ${formattedTo}.`);
+        } else {
+          console.error('[Vonage SMS Error]', data);
+          const errorMsg = data.messages && data.messages[0] ? data.messages[0]['error-text'] : 'Unknown Vonage error';
+          realSmsStatus = `Failed: ${errorMsg}`;
+        }
+      } catch (smsErr: any) {
+        console.error('[Vonage SMS Integration Error]', smsErr);
+        realSmsStatus = `Vonage network/integration error: ${smsErr.message || smsErr}`;
+      }
+    } else if (msg91Key && msg91Template) {
+      try {
+        const formattedTo = cleanedPhone.startsWith('+') ? cleanedPhone.replace('+', '') : `91${cleanedPhone}`;
+        console.log(`[SMS Gateway] Triggering MSG91 API to send OTP to ${formattedTo}...`);
+        
+        const msg91Url = `https://control.msg91.com/api/v5/otp?template_id=${msg91Template}&mobile=${formattedTo}&authkey=${msg91Key}&otp=${generatedOtp}`;
+        const msg91Res = await fetch(msg91Url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data: any = await msg91Res.json();
+        if (msg91Res.ok && data.type === 'success') {
+          gatewayUsed = 'MSG91 Gateway';
+          realSmsStatus = `Successfully sent!`;
+          console.log(`[MSG91 Gateway] OTP successfully sent to ${formattedTo}.`);
+        } else {
+          console.error('[MSG91 SMS Error]', data);
+          realSmsStatus = `Failed: ${data.message || 'Unknown MSG91 error'}`;
+        }
+      } catch (smsErr: any) {
+        console.error('[MSG91 SMS Integration Error]', smsErr);
+        realSmsStatus = `MSG91 network/integration error: ${smsErr.message || smsErr}`;
+      }
+    } else if (plivoId && plivoToken && plivoSrc) {
+      try {
+        const formattedTo = cleanedPhone.startsWith('+') ? cleanedPhone : `+91${cleanedPhone}`;
+        console.log(`[SMS Gateway] Triggering Plivo API to send SMS to ${formattedTo}...`);
+        
+        const plivoUrl = `https://api.plivo.com/v1/Account/${plivoId}/Message/`;
+        const auth = Buffer.from(`${plivoId}:${plivoToken}`).toString('base64');
+        const plivoRes = await fetch(plivoUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            src: plivoSrc,
+            dst: formattedTo,
+            text: `Your Maudaha Mart verification OTP is ${generatedOtp}. Valid for 5 mins.`
+          })
+        });
+
+        const data: any = await plivoRes.json();
+        if (plivoRes.ok && data.message === 'message(s) queued') {
+          gatewayUsed = 'Plivo Gateway';
+          realSmsStatus = `Successfully queued! UUID: ${data.message_uuid ? data.message_uuid[0] : ''}`;
+          console.log(`[Plivo Gateway] OTP successfully sent/queued to ${formattedTo}.`);
+        } else {
+          console.error('[Plivo SMS Error]', data);
+          realSmsStatus = `Failed: ${data.error || 'Unknown Plivo error'}`;
+        }
+      } catch (smsErr: any) {
+        console.error('[Plivo SMS Integration Error]', smsErr);
+        realSmsStatus = `Plivo network/integration error: ${smsErr.message || smsErr}`;
+      }
+    }
+
+    console.log(`\n======================================================\n[Maudaha Mart SMS Gateway] OTP sent to +91 ${cleanedPhone}\nMessage: "Your Maudaha Mart verification OTP is ${generatedOtp}. Valid for 5 mins."\nGateway Used: ${gatewayUsed}\nStatus: ${realSmsStatus}\n======================================================\n`);
 
     res.json({
       success: true,
-      message: 'OTP sent successfully via Maudaha Mart SMS Gateway!',
+      message: `OTP sent successfully via ${gatewayUsed}!`,
       otp: generatedOtp,
-      phone: cleanedPhone
+      phone: cleanedPhone,
+      smsStatus: realSmsStatus
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to send OTP.' });
@@ -662,6 +877,60 @@ Provide detailed strategic demand insights and merchant advice.`;
     res.status(500).json({ error: error.message || 'An error occurred during trend analysis.' });
   }
 });
+
+
+let razorpayInstance: Razorpay | null = null;
+function getRazorpay() {
+  if (!razorpayInstance) {
+    if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+      razorpayInstance = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET,
+      });
+    }
+  }
+  return razorpayInstance;
+}
+
+// Razorpay Split Payment Route
+app.post("/api/payment/razorpay-order", async (req, res) => {
+  try {
+    const { amount, transfers } = req.body;
+    const rzp = getRazorpay();
+    if (!rzp) {
+      return res.status(200).json({
+        success: true,
+        mock: true,
+        orderId: "mock_order_" + Date.now(),
+        amount,
+      });
+    }
+    const options = {
+      amount: Math.round(amount * 100),
+      currency: "INR",
+      transfers: transfers?.map((t: any) => ({
+        account: t.account,
+        amount: Math.round(t.amount * 100),
+        currency: "INR",
+        notes: t.notes || {},
+        linked_account_notes: ["branch"],
+        on_hold: 0,
+      })) || [],
+    };
+    const order = await rzp.orders.create(options);
+    res.json({
+      success: true,
+      mock: false,
+      orderId: order.id,
+      amount,
+      order,
+    });
+  } catch (err: any) {
+    console.error("Razorpay Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // --- Vite Dev Middleware / Production Static Asset Hosting ---
 

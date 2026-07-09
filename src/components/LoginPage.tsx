@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Mail, Phone, Lock, User, ArrowRight, Sparkles, CheckCircle, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
 import { RegisteredUser, Language } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 interface LoginPageProps {
   language: Language;
@@ -33,6 +34,11 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
   const [simulatedOtp, setSimulatedOtp] = useState('');
   const [timer, setTimer] = useState(0);
   const [otpError, setOtpError] = useState<'invalid' | 'expired' | 'missing' | null>(null);
+
+  // Google reCAPTCHA state variables
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = React.useRef<ReCAPTCHA>(null);
+  const siteKey = (import.meta as any).env?.VITE_RECAPTCHA_SITE_KEY || '';
 
   // Status & loading
   const [loading, setLoading] = useState(false);
@@ -199,18 +205,30 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
         }
 
         if (!otpSent) {
+          // Google reCAPTCHA Client-Side Check
+          if (siteKey && !recaptchaToken) {
+            setError(language === 'en' ? 'Please complete the reCAPTCHA verification.' : 'कृपया रीकैप्चा सत्यापन पूरा करें।');
+            return;
+          }
+
           // Send OTP via backend
           setLoading(true);
           fetch('/api/auth/send-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: cleanedPhone })
+            body: JSON.stringify({ 
+              phone: cleanedPhone,
+              recaptchaToken: recaptchaToken || undefined
+            })
           })
           .then(res => res.json())
           .then(data => {
             setLoading(false);
             if (data.error) {
               setError(data.error);
+              // Reset reCAPTCHA on failure
+              recaptchaRef.current?.reset();
+              setRecaptchaToken(null);
             } else {
               setSimulatedOtp(data.otp);
               setOtpSent(true);
@@ -221,6 +239,9 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
           .catch(err => {
             setLoading(false);
             setError(language === 'en' ? 'Failed to connect to SMS gateway.' : 'एसएमएस गेटवे से कनेक्ट होने में विफल।');
+            // Reset reCAPTCHA on failure
+            recaptchaRef.current?.reset();
+            setRecaptchaToken(null);
             console.error(err);
           });
         } else {
@@ -676,6 +697,34 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
             </div>
           )}
 
+          {/* Google reCAPTCHA Protection */}
+          {loginMethod === 'phone' && !otpSent && (
+            <div className="pt-2">
+              {siteKey ? (
+                <div className="flex justify-center overflow-hidden rounded-xl border border-slate-100 p-2 bg-slate-50">
+                  <ReCAPTCHA
+                    ref={recaptchaRef}
+                    sitekey={siteKey}
+                    onChange={(token) => setRecaptchaToken(token)}
+                    onExpired={() => setRecaptchaToken(null)}
+                  />
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center space-y-1">
+                  <div className="text-[10px] font-mono text-amber-600 font-bold flex items-center justify-center gap-1">
+                    <ShieldCheck className="h-3.5 w-3.5 text-amber-500" />
+                    <span>RECAPTCHA PROTECTION ACTIVE</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    {language === 'en' 
+                      ? 'Add VITE_RECAPTCHA_SITE_KEY to .env secrets for live anti-bot verification.' 
+                      : 'लाइव एंटी-बॉट सत्यापन के लिए .env सीक्रेट्स में VITE_RECAPTCHA_SITE_KEY जोड़ें।'}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* OTP Code input field (Conditional) */}
           <AnimatePresence>
             {loginMethod === 'phone' && otpSent && (
@@ -755,6 +804,12 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                     type="button"
                     disabled={timer > 0 || loading}
                     onClick={() => {
+                      // Google reCAPTCHA Client-Side Check for Resend
+                      if (siteKey && !recaptchaToken) {
+                        setError(language === 'en' ? 'Please solve the reCAPTCHA verification again to resend OTP.' : 'ओटीपी पुनः भेजने के लिए कृपया फिर से रीकैप्चा सत्यापन हल करें।');
+                        return;
+                      }
+
                       const cleanedPhone = phone.replace(/\D/g, '');
                       setLoading(true);
                       setError('');
@@ -763,13 +818,19 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                       fetch('/api/auth/send-otp', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phone: cleanedPhone })
+                        body: JSON.stringify({ 
+                          phone: cleanedPhone,
+                          recaptchaToken: recaptchaToken || undefined
+                        })
                       })
                       .then(res => res.json())
                       .then(data => {
                         setLoading(false);
                         if (data.error) {
                           setError(data.error);
+                          // Reset reCAPTCHA on failure
+                          recaptchaRef.current?.reset();
+                          setRecaptchaToken(null);
                         } else {
                           setSimulatedOtp(data.otp);
                           setTimer(30);
@@ -779,6 +840,9 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                       .catch(err => {
                         setLoading(false);
                         setError(language === 'en' ? 'Failed to connect to SMS gateway.' : 'एसएमएस गेटवे से कनेक्ट होने में विफल।');
+                        // Reset reCAPTCHA on failure
+                        recaptchaRef.current?.reset();
+                        setRecaptchaToken(null);
                         console.error(err);
                       });
                     }}

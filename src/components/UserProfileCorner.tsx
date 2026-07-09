@@ -15,8 +15,8 @@ interface UserProfileCornerProps {
   onSwitchLanguage?: (lang: Language) => void;
   themeId?: string;
   onSwitchTheme?: (themeId: string) => void;
-  role?: 'customer' | 'merchant' | 'admin' | 'rider';
-  onSwitchRole?: (role: 'customer' | 'merchant' | 'admin' | 'rider') => void;
+  role?: 'customer' | 'merchant' | 'admin' | 'rider' | 'manager';
+  onSwitchRole?: (role: 'customer' | 'merchant' | 'admin' | 'rider' | 'manager') => void;
   activeUserId: string;
   users: RegisteredUser[];
   onSwitchUser: (userId: string) => void;

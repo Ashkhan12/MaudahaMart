@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { RegisteredUser, Restaurant, RestaurantMenuItem, RestaurantOrderItem, RestaurantOrder } from '../types';
 import { INITIAL_RESTAURANTS } from '../dataRestaurants';
+import UPIPayment from './UPIPayment';
 
 interface RestaurantCornerProps {
   activeUserId: string;
@@ -52,6 +53,7 @@ export default function RestaurantCorner({
   const [promoCode, setPromoCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'COD'>('COD');
+  const [showUpiCheckout, setShowUpiCheckout] = useState(false);
   const [showActiveTracker, setShowActiveTracker] = useState<string | null>(null);
 
   // Helper to save user-specific restaurant cart/orders
@@ -147,8 +149,7 @@ export default function RestaurantCorner({
     }
   };
 
-  // Place food order
-  const handleCheckout = () => {
+  const executePlaceOrder = (confirmedUpiId?: string) => {
     if (activeRestaurantCart.length === 0 || !currentRestaurant) return;
 
     if (subtotal < currentRestaurant.minOrder) {
@@ -190,11 +191,20 @@ export default function RestaurantCorner({
     setPromoCode('');
     setDiscountAmount(0);
     setShowCartDrawer(false);
+    setShowUpiCheckout(false);
     setShowActiveTracker(orderId);
 
     alert(language === 'en' 
       ? `🎉 Food Order placed successfully! Tracking ID: ${orderId}` 
       : `🎉 भोजन का ऑर्डर सफलतापूर्वक दिया गया! ऑर्डर आईडी: ${orderId}`);
+  };
+
+  const handleCheckoutBtn = () => {
+    if (paymentMethod === 'UPI') {
+      setShowUpiCheckout(true);
+    } else {
+      executePlaceOrder();
+    }
   };
 
   // Reorder action
@@ -815,7 +825,6 @@ export default function RestaurantCorner({
                     </div>
                   ))}
                 </div>
-
                 {/* Coupons */}
                 <div className="pt-3 border-t border-slate-100 space-y-2">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
@@ -894,7 +903,7 @@ export default function RestaurantCorner({
 
                 {/* Place Order Button */}
                 <button
-                  onClick={handleCheckout}
+                  onClick={handleCheckoutBtn}
                   disabled={subtotal < currentRestaurant.minOrder}
                   className={`w-full max-w-[200px] mx-auto py-2 text-center text-white text-[10px] font-extrabold rounded-lg transition cursor-pointer shadow-sm ${
                     subtotal >= currentRestaurant.minOrder
@@ -919,6 +928,39 @@ export default function RestaurantCorner({
         </div>
       )}
 
+      {/* Razorpay UPI Checkout Modal */}
+      {showUpiCheckout && currentRestaurant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowUpiCheckout(false)} />
+          <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl relative border border-slate-100 z-50">
+            <button
+              onClick={() => setShowUpiCheckout(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 font-extrabold font-mono text-base transition-colors duration-150 z-50"
+            >
+              ✕
+            </button>
+            <div className="p-1">
+              <div className="bg-[#3395ff] text-white p-5 text-center rounded-t-2xl">
+                <span className="text-[10px] font-black tracking-widest font-mono uppercase opacity-85">Maudaha Mart UPI Gateway</span>
+                <p className="text-2xl font-black mt-1">₹{grandTotal}</p>
+              </div>
+              <div className="p-5">
+                <UPIPayment
+                  amount={grandTotal}
+                  sellerAmount={Math.round(activeRestaurantCart.reduce((sum, item) => sum + (item.item.price * 0.9) * item.quantity, 0))}
+                  adminAmount={Math.max(0, grandTotal - Math.round(activeRestaurantCart.reduce((sum, item) => sum + (item.item.price * 0.9) * item.quantity, 0)))}
+                  sellerUpiId={currentRestaurant.upiId || 'merchant@ybl'}
+                  adminUpiId="dingdang7081@okhdfcbank"
+                  onPaymentSuccess={(confirmedUpiId) => {
+                    executePlaceOrder(confirmedUpiId);
+                  }}
+                  language={language}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

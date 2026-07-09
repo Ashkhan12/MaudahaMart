@@ -59,6 +59,7 @@ export interface Store {
   deliveryTime: string;
   deliveryTimeHi: string;
   minOrder: number;
+  upiId?: string;
   categories: string[];
 }
 
@@ -180,6 +181,7 @@ export interface Restaurant {
   deliveryTime: string;
   deliveryTimeHi: string;
   minOrder: number;
+  upiId?: string;
   address: string;
   addressHi: string;
   area?: string;
@@ -347,7 +349,7 @@ export interface ClothingItem {
   name: string;
   nameHi: string;
   price: number;
-  category: 'ethnic' | 'western' | 'kids' | 'footwear' | 'accessories';
+  category: 'ethnic' | 'western' | 'kids' | 'footwear' | 'accessories' | 'jewellery';
   image: string;
   description: string;
   descriptionHi: string;
@@ -367,6 +369,7 @@ export interface ClothingBoutique {
   deliveryTime: string;
   deliveryTimeHi: string;
   minOrder: number;
+  upiId?: string;
   address: string;
   addressHi: string;
   area?: string;

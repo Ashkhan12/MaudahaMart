@@ -26,7 +26,7 @@ export default function ManagerPortal({
   language,
   activeUserId
 }: ManagerPortalProps) {
-  const [activeTab, setActiveTab] = useState<'sellers' | 'customers' | 'tickets'>('sellers');
+  const [activeTab, setActiveTab] = useState<'shops' | 'sellers' | 'customers' | 'tickets'>('shops');
   
   const managerUser = users.find(u => u.id === activeUserId);
   const managerArea = managerUser?.assignedArea || 'Maudaha'; // Default to Maudaha if not set

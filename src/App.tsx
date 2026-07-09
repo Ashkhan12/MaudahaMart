@@ -122,8 +122,21 @@ export default function App() {
   });
 
   const [role, setRole] = useState<'customer' | 'merchant' | 'admin' | 'rider' | 'manager'>(() => {
-    const saved = localStorage.getItem('mau_role');
-    return (saved as 'customer' | 'merchant' | 'admin' | 'rider') || 'customer';
+    const savedRole = localStorage.getItem('mau_role');
+    const savedActiveUid = localStorage.getItem('mau_active_uid');
+    const savedUsers = localStorage.getItem('mau_users');
+    if (savedActiveUid && savedUsers) {
+      try {
+        const parsedUsers: RegisteredUser[] = JSON.parse(savedUsers);
+        const currentUser = parsedUsers.find(u => u.id === savedActiveUid);
+        if (currentUser && currentUser.email?.toLowerCase() === 'biengwithash@gmail.com') {
+          return 'admin';
+        }
+      } catch (e) {
+        console.error('Error parsing saved users at startup:', e);
+      }
+    }
+    return (savedRole as 'customer' | 'merchant' | 'admin' | 'rider' | 'manager') || 'customer';
   });
 
   const [stores, setStores] = useState<Store[]>(() => {
@@ -335,6 +348,26 @@ export default function App() {
 
   const [isDbLoading, setIsDbLoading] = useState<boolean>(true);
 
+  // Programmatically checks for the specific admin email 'biengwithash@gmail.com' and assigns 'admin' role privileges
+  const checkAndAssignAdminRole = (userList: RegisteredUser[], activeId: string) => {
+    const matchedUser = userList.find(u => u.id === activeId);
+    const targetUser = matchedUser || userList.find(u => u.email?.toLowerCase() === 'biengwithash@gmail.com');
+    if (targetUser && targetUser.email?.toLowerCase() === 'biengwithash@gmail.com') {
+      if ((activeId === targetUser.id || (matchedUser && matchedUser.email?.toLowerCase() === 'biengwithash@gmail.com')) && role !== 'admin') {
+        setRole('admin');
+        localStorage.setItem('mau_role', 'admin');
+        console.log("Programmatically assigned 'admin' role privileges to biengwithash@gmail.com");
+      }
+    }
+  };
+
+  // Run a reactive effect to continually enforce the admin assignment
+  useEffect(() => {
+    if (!isDbLoading && isLoggedIn) {
+      checkAndAssignAdminRole(users, activeUserId);
+    }
+  }, [isDbLoading, isLoggedIn, users, activeUserId, role]);
+
   // Sync data from Firestore at startup
   useEffect(() => {
     async function initFirebaseAndSync() {
@@ -372,6 +405,7 @@ export default function App() {
               localStorage.setItem('mau_users', JSON.stringify(merged));
               return merged;
             });
+            checkAndAssignAdminRole(data.users, activeUserId);
           }
           
           if (data.supportTickets && data.supportTickets.length > 0) {
@@ -391,6 +425,31 @@ export default function App() {
           if (data.customPanels && data.customPanels.length > 0) setCustomPanels(data.customPanels);
           if (data.payoutRequests && data.payoutRequests.length > 0) setPayoutRequests(data.payoutRequests);
           if (data.priceLogs && data.priceLogs.length > 0) setPriceLogs(data.priceLogs);
+
+          if (data.restaurants && data.restaurants.length > 0) {
+            setRestaurants(prev => {
+              const merged = [...data.restaurants];
+              prev.forEach(localRest => {
+                if (!merged.some(r => r.id === localRest.id)) {
+                  merged.push(localRest);
+                }
+              });
+              localStorage.setItem('mau_restaurants', JSON.stringify(merged));
+              return merged;
+            });
+          }
+          if (data.boutiques && data.boutiques.length > 0) {
+            setBoutiques(prev => {
+              const merged = [...data.boutiques];
+              prev.forEach(localBt => {
+                if (!merged.some(b => b.id === localBt.id)) {
+                  merged.push(localBt);
+                }
+              });
+              localStorage.setItem('mau_boutiques', JSON.stringify(merged));
+              return merged;
+            });
+          }
         }
       } catch (err) {
         console.error('Failed to initialize and load database:', err);
@@ -408,6 +467,20 @@ export default function App() {
       syncDocToFirestore('stores', store.id, store);
     });
   }, [stores, isDbLoading]);
+
+  useEffect(() => {
+    if (isDbLoading) return;
+    restaurants.forEach(rest => {
+      syncDocToFirestore('restaurants', rest.id, rest);
+    });
+  }, [restaurants, isDbLoading]);
+
+  useEffect(() => {
+    if (isDbLoading) return;
+    boutiques.forEach(bt => {
+      syncDocToFirestore('boutiques', bt.id, bt);
+    });
+  }, [boutiques, isDbLoading]);
 
   useEffect(() => {
     if (isDbLoading) return;
@@ -1345,12 +1418,16 @@ export default function App() {
         language={language}
         existingUsers={users}
         onLoginSuccess={(user, selectedRole) => {
+          let roleToAssign = selectedRole;
+          if (user.email?.toLowerCase() === 'biengwithash@gmail.com') {
+            roleToAssign = 'admin';
+          }
           setActiveUserId(user.id);
-          setRole(selectedRole);
+          setRole(roleToAssign);
           setIsLoggedIn(true);
           localStorage.setItem('mau_logged_in', 'true');
           localStorage.setItem('mau_active_uid', user.id);
-          localStorage.setItem('mau_role', selectedRole);
+          localStorage.setItem('mau_role', roleToAssign);
         }}
         onAddNewUser={(newUser) => {
           setUsers(prev => {
@@ -1588,6 +1665,10 @@ export default function App() {
             onUpdatePayoutRequests={setPayoutRequests}
             priceLogs={priceLogs}
             onUpdateProductPricesAndStock={handleUpdateProductPricesAndStock}
+            restaurants={restaurants}
+            onUpdateRestaurants={setRestaurants}
+            boutiques={boutiques}
+            onUpdateBoutiques={setBoutiques}
           />
         ) : role === 'rider' ? (
           !settings.enableRiderPortal ? (

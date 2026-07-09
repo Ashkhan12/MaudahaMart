@@ -1,10 +1,10 @@
 {
-  "projectId": "dazzling-gateway-dwrl4",
-  "appId": "1:761733714514:web:c006c94c9121cf89fac58b",
-  "apiKey": "AIzaSyBy5Kc3MNcdmq_kCSH_wevU30SFezXxEIk",
-  "authDomain": "dazzling-gateway-dwrl4.firebaseapp.com",
+  "projectId": "maudahamartfirebase",
+  "appId": "1:1043763135109:web:6a9790f54f04f7db1cdfec",
+  "apiKey": "AIzaSyAo0OBoIBeYNw_jykeu3ERQwcofCVyMDaQ",
+  "authDomain": "maudahamartfirebase.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-maudahamart-55495b6b-a809-417b-b1ae-8472e7d6c620",
-  "storageBucket": "dazzling-gateway-dwrl4.firebasestorage.app",
-  "messagingSenderId": "761733714514",
+  "storageBucket": "maudahamartfirebase.firebasestorage.app",
+  "messagingSenderId": "1043763135109",
   "measurementId": ""
 }

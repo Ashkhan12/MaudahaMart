@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { MapPin, ShoppingBag, Truck, CheckCircle2, Navigation, Star, ArrowLeft, ZoomIn, ZoomOut, RotateCcw, Compass, Info } from 'lucide-react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Order, Language, ScratchCard } from '../types';
 import { TRANSLATIONS } from '../data';
 import ScratchCardComponent from './ScratchCardComponent';
@@ -146,6 +148,222 @@ export default function OrderTracker({
   const [zoom, setZoom] = useState(1);
   const [autoCenter, setAutoCenter] = useState(false);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
+
+  const [mapMode, setMapMode] = useState<'cyber' | 'real'>('real');
+  const [tileStyle, setTileStyle] = useState<'dark' | 'street' | 'satellite'>('dark');
+
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const riderMarkerRef = useRef<L.Marker | null>(null);
+  const storeMarkerRef = useRef<L.Marker | null>(null);
+  const homeMarkerRef = useRef<L.Marker | null>(null);
+  const chaurahaMarkerRef = useRef<L.Marker | null>(null);
+  const routePolylineRef = useRef<L.Polyline | null>(null);
+
+  useEffect(() => {
+    if (mapMode !== 'real' || !mapContainerRef.current) {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        tileLayerRef.current = null;
+        riderMarkerRef.current = null;
+        storeMarkerRef.current = null;
+        homeMarkerRef.current = null;
+        chaurahaMarkerRef.current = null;
+        routePolylineRef.current = null;
+      }
+      return;
+    }
+
+    const currentRiderLat = order.riderLat || 25.6840;
+    const currentRiderLng = order.riderLng || 80.1250;
+    const storeLat = 25.6840;
+    const storeLng = 80.1250;
+    const homeLat = 25.6920;
+    const homeLng = 80.1380;
+    const chaurahaLat = 25.6880;
+    const chaurahaLng = 80.1310;
+
+    // Center map on rider if autoCenter is active, or the midpoint if not
+    const centerLat = autoCenter ? currentRiderLat : 25.6880;
+    const centerLng = autoCenter ? currentRiderLng : 80.1315;
+
+    // 1. Initialize Map if not already initialized
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapContainerRef.current, {
+        center: [centerLat, centerLng],
+        zoom: 15,
+        zoomControl: false,
+        attributionControl: true,
+      });
+
+      mapInstanceRef.current = map;
+
+      // Add zoom control at bottom-right
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+      // Invalidate size after a tick to prevent partial tile loading
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+        }
+      }, 100);
+    } else {
+      mapInstanceRef.current.invalidateSize();
+    }
+
+    const map = mapInstanceRef.current;
+
+    // 2. Handle Tiles (re-create tile layer if tileStyle changes)
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+    }
+
+    let tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+    let attribution = '&copy; CARTO';
+    if (tileStyle === 'street') {
+      tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+      attribution = '&copy; OpenStreetMap';
+    } else if (tileStyle === 'satellite') {
+      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      attribution = 'Tiles &copy; Esri';
+    }
+
+    tileLayerRef.current = L.tileLayer(tileUrl, {
+      maxZoom: 19,
+      attribution: attribution
+    }).addTo(map);
+
+    // 3. Setup Custom Icons
+    const storeIcon = L.divIcon({
+      html: `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-8 h-8 rounded-full bg-amber-500 opacity-25 animate-ping"></div>
+          <div class="w-8 h-8 rounded-full bg-amber-500 border-2 border-white flex items-center justify-center shadow-lg text-white font-bold text-sm">
+            🏪
+          </div>
+        </div>
+      `,
+      className: '',
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+
+    const homeIcon = L.divIcon({
+      html: `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-8 h-8 rounded-full bg-emerald-500 opacity-25 animate-ping"></div>
+          <div class="w-8 h-8 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center shadow-lg text-white font-bold text-sm">
+            🏠
+          </div>
+        </div>
+      `,
+      className: '',
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+
+    const chaurahaIcon = L.divIcon({
+      html: `
+        <div class="relative flex items-center justify-center">
+          <div class="w-6 h-6 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center shadow-md text-[10px]">
+            🏛️
+          </div>
+        </div>
+      `,
+      className: '',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+
+    const riderIcon = L.divIcon({
+      html: `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-10 h-10 rounded-full bg-purple-500 opacity-40 animate-pulse"></div>
+          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 border-2 border-white flex items-center justify-center shadow-lg text-white font-bold text-lg">
+            🛵
+          </div>
+        </div>
+      `,
+      className: '',
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+    });
+
+    // 4. Update / Create Store Marker
+    if (!storeMarkerRef.current) {
+      storeMarkerRef.current = L.marker([storeLat, storeLng], { icon: storeIcon })
+        .addTo(map)
+        .bindPopup(`<b>${order.storeName || 'Store'}</b><br/>Merchant Pickup Point`);
+    } else {
+      storeMarkerRef.current.setLatLng([storeLat, storeLng]);
+    }
+
+    // 5. Update / Create Home Marker
+    if (!homeMarkerRef.current) {
+      homeMarkerRef.current = L.marker([homeLat, homeLng], { icon: homeIcon })
+        .addTo(map)
+        .bindPopup(`<b>Your Home</b><br/>Delivery Address`);
+    } else {
+      homeMarkerRef.current.setLatLng([homeLat, homeLng]);
+    }
+
+    // 6. Update / Create Chauraha Marker
+    if (!chaurahaMarkerRef.current) {
+      chaurahaMarkerRef.current = L.marker([chaurahaLat, chaurahaLng], { icon: chaurahaIcon })
+        .addTo(map)
+        .bindPopup(`<b>Maudaha Central Chauraha</b><br/>Main Transit Hub`);
+    } else {
+      chaurahaMarkerRef.current.setLatLng([chaurahaLat, chaurahaLng]);
+    }
+
+    // 7. Update / Create Rider Marker
+    if (!riderMarkerRef.current) {
+      riderMarkerRef.current = L.marker([currentRiderLat, currentRiderLng], { icon: riderIcon })
+        .addTo(map)
+        .bindPopup(`<b>Rider (Rahul Kumar)</b><br/>Status: <b>${order.deliveryStatus}</b>`);
+    } else {
+      riderMarkerRef.current.setLatLng([currentRiderLat, currentRiderLng]);
+      riderMarkerRef.current.getPopup()?.setContent(`<b>Rider (Rahul Kumar)</b><br/>Status: <b>${order.deliveryStatus}</b>`);
+    }
+
+    // 8. Update / Create Route Polyline
+    const routeCoordinates: L.LatLngExpression[] = [
+      [storeLat, storeLng],
+      [25.6860, 80.1280],
+      [chaurahaLat, chaurahaLng],
+      [25.6900, 80.1340],
+      [homeLat, homeLng]
+    ];
+
+    if (!routePolylineRef.current) {
+      routePolylineRef.current = L.polyline(routeCoordinates, {
+        color: '#a855f7',
+        weight: 4,
+        opacity: 0.8,
+        dashArray: '8, 8',
+      }).addTo(map);
+    } else {
+      routePolylineRef.current.setLatLngs(routeCoordinates);
+    }
+
+    // 9. If autoCenter is enabled, pan the map to center the rider
+    if (autoCenter) {
+      map.setView([currentRiderLat, currentRiderLng], map.getZoom());
+    }
+
+  }, [mapMode, tileStyle, order.riderLat, order.riderLng, order.deliveryStatus, autoCenter, order.storeId]);
+
+  // Clean up completely on component unmount
+  useEffect(() => {
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   const getRatingText = (rating: number, lang: Language) => {
     const texts = {
@@ -821,7 +1039,13 @@ export default function OrderTracker({
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setZoom(prev => Math.min(3, prev + 0.5))}
+                onClick={() => {
+                  if (mapMode === 'real') {
+                    mapInstanceRef.current?.zoomIn();
+                  } else {
+                    setZoom(prev => Math.min(3, prev + 0.5));
+                  }
+                }}
                 className="p-2 bg-white hover:bg-slate-100 border border-slate-200 hover:border-emerald-300 rounded-xl text-slate-700 hover:text-emerald-600 shadow-xs flex items-center justify-center gap-1 font-bold transition duration-200"
                 title={language === 'en' ? "Zoom In" : "ज़ूम इन"}
               >
@@ -829,7 +1053,13 @@ export default function OrderTracker({
               </button>
               <button
                 type="button"
-                onClick={() => setZoom(prev => Math.max(1, prev - 0.5))}
+                onClick={() => {
+                  if (mapMode === 'real') {
+                    mapInstanceRef.current?.zoomOut();
+                  } else {
+                    setZoom(prev => Math.max(1, prev - 0.5));
+                  }
+                }}
                 className="p-2 bg-white hover:bg-slate-100 border border-slate-200 hover:border-emerald-300 rounded-xl text-slate-700 hover:text-emerald-600 shadow-xs flex items-center justify-center gap-1 font-bold transition duration-200"
                 title={language === 'en' ? "Zoom Out" : "ज़ूम आउट"}
               >
@@ -838,8 +1068,13 @@ export default function OrderTracker({
               <button
                 type="button"
                 onClick={() => {
-                  setZoom(1);
-                  setAutoCenter(false);
+                  if (mapMode === 'real') {
+                    setAutoCenter(false);
+                    mapInstanceRef.current?.setView([25.6880, 80.1315], 15);
+                  } else {
+                    setZoom(1);
+                    setAutoCenter(false);
+                  }
                 }}
                 className="p-2 bg-white hover:bg-slate-100 border border-slate-200 hover:border-amber-300 rounded-xl text-slate-700 hover:text-amber-600 shadow-xs flex items-center justify-center gap-1 text-[10px] font-bold transition duration-200"
                 title={language === 'en' ? "Reset Map" : "रीसेट"}
@@ -849,18 +1084,48 @@ export default function OrderTracker({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {/* Traffic Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowTraffic(prev => !prev)}
-                className={`px-3 py-1.5 rounded-xl font-black text-[10px] tracking-wide flex items-center gap-1 border transition duration-300 shadow-xs ${
-                  showTraffic 
-                    ? 'bg-emerald-500 text-white border-transparent shadow-[0_2px_10px_rgba(16,185,129,0.15)]' 
-                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                🚦 {language === 'en' ? 'Traffic' : 'ट्रैफिक'}
-              </button>
+              {/* Map Mode Selector */}
+              <div className="flex bg-slate-100/80 rounded-xl p-0.5 border border-slate-200 shadow-xs mr-1">
+                <button
+                  key="real"
+                  type="button"
+                  onClick={() => setMapMode('real')}
+                  className={`px-2.5 py-1 rounded-lg font-black text-[10px] tracking-wide transition duration-200 ${
+                    mapMode === 'real'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  📡 {language === 'en' ? 'Road Map' : 'सड़क नक्शा'}
+                </button>
+                <button
+                  key="cyber"
+                  type="button"
+                  onClick={() => setMapMode('cyber')}
+                  className={`px-2.5 py-1 rounded-lg font-black text-[10px] tracking-wide transition duration-200 ${
+                    mapMode === 'cyber'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  🎨 {language === 'en' ? 'Cyber Map' : 'साइबर नक्शा'}
+                </button>
+              </div>
+
+              {/* Traffic Toggle (Only for Cyber Map) */}
+              {mapMode === 'cyber' && (
+                <button
+                  type="button"
+                  onClick={() => setShowTraffic(prev => !prev)}
+                  className={`px-3 py-1.5 rounded-xl font-black text-[10px] tracking-wide flex items-center gap-1 border transition duration-300 shadow-xs ${
+                    showTraffic 
+                      ? 'bg-emerald-500 text-white border-transparent shadow-[0_2px_10px_rgba(16,185,129,0.15)]' 
+                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  🚦 {language === 'en' ? 'Traffic' : 'ट्रैफिक'}
+                </button>
+              )}
 
               {/* Auto-Center Toggle */}
               <button
@@ -872,7 +1137,7 @@ export default function OrderTracker({
                     : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
                 }`}
               >
-                🎯 {language === 'en' ? 'Track Rider' : 'डिलीवरी बॉय को ट्रैक करें'}
+                🎯 {language === 'en' ? 'Track Rider' : 'ट्रैक करें'}
               </button>
             </div>
           </div>
@@ -880,8 +1145,38 @@ export default function OrderTracker({
           {/* SVG Map Canvas */}
           <div className="relative bg-slate-900 aspect-square md:aspect-auto md:h-[450px] rounded-xl overflow-hidden shadow-inner border border-slate-950 flex items-center justify-center">
             
+            {/* Real Street Map (Leaflet) Container */}
+            {mapMode === 'real' && (
+              <div 
+                ref={mapContainerRef} 
+                className="w-full h-full min-h-[300px] md:min-h-[450px] absolute inset-0" 
+                id="leaflet-map-tracker" 
+                style={{ zIndex: 1 }}
+              />
+            )}
+
+            {/* Floating Tile Style Switcher */}
+            {mapMode === 'real' && (
+              <div className="absolute top-3 right-3 bg-slate-950/95 border border-slate-800 p-1 rounded-xl shadow-xl z-[1001] flex gap-1 backdrop-blur-md">
+                {(['dark', 'street', 'satellite'] as const).map((style) => (
+                  <button
+                    key={style}
+                    type="button"
+                    onClick={() => setTileStyle(style)}
+                    className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase transition duration-200 ${
+                      tileStyle === style
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                    }`}
+                  >
+                    {style === 'dark' ? '🌌 Dark' : style === 'street' ? '🗺️ Road' : '🛰️ Sat'}
+                  </button>
+                ))}
+              </div>
+            )}
+            
             {/* Clickable Landmark Info Tooltip Overlay */}
-            {selectedLandmark && (
+            {mapMode === 'cyber' && selectedLandmark && (
               <div className="absolute top-3 left-3 right-3 bg-slate-900/95 border border-slate-700/80 p-3 rounded-xl shadow-xl z-10 flex items-start gap-2.5 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="text-xl shrink-0 mt-0.5">
                   {selectedLandmark.type === 'store' ? '🏪' :
@@ -912,7 +1207,8 @@ export default function OrderTracker({
             )}
 
             {/* Dark Cyberpunk-ish Map Style */}
-            <svg viewBox={viewBoxStr} className="w-full h-full text-slate-700 select-none transition-all duration-300">
+            {mapMode === 'cyber' && (
+              <svg viewBox={viewBoxStr} className="w-full h-full text-slate-700 select-none transition-all duration-300">
               {/* Grid Lines */}
               <defs>
                 <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
@@ -1120,9 +1416,10 @@ export default function OrderTracker({
                 <circle cy="-1" r="2" fill="#ffffff" />
               </motion.g>
             </svg>
+            )}
 
             {/* Float HUD card */}
-            <div className="absolute bottom-3 left-3 right-3 bg-slate-950/90 border border-slate-800 p-3 rounded-lg flex items-center justify-between backdrop-blur-md">
+            <div className="absolute bottom-3 left-3 right-3 bg-slate-950/90 border border-slate-800 p-3 rounded-lg flex items-center justify-between backdrop-blur-md z-[1001]">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] font-bold text-slate-300 font-mono tracking-wider uppercase">

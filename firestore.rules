@@ -94,5 +94,19 @@ service cloud.firestore {
     match /priceLogs/{logId} {
       allow read, write: if true;
     }
+
+    // 12. Restaurants Collection
+    // [English] Anyone can read and write restaurant information for food hub.
+    // [Hindi] फ़ूड हब के लिए कोई भी रेस्टोरेंट की जानकारी पढ़ और लिख सकता है।
+    match /restaurants/{restaurantId} {
+      allow read, write: if true;
+    }
+
+    // 13. Boutiques Collection
+    // [English] Anyone can read and write boutique clothing items and details.
+    // [Hindi] बुटीक कपड़ों के सामान और विवरण को कोई भी पढ़ और लिख सकता है।
+    match /boutiques/{boutiqueId} {
+      allow read, write: if true;
+    }
   }
 }
