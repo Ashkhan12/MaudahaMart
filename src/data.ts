@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Store, Product, Review, Notification, RegisteredUser, SupportTicket, Order } from './types';
+import { Store, Product, Review, Notification, RegisteredUser, SupportTicket, Order, Doctor, LocalService } from './types';
 
 export const INITIAL_STORES: Store[] = [
   {
@@ -19,7 +19,8 @@ export const INITIAL_STORES: Store[] = [
     deliveryTime: '15-20 mins',
     deliveryTimeHi: '15-20 मिनट',
     minOrder: 149,
-    categories: ['Atta, Rice & Dal', 'Oils & Spices', 'Daily Provisions', 'Snacks & Munchies']
+    categories: ['Atta, Rice & Dal', 'Oils & Spices', 'Daily Provisions', 'Snacks & Munchies'],
+    shopCategory: 'Super Mart'
   },
   {
     id: 'gupta-kirana',
@@ -34,12 +35,13 @@ export const INITIAL_STORES: Store[] = [
     deliveryTime: '10-15 mins',
     deliveryTimeHi: '10-15 मिनट',
     minOrder: 99,
-    categories: ['Atta, Rice & Dal', 'Oils & Spices', 'Daily Provisions', 'Snacks & Munchies']
+    categories: ['Atta, Rice & Dal', 'Oils & Spices', 'Daily Provisions', 'Snacks & Munchies'],
+    shopCategory: 'Kirana shops'
   },
   {
     id: 'siddiqui-fruits',
-    name: 'Siddiqui Fresh Fruits & Veg (Naya Bazar)',
-    nameHi: 'सिद्दीकी फ्रेश फ्रूट्स और सब्जियां (नया बाजार)',
+    name: 'Siddiqui Fresh Fruits (Naya Bazar)',
+    nameHi: 'सिद्दीकी फ्रेश फ्रूट्स (नया बाजार)',
     area: 'Maudaha',
     address: 'Naya Bazar, Maudaha',
     addressHi: 'नया बाजार, मौदहा',
@@ -49,7 +51,24 @@ export const INITIAL_STORES: Store[] = [
     deliveryTime: '8-12 mins',
     deliveryTimeHi: '8-12 मिनट',
     minOrder: 49,
-    categories: ['Vegetables', 'Fresh Fruits', 'Organic Greens']
+    categories: ['Fresh Fruits'],
+    shopCategory: 'Fruits shop'
+  },
+  {
+    id: 'maudaha-vegetables',
+    name: 'Maudaha Fresh Vegetable Stall',
+    nameHi: 'मौदहा ताजा सब्जी स्टॉल',
+    area: 'Maudaha',
+    address: 'Sabzi Mandi, Maudaha',
+    addressHi: 'सब्जी मंडी, मौदहा',
+    rating: 4.5,
+    reviewCount: 22,
+    banner: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&q=80&w=600',
+    deliveryTime: '5-10 mins',
+    deliveryTimeHi: '5-10 मिनट',
+    minOrder: 30,
+    categories: ['Vegetables', 'Organic Greens'],
+    shopCategory: 'Vegetable Shop'
   },
   {
     id: 'maudaha-dairy',
@@ -64,12 +83,13 @@ export const INITIAL_STORES: Store[] = [
     deliveryTime: '12-18 mins',
     deliveryTimeHi: '12-18 मिनट',
     minOrder: 50,
-    categories: ['Milk & Butter', 'Paneer & Curd', 'Breads & Eggs']
+    categories: ['Milk & Butter', 'Paneer & Curd', 'Breads & Eggs'],
+    shopCategory: 'Convenience stores'
   },
   {
     id: 'bundelkhand-sweets',
-    name: 'Bundelkhand Sweets & Bakery',
-    nameHi: 'बुंदेलखंड स्वीट्स एंड बेकरी',
+    name: 'Bundelkhand Sweets',
+    nameHi: 'बुंदेलखंड स्वीट्स',
     area: 'Maudaha',
     address: 'Subhash Nagar Road, Maudaha',
     addressHi: 'सुभाष नगर रोड, मौदहा',
@@ -79,7 +99,120 @@ export const INITIAL_STORES: Store[] = [
     deliveryTime: '15-20 mins',
     deliveryTimeHi: '15-20 मिनट',
     minOrder: 99,
-    categories: ['Maudaha Special Sweets', 'Namkeen & Savories', 'Fresh Bakery']
+    categories: ['Maudaha Special Sweets', 'Namkeen & Savories'],
+    shopCategory: 'Sweets shops'
+  },
+  {
+    id: 'sharda-stationary',
+    name: 'Sharda Stationary & Book Depot',
+    nameHi: 'शारदा स्टेशनरी और बुक डिपो',
+    area: 'Maudaha',
+    address: 'Tehsil Road, Maudaha',
+    addressHi: 'तहसील रोड, मौदहा',
+    rating: 4.6,
+    reviewCount: 28,
+    banner: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=600',
+    deliveryTime: '20-30 mins',
+    deliveryTimeHi: '20-30 मिनट',
+    minOrder: 50,
+    categories: ['Notebooks', 'Pens & Office', 'Exam Materials'],
+    shopCategory: 'Stationary shops'
+  },
+  {
+    id: 'maudaha-electronics',
+    name: 'Maudaha Electronics & Repair',
+    nameHi: 'मौदहा इलेक्ट्रॉनिक्स और मरम्मत',
+    area: 'Maudaha',
+    address: 'Gandhi Chauk, Maudaha',
+    addressHi: 'गांधी चौक, मौदहा',
+    rating: 4.4,
+    reviewCount: 18,
+    banner: 'https://images.unsplash.com/photo-1550009158-9ebf6d1703d3?auto=format&fit=crop&q=80&w=600',
+    deliveryTime: '30-45 mins',
+    deliveryTimeHi: '30-45 मिनट',
+    minOrder: 150,
+    categories: ['Cables & Chargers', 'LED Bulbs', 'Switches'],
+    shopCategory: 'Electronics shops'
+  },
+  {
+    id: 'delight-bakery',
+    name: 'Delight Bakery & Confectionery',
+    nameHi: 'डिलाइट बेकरी और कन्फेक्शनरी',
+    area: 'Maudaha',
+    address: 'Station Road, Maudaha',
+    addressHi: 'स्टेशन रोड, मौदहा',
+    rating: 4.7,
+    reviewCount: 45,
+    banner: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=600',
+    deliveryTime: '15-25 mins',
+    deliveryTimeHi: '15-25 मिनट',
+    minOrder: 100,
+    categories: ['Cakes & Pastries', 'Cookies', 'Toast & Rusk'],
+    shopCategory: 'Bakery & Confectionery stores'
+  },
+  {
+    id: 'shrinagar-cosmetics',
+    name: 'Shrinagar Cosmetics & Beauty Hub',
+    nameHi: 'श्रीनगर कॉस्मेटिक्स एंड ब्यूटी हब',
+    area: 'Maudaha',
+    address: 'Naya Bazar, Maudaha',
+    addressHi: 'नया बाजार, मौदहा',
+    rating: 4.5,
+    reviewCount: 16,
+    banner: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&q=80&w=600',
+    deliveryTime: '20-30 mins',
+    deliveryTimeHi: '20-30 मिनट',
+    minOrder: 150,
+    categories: ['Makeup', 'Hair Care', 'Skin Care'],
+    shopCategory: 'Cosmetics stores'
+  },
+  {
+    id: 'maudaha-crokery',
+    name: 'Maudaha Crockery House',
+    nameHi: 'मौदहा क्रॉकरी हाउस',
+    area: 'Maudaha',
+    address: 'Main Bazar, Maudaha',
+    addressHi: 'मुख्य बाजार, मौदहा',
+    rating: 4.3,
+    reviewCount: 12,
+    banner: 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&q=80&w=600',
+    deliveryTime: '1-2 days',
+    deliveryTimeHi: '1-2 दिन',
+    minOrder: 200,
+    categories: ['Glass Sets', 'Dinner Sets', 'Cups & Mugs'],
+    shopCategory: 'Crokery stores'
+  },
+  {
+    id: 'cookwell-kitchen',
+    name: 'Cookwell Cookware & Kitchenware',
+    nameHi: 'कुकवेल कुकवेयर और किचनवेयर',
+    area: 'Maudaha',
+    address: 'Galla Mandi Rd, Maudaha',
+    addressHi: 'गल्ला मंडी रोड, मौदहा',
+    rating: 4.6,
+    reviewCount: 20,
+    banner: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&q=80&w=600',
+    deliveryTime: '1 day',
+    deliveryTimeHi: '1 दिन',
+    minOrder: 250,
+    categories: ['Non-stick Pans', 'Pressure Cookers', 'Gas Stoves'],
+    shopCategory: 'Cookware & kitchenware Store'
+  },
+  {
+    id: 'singh-enterprises',
+    name: 'Singh Enterprises & Agency',
+    nameHi: 'सिंह एंटरप्राइजेज और एजेंसी',
+    area: 'Maudaha',
+    address: 'Kabrai Rd, Maudaha',
+    addressHi: 'कबरई रोड, मौदहा',
+    rating: 4.8,
+    reviewCount: 35,
+    banner: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=600',
+    deliveryTime: '2-3 days',
+    deliveryTimeHi: '2-3 दिन',
+    minOrder: 500,
+    categories: ['Hardware Supplies', 'Pipes & Fittings', 'Paints'],
+    shopCategory: 'Enterprises & agency'
   }
 ];
 
@@ -1106,7 +1239,144 @@ export const INITIAL_ORDERS: Order[] = [
       }
     ]
   }
+];export const INITIAL_DOCTORS: Doctor[] = [
+  {
+    id: 'doc1',
+    name: 'Dr. Alok Tripathi (MD, Medicine)',
+    nameHi: 'डॉ. आलोक त्रिपाठी (एमडी, मेडिसिन)',
+    specialty: 'General Physician',
+    specialtyHi: 'सामान्य चिकित्सक',
+    experience: 15,
+    rating: 4.9,
+    clinicName: 'Tripathi Clinic & Health Centre',
+    clinicNameHi: 'त्रिपाठी क्लिनिक और स्वास्थ्य केंद्र',
+    address: 'Near Tehsil, Station Road, Maudaha',
+    addressHi: 'तहसील के पास, स्टेशन रोड, मौदहा',
+    consultationFee: 200,
+    telehealthFee: 150,
+    availableTimeslots: ['09:00 AM', '10:30 AM', '11:00 AM', '05:00 PM', '06:30 PM'],
+    banner: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=600',
+    isTelehealthAvailable: true,
+    isClinicBookingAvailable: true,
+    upiId: 'tripathiclinic@okhdfcbank'
+  },
+  {
+    id: 'doc2',
+    name: 'Dr. S. K. Verma (MS, Orthopedics)',
+    nameHi: 'डॉ. एस. के. वर्मा (एमएस, ऑर्थोपेडिक्स)',
+    specialty: 'Orthopedics & Joint Specialist',
+    specialtyHi: 'हड्डी और जोड़ रोग विशेषज्ञ',
+    experience: 12,
+    rating: 4.8,
+    clinicName: 'Verma Ortho & Trauma Care',
+    clinicNameHi: 'वर्मा ऑर्थो और ट्रॉमा केयर',
+    address: 'Galla Mandi Chauraha, Maudaha',
+    addressHi: 'गल्ला मंडी चौराहा, मौदहा',
+    consultationFee: 250,
+    telehealthFee: 200,
+    availableTimeslots: ['10:00 AM', '11:30 AM', '12:00 PM', '04:00 PM', '05:30 PM'],
+    banner: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=600',
+    isTelehealthAvailable: true,
+    isClinicBookingAvailable: true,
+    upiId: 'vermaortho@okaxis'
+  },
+  {
+    id: 'doc3',
+    name: 'Dr. Meena Gupta (DGO, Gynecology)',
+    nameHi: 'डॉ. मीना गुप्ता (डीजीओ, स्त्री रोग विशेषज्ञ)',
+    specialty: 'Gynecologist & Obstetrician',
+    specialtyHi: 'स्त्री एवं प्रसूति रोग विशेषज्ञ',
+    experience: 10,
+    rating: 4.7,
+    clinicName: 'Matritva Clinic & Maternity Home',
+    clinicNameHi: 'मातृत्व क्लिनिक और मैटरनिटी होम',
+    address: 'Naya Bazar Road, Maudaha',
+    addressHi: 'नया बाजार रोड, मौदहा',
+    consultationFee: 300,
+    telehealthFee: 250,
+    availableTimeslots: ['11:00 AM', '12:30 PM', '01:00 PM', '05:00 PM', '06:00 PM'],
+    banner: 'https://images.unsplash.com/photo-1594824813573-246434de83fb?auto=format&fit=crop&q=80&w=600',
+    isTelehealthAvailable: true,
+    isClinicBookingAvailable: true,
+    upiId: 'matritvaclinic@okicici'
+  }
 ];
 
-
+export const INITIAL_SERVICES: LocalService[] = [
+  // 1. Beauty Parlour & salon
+  {
+    id: 'ser1',
+    category: 'beauty',
+    name: 'Glow Beauty Parlour & Bridal Salon',
+    nameHi: 'ग्लो ब्यूटी पार्लर और ब्राइडल सैलून',
+    phone: '9456123456',
+    experience: 8,
+    rating: 4.8,
+    address: 'Near Gandhi Chauk, Maudaha',
+    addressHi: 'गांधी चौक के पास, मौदहा',
+    baseCharge: 199,
+    available: true,
+    banner: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=600'
+  },
+  // 2. Tailor
+  {
+    id: 'ser2',
+    category: 'tailor',
+    name: 'Raza Fashion Tailors & Drapers',
+    nameHi: 'रज़ा फैशन टेलर्स एंड ड्रेपर्स',
+    phone: '9876543210',
+    experience: 12,
+    rating: 4.9,
+    address: 'Naya Bazar Crossroad, Maudaha',
+    addressHi: 'नया बाजार चौराहा, मौदहा',
+    baseCharge: 250,
+    available: true,
+    banner: 'https://images.unsplash.com/photo-1525230071276-4a87f42f469e?auto=format&fit=crop&q=80&w=600'
+  },
+  // 3. Plumber
+  {
+    id: 'ser3',
+    category: 'plumber',
+    name: 'Suresh Kumar Plumber (Sanitary Care)',
+    nameHi: 'सुरेश कुमार प्लंबर (सैनिटरी केयर)',
+    phone: '9123456789',
+    experience: 6,
+    rating: 4.6,
+    address: 'Tehsil Area, Maudaha',
+    addressHi: 'तहसील क्षेत्र, मौदहा',
+    baseCharge: 150,
+    available: true,
+    banner: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&q=80&w=600'
+  },
+  // 4. Electrician
+  {
+    id: 'ser4',
+    category: 'electrician',
+    name: 'Babu Electrician & House Wiring Expert',
+    nameHi: 'बाबू इलेक्ट्रिशियन और हाउस वायरिंग विशेषज्ञ',
+    phone: '9345678901',
+    experience: 9,
+    rating: 4.7,
+    address: 'Subhash Nagar, Maudaha',
+    addressHi: 'सुभाष नगर, मौदहा',
+    baseCharge: 120,
+    available: true,
+    banner: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&q=80&w=600'
+  },
+  // 6. Mechanic
+  {
+    id: 'ser5',
+    category: 'mechanic',
+    name: 'Sardar Ji Motor Garage (Bike & Car Specialist)',
+    nameHi: 'सरदार जी मोटर गैराज (बाइक और कार विशेषज्ञ)',
+    phone: '9988776655',
+    experience: 15,
+    rating: 4.9,
+    address: 'Kabrai Road NH-86, Maudaha',
+    addressHi: 'कबरई रोड एनएच-86, मौदहा',
+    baseCharge: 200,
+    available: true,
+    banner: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&q=80&w=600'
+  }
+];
 

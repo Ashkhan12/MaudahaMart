@@ -1135,26 +1135,15 @@ export default function MerchantDashboard({
               <form onSubmit={handleAddProduct} className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 space-y-4">
                 <h3 className="font-bold text-sm text-slate-800">{t.addMenuItem}</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-1">{language === 'en' ? 'Product Name (English)' : 'सामग्री का नाम (अंग्रेजी)'}</label>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">{language === 'en' ? 'Product Name' : 'सामग्री का नाम'}</label>
                     <input
                       type="text"
                       required
                       value={newProduct.name}
                       onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
                       placeholder="e.g. Fresh Red Carrots"
-                      className="w-full bg-white border border-slate-200 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-1">{language === 'en' ? 'Product Name (Hindi)' : 'सामग्री का नाम (हिंदी)'}</label>
-                    <input
-                      type="text"
-                      required
-                      value={newProduct.nameHi}
-                      onChange={(e) => setNewProduct({ ...newProduct, nameHi: e.target.value })}
-                      placeholder="जैसे- ताजी लाल गाजर"
                       className="w-full bg-white border border-slate-200 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -1219,21 +1208,12 @@ export default function MerchantDashboard({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-1">Description (English)</label>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Description</label>
                     <textarea
                       value={newProduct.description}
                       onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                      rows={2}
-                      className="w-full bg-white border border-slate-200 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-1">विवरण (Hindi)</label>
-                    <textarea
-                      value={newProduct.descriptionHi}
-                      onChange={(e) => setNewProduct({ ...newProduct, descriptionHi: e.target.value })}
                       rows={2}
                       className="w-full bg-white border border-slate-200 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-emerald-500"
                     />
@@ -1894,7 +1874,7 @@ export default function MerchantDashboard({
 
             <form onSubmit={handleBroadcastPromo} className="space-y-3.5">
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 mb-1">{t.promoTitleInput} (English)</label>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">{t.promoTitleInput}</label>
                 <input
                   type="text"
                   required
@@ -1906,37 +1886,13 @@ export default function MerchantDashboard({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 mb-1">{t.promoTitleInput} (Hindi)</label>
-                <input
-                  type="text"
-                  required
-                  value={promoTitleHi}
-                  onChange={(e) => setPromoTitleHi(e.target.value)}
-                  placeholder="जैसे- गुप्ता जी फ्लैश 20% छूट!"
-                  className="w-full bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 mb-1">{t.promoBodyInput} (English)</label>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">{t.promoBodyInput}</label>
                 <input
                   type="text"
                   required
                   value={promoBody}
                   onChange={(e) => setPromoBody(e.target.value)}
                   placeholder="Enjoy 20% discount on Atta packs."
-                  className="w-full bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 mb-1">{t.promoBodyInput} (Hindi)</label>
-                <input
-                  type="text"
-                  required
-                  value={promoBodyHi}
-                  onChange={(e) => setPromoBodyHi(e.target.value)}
-                  placeholder="आटा पैक पर 20% की छूट का आनंद लें।"
                   className="w-full bg-white border border-slate-200 px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-emerald-500"
                 />
               </div>

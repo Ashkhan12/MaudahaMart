@@ -1,0 +1,2 @@
+sed -i '/{\/\* Notification Drawer trigger \*\/}/i \
+            {role === "admin" && (\n              <button\n                onClick={() => setShowAdminPortal(true)}\n                className="p-2 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition flex items-center gap-1"\n                title={language === "en" ? "Admin Settings" : "एडमिन सेटिंग्स"}\n              >\n                <Shield className="h-5 w-5" />\n                <span className="text-xs font-bold hidden md:inline">Admin</span>\n              </button>\n            )}' src/App.tsx

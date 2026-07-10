@@ -1,0 +1,2 @@
+sed -i '/{role === "admin" && (/i \
+            <button\n              onClick={() => setShowPitchDeck(true)}\n              className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition flex items-center gap-1"\n              title="Download Pitch Deck"\n            >\n              <FileText className="h-5 w-5" />\n              <span className="text-xs font-bold hidden sm:inline">Pitch Deck</span>\n            </button>' src/App.tsx

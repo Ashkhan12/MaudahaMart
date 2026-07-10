@@ -81,11 +81,11 @@ export default function AdminFoodPanel({
         return {
           ...r,
           name: restName,
-          nameHi: restNameHi,
+          nameHi: restNameHi || restName,
           address: restAddress,
-          addressHi: restAddressHi,
+          addressHi: restAddressHi || restAddress,
           cuisine: restCuisine,
-          cuisineHi: restCuisineHi,
+          cuisineHi: restCuisineHi || restCuisine,
           minOrder: Number(restMinOrder),
           deliveryTime: restDeliveryTime,
           deliveryTimeHi: restDeliveryTimeHi,
@@ -142,12 +142,12 @@ export default function AdminFoodPanel({
             return {
               ...item,
               name: menuItemName,
-              nameHi: menuItemNameHi,
+              nameHi: menuItemNameHi || menuItemName,
               price: Number(menuItemPrice),
               category: menuItemCategory,
               image: menuItemImage,
               description: menuItemDesc,
-              descriptionHi: menuItemDescHi
+              descriptionHi: menuItemDescHi || menuItemDesc
             };
           }
           return item;
@@ -386,25 +386,13 @@ export default function AdminFoodPanel({
               </button>
             </div>
             <form onSubmit={handleAddRestaurant} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (English)</label>
-                  <input required type="text" value={restName} onChange={e => setRestName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (Hindi)</label>
-                  <input required type="text" value={restNameHi} onChange={e => setRestNameHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name</label>
+                <input required type="text" value={restName} onChange={e => setRestName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Cuisine (English)</label>
-                  <input required type="text" value={restCuisine} onChange={e => setRestCuisine(e.target.value)} placeholder="North Indian, Sweets" className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Cuisine (Hindi)</label>
-                  <input required type="text" value={restCuisineHi} onChange={e => setRestCuisineHi(e.target.value)} placeholder="उत्तर भारतीय, मिठाई" className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Cuisine</label>
+                <input required type="text" value={restCuisine} onChange={e => setRestCuisine(e.target.value)} placeholder="North Indian, Sweets" className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -416,15 +404,9 @@ export default function AdminFoodPanel({
                   <input required type="text" value={restBanner} onChange={e => setRestBanner(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Address (English)</label>
-                  <input required type="text" value={restAddress} onChange={e => setRestAddress(e.target.value)} placeholder="Station Road, Maudaha" className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Address (Hindi)</label>
-                  <input required type="text" value={restAddressHi} onChange={e => setRestAddressHi(e.target.value)} placeholder="स्टेशन रोड, मौदहा" className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Address</label>
+                <input required type="text" value={restAddress} onChange={e => setRestAddress(e.target.value)} placeholder="Station Road, Maudaha" className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="flex gap-2 justify-end pt-2">
                 <button type="button" onClick={() => setShowAddRestaurantModal(false)} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">{language === 'en' ? 'Cancel' : 'रद्द करें'}</button>
@@ -446,25 +428,13 @@ export default function AdminFoodPanel({
               </button>
             </div>
             <form onSubmit={handleEditRestaurant} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (English)</label>
-                  <input required type="text" value={restName} onChange={e => setRestName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (Hindi)</label>
-                  <input required type="text" value={restNameHi} onChange={e => setRestNameHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name</label>
+                <input required type="text" value={restName} onChange={e => setRestName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Cuisine (English)</label>
-                  <input required type="text" value={restCuisine} onChange={e => setRestCuisine(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Cuisine (Hindi)</label>
-                  <input required type="text" value={restCuisineHi} onChange={e => setRestCuisineHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Cuisine</label>
+                <input required type="text" value={restCuisine} onChange={e => setRestCuisine(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -476,15 +446,9 @@ export default function AdminFoodPanel({
                   <input required type="text" value={restBanner} onChange={e => setRestBanner(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Address (English)</label>
-                  <input required type="text" value={restAddress} onChange={e => setRestAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Address (Hindi)</label>
-                  <input required type="text" value={restAddressHi} onChange={e => setRestAddressHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Address</label>
+                <input required type="text" value={restAddress} onChange={e => setRestAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="flex gap-2 justify-end pt-2">
                 <button type="button" onClick={() => setShowEditRestaurantModal(false)} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">{language === 'en' ? 'Cancel' : 'रद्द करें'}</button>
@@ -506,15 +470,9 @@ export default function AdminFoodPanel({
               </button>
             </div>
             <form onSubmit={handleManageMenuAdd} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (English)</label>
-                  <input required type="text" value={menuItemName} onChange={e => setMenuItemName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (Hindi)</label>
-                  <input required type="text" value={menuItemNameHi} onChange={e => setMenuItemNameHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name</label>
+                <input required type="text" value={menuItemName} onChange={e => setMenuItemName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -535,15 +493,9 @@ export default function AdminFoodPanel({
                 <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Image URL</label>
                 <input required type="text" value={menuItemImage} onChange={e => setMenuItemImage(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Description (English)</label>
-                  <textarea value={menuItemDesc} onChange={e => setMenuItemDesc(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500 h-16 resize-none" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Description (Hindi)</label>
-                  <textarea value={menuItemDescHi} onChange={e => setMenuItemDescHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500 h-16 resize-none" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Description</label>
+                <textarea value={menuItemDesc} onChange={e => setMenuItemDesc(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500 h-16 resize-none" />
               </div>
               <div className="flex gap-2 justify-end pt-2">
                 <button type="button" onClick={() => setShowAddMenuItemModal(false)} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">{language === 'en' ? 'Cancel' : 'रद्द करें'}</button>
@@ -565,15 +517,9 @@ export default function AdminFoodPanel({
               </button>
             </div>
             <form onSubmit={handleManageMenuEdit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (English)</label>
-                  <input required type="text" value={menuItemName} onChange={e => setMenuItemName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (Hindi)</label>
-                  <input required type="text" value={menuItemNameHi} onChange={e => setMenuItemNameHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name</label>
+                <input required type="text" value={menuItemName} onChange={e => setMenuItemName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -594,15 +540,9 @@ export default function AdminFoodPanel({
                 <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Image URL</label>
                 <input required type="text" value={menuItemImage} onChange={e => setMenuItemImage(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Description (English)</label>
-                  <textarea value={menuItemDesc} onChange={e => setMenuItemDesc(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500 h-16 resize-none" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Description (Hindi)</label>
-                  <textarea value={menuItemDescHi} onChange={e => setMenuItemDescHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500 h-16 resize-none" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Description</label>
+                <textarea value={menuItemDesc} onChange={e => setMenuItemDesc(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500 h-16 resize-none" />
               </div>
               <div className="flex gap-2 justify-end pt-2">
                 <button type="button" onClick={() => setShowEditMenuItemModal(false)} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">{language === 'en' ? 'Cancel' : 'रद्द करें'}</button>

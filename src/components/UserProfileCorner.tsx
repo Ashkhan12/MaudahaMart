@@ -4,8 +4,8 @@
  */
 
 import React, { useState } from 'react';
-import { User, Phone, Mail, MapPin, Award, History, X, Edit2, Check, Languages, Palette, Layers, LogOut, Smartphone } from 'lucide-react';
-import { RegisteredUser, Language } from '../types';
+import { User, Phone, Mail, MapPin, Award, History, X, Edit2, Check, Languages, Palette, Layers, LogOut, Smartphone, Sparkles, Building, Landmark, ChevronLeft } from 'lucide-react';
+import { RegisteredUser, Language, MerchantRequest } from '../types';
 import { THEMES } from '../theme';
 
 interface UserProfileCornerProps {
@@ -25,6 +25,8 @@ interface UserProfileCornerProps {
   loyaltyTier: string;
   onLogOut?: () => void;
   onOpenAndroidHub?: () => void;
+  merchantRequests?: MerchantRequest[];
+  onAddMerchantRequest?: (req: MerchantRequest) => void;
   weather?: {
     temp: number;
     code: number;
@@ -54,7 +56,9 @@ export default function UserProfileCorner({
   loyaltyTier,
   onLogOut,
   weather,
-  onOpenAndroidHub
+  onOpenAndroidHub,
+  merchantRequests = [],
+  onAddMerchantRequest
 }: UserProfileCornerProps) {
   const activeUser = users.find(u => u.id === activeUserId);
   
@@ -64,6 +68,112 @@ export default function UserProfileCorner({
   const [editPhone, setEditPhone] = useState(activeUser?.phone || '');
   const [editEmail, setEditEmail] = useState(activeUser?.email || '');
   const [editLocation, setEditLocation] = useState(activeUser?.location || '');
+
+  // Merchant request form states
+  const [showMerchantRequestForm, setShowMerchantRequestForm] = useState(false);
+  const [reqBusinessName, setReqBusinessName] = useState('');
+  const [reqBusinessNameHi, setReqBusinessNameHi] = useState('');
+  const [reqBusinessType, setReqBusinessType] = useState<'grocery' | 'restaurant' | 'boutique'>('grocery');
+  const [reqBusinessAddress, setReqBusinessAddress] = useState('');
+  const [reqBusinessAddressHi, setReqBusinessAddressHi] = useState('');
+  const [reqUpiId, setReqUpiId] = useState('');
+  const [translating, setTranslating] = useState(false);
+
+  const handleAutoTranslate = async (text: string, targetField: 'businessNameHi' | 'businessAddressHi') => {
+    if (!text.trim()) return;
+    setTranslating(true);
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.translatedText) {
+          if (targetField === 'businessNameHi') {
+            setReqBusinessNameHi(data.translatedText);
+          } else {
+            setReqBusinessAddressHi(data.translatedText);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to translate:', err);
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  const handleMerchantRequestSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeUser) return;
+    if (!reqBusinessName.trim() || !reqBusinessAddress.trim() || !reqUpiId.trim()) {
+      alert(language === 'en' ? 'All fields are required.' : 'सभी फ़ील्ड आवश्यक हैं।');
+      return;
+    }
+    
+    // Check if the phone number is the default one or invalid
+    const cleanPhone = activeUser.phone.replace(/\D/g, '');
+    if (cleanPhone === '9000000000' || cleanPhone === '' || cleanPhone.length < 10) {
+      alert(language === 'en' 
+        ? 'Please update your Personal Details first with a real active 10-digit phone number before requesting to be a merchant!' 
+        : 'मर्चेंट बनने का अनुरोध करने से पहले कृपया अपने व्यक्तिगत विवरण में एक वास्तविक सक्रिय 10-अंकीय फ़ोन नंबर दर्ज करें!');
+      return;
+    }
+
+    const newRequest: MerchantRequest = {
+      id: 'req-' + Date.now(),
+      userId: activeUserId,
+      userName: activeUser.name,
+      userPhone: activeUser.phone,
+      businessName: reqBusinessName.trim(),
+      businessNameHi: reqBusinessNameHi.trim() || reqBusinessName.trim(),
+      businessAddress: reqBusinessAddress.trim(),
+      businessAddressHi: reqBusinessAddressHi.trim() || reqBusinessAddress.trim(),
+      businessType: reqBusinessType,
+      upiId: reqUpiId.trim(),
+      status: 'pending',
+      date: new Date().toLocaleDateString('en-IN')
+    };
+
+    if (onAddMerchantRequest) {
+      onAddMerchantRequest(newRequest);
+    }
+
+    // Set user's request status to pending
+    const updatedUsers = users.map(u => {
+      if (u.id === activeUserId) {
+        return {
+          ...u,
+          merchantRequestStatus: 'pending' as const,
+          activities: [
+            {
+              id: 'act-' + Date.now(),
+              timestamp: new Date().toLocaleDateString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              action: `Requested merchant portal for ${reqBusinessName}`,
+              actionHi: `${reqBusinessName} के लिए मर्चेंट पोर्टल का अनुरोध किया`
+            },
+            ...(u.activities || [])
+          ]
+        };
+      }
+      return u;
+    });
+    onUpdateUsers(updatedUsers);
+
+    alert(language === 'en'
+      ? 'Merchant self-onboarding request submitted successfully! Admin will approve it shortly.'
+      : 'मर्चेंट ऑनबोर्डिंग अनुरोध सफलतापूर्वक सबमिट किया गया! एडमिन जल्द ही इसे स्वीकृत करेंगे।');
+
+    // Reset Form
+    setShowMerchantRequestForm(false);
+    setReqBusinessName('');
+    setReqBusinessNameHi('');
+    setReqBusinessAddress('');
+    setReqBusinessAddressHi('');
+    setReqUpiId('');
+  };
 
   React.useEffect(() => {
     if (activeUser) {
@@ -329,6 +439,161 @@ export default function UserProfileCorner({
               </form>
             )}
           </div>
+
+          {/* Become a Merchant Portal / मर्चेंट बनें */}
+          {activeUser.role === 'customer' && (
+            <div className="bg-emerald-600/5 border border-emerald-500/20 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Building className="h-5 w-5 text-emerald-600 shrink-0" />
+                <div>
+                  <span className="text-xs font-black text-emerald-800 tracking-tight block">
+                    {language === 'en' ? 'Become a Partner Store' : 'मौदहा मर्चेंट पार्टनर बनें'}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-bold block">
+                    {language === 'en' ? 'Start selling locally on Maudaha Mart' : 'मार्ट पर ऑनलाइन बिक्री शुरू करें'}
+                  </span>
+                </div>
+              </div>
+
+              {activeUser.merchantRequestStatus === 'pending' ? (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-center">
+                  <span className="text-xs font-extrabold text-amber-800 block">
+                    ⏳ {language === 'en' ? 'Onboarding Request Pending' : 'ऑनबोर्डिंग अनुरोध लंबित है'}
+                  </span>
+                  <p className="text-[10px] text-slate-500 mt-1 leading-relaxed font-semibold">
+                    {language === 'en'
+                      ? 'The Super Admin is reviewing your UPI settlements & location details. You will get access shortly!'
+                      : 'सुपर एडमिन आपके यूपीआई सेटलमेंट और दुकान के विवरण की समीक्षा कर रहे हैं। आपको जल्द ही पहुंच मिलेगी!'}
+                  </p>
+                </div>
+              ) : activeUser.merchantRequestStatus === 'rejected' ? (
+                <div className="bg-red-500/10 border border-red-500/10 rounded-xl p-3 text-center">
+                  <span className="text-xs font-extrabold text-red-800 block">
+                    ❌ {language === 'en' ? 'Application Rejected' : 'आवेदन अस्वीकार कर दिया गया'}
+                  </span>
+                  <p className="text-[10px] text-slate-500 mt-1 font-semibold leading-relaxed">
+                    {language === 'en'
+                      ? 'Ensure your business details are authentic and update your phone number before re-applying.'
+                      : 'पुनः आवेदन करने से पहले सुनिश्चित करें कि आपकी दुकान की जानकारी वास्तविक है।'}
+                  </p>
+                  <button
+                    onClick={() => {
+                      const updatedUsers = users.map(u => {
+                        if (u.id === activeUserId) {
+                          return { ...u, merchantRequestStatus: 'none' as const };
+                        }
+                        return u;
+                      });
+                      onUpdateUsers(updatedUsers);
+                    }}
+                    className="text-[10px] text-emerald-600 font-black mt-2 uppercase hover:underline block mx-auto cursor-pointer"
+                  >
+                    {language === 'en' ? 'Re-Apply Now' : 'फिर से आवेदन करें'}
+                  </button>
+                </div>
+              ) : !showMerchantRequestForm ? (
+                <button
+                  onClick={() => setShowMerchantRequestForm(true)}
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-extrabold rounded-xl transition flex items-center justify-center gap-1 shadow-md shadow-emerald-600/10 cursor-pointer"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>{language === 'en' ? 'Apply to onboard' : 'ऑनबोर्डिंग के लिए आवेदन करें'}</span>
+                </button>
+              ) : (
+                <form onSubmit={handleMerchantRequestSubmit} className="space-y-3.5 pt-2 border-t border-emerald-500/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      {language === 'en' ? 'Store Registration' : 'दुकान का पंजीकरण'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowMerchantRequestForm(false)}
+                      className="text-[10px] text-slate-500 hover:text-slate-700 font-bold flex items-center gap-0.5"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                      {language === 'en' ? 'Back' : 'पीछे'}
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-slate-400 font-extrabold block mb-1 uppercase tracking-wide">
+                      {language === 'en' ? 'Shop Name (English)' : 'दुकान का नाम (अंग्रेज़ी में)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={reqBusinessName}
+                      onChange={e => setReqBusinessName(e.target.value)}
+                      placeholder="e.g. Maudaha Fresh Kirana"
+                      className="w-full text-xs font-bold text-slate-700 px-3 py-2 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 outline-none transition"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-slate-400 font-extrabold block mb-1 uppercase tracking-wide">
+                      {language === 'en' ? 'Shop Category' : 'दुकान की श्रेणी'}
+                    </label>
+                    <select
+                      value={reqBusinessType}
+                      onChange={e => setReqBusinessType(e.target.value as any)}
+                      className="w-full text-xs font-bold text-slate-700 px-3 py-2 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 outline-none transition"
+                    >
+                      <option value="grocery">{language === 'en' ? '🏪 Groceries & Daily Needs' : '🏪 किराना और दैनिक ज़रूरतें'}</option>
+                      <option value="restaurant">{language === 'en' ? '🍔 Restaurant / Food Point' : '🍔 रेस्टोरेंट / भोजन बिंदु'}</option>
+                      <option value="boutique">{language === 'en' ? '👕 Fashion Boutique / Clothing' : '👕 फैशन बुटीक और कपड़े'}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-slate-400 font-extrabold block mb-1 uppercase tracking-wide">
+                      {language === 'en' ? 'Shop Location (English)' : 'दुकान का पता (अंग्रेज़ी में)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={reqBusinessAddress}
+                      onChange={e => setReqBusinessAddress(e.target.value)}
+                      placeholder="e.g. Galla Mandi, Maudaha"
+                      className="w-full text-xs font-bold text-slate-700 px-3 py-2 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 outline-none transition"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-slate-400 font-extrabold block mb-1 uppercase tracking-wide">
+                      {language === 'en' ? 'UPI ID for Payout Settlements' : 'भुगतान के लिए यूपीआई आईडी'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={reqUpiId}
+                        onChange={e => setReqUpiId(e.target.value)}
+                        placeholder="e.g. merchant@okaxis"
+                        className="w-full text-xs font-bold text-slate-700 pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 outline-none transition font-mono"
+                        required
+                      />
+                      <Landmark className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                    </div>
+                  </div>
+
+                  {activeUser.phone.includes('9000000000') && (
+                    <div className="bg-red-50 text-[10px] p-2.5 rounded-xl border border-red-200 text-red-700 font-bold leading-normal">
+                      ⚠️ {language === 'en' 
+                        ? 'Please edit your Profile above to add a real phone number before submitting. Registrations with +91 90000 00000 default cannot be verified.'
+                        : 'कृपया जमा करने से पहले अपना वास्तविक फोन नंबर दर्ज करें। डिफ़ॉल्ट +91 90000 00000 नंबर सत्यापित नहीं किया जा सकता।'}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-extrabold rounded-xl transition flex items-center justify-center gap-1 shadow-md shadow-emerald-600/10 cursor-pointer"
+                  >
+                    <Check className="h-4 w-4" />
+                    {language === 'en' ? 'Submit Registration' : 'पंजीकरण जमा करें'}
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
 
           {/* Account Switcher - Global Simulation Sandbox */}
           <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 space-y-3">

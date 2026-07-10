@@ -108,5 +108,12 @@ service cloud.firestore {
     match /boutiques/{boutiqueId} {
       allow read, write: if true;
     }
+
+    // 14. Merchant Requests Collection
+    // [English] Anyone can request to be a merchant. Admins can read/approve.
+    // [Hindi] कोई भी मर्चेंट बनने का अनुरोध कर सकता है। एडमिन पढ़ और स्वीकृत कर सकते हैं।
+    match /merchantRequests/{requestId} {
+      allow read, write: if true;
+    }
   }
 }

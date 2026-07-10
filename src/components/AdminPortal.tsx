@@ -30,7 +30,7 @@ import {
   Check as CheckIcon,
   HelpCircle as HelpCircleIcon
 } from 'lucide-react';
-import { Store, Product, Review, Order, Notification, Language, RegisteredUser, UserActivity, SupportTicket, SystemSettings, CustomPanel, CustomPanelMetric, PayoutRequest, PriceChangeLog, Restaurant, ClothingBoutique, RestaurantMenuItem, ClothingItem } from '../types';
+import { Store, Product, Review, Order, Notification, Language, RegisteredUser, UserActivity, SupportTicket, SystemSettings, CustomPanel, CustomPanelMetric, PayoutRequest, PriceChangeLog, Restaurant, ClothingBoutique, RestaurantMenuItem, ClothingItem, MerchantRequest } from '../types';
 import ServiceAreaManagement from './ServiceAreaManagement';
 import AdminFoodPanel from './AdminFoodPanel';
 import AdminFashionPanel from './AdminFashionPanel';
@@ -59,6 +59,8 @@ interface AdminPortalProps {
   onUpdateOrders: (orders: Order[]) => void;
   payoutRequests: PayoutRequest[];
   onUpdatePayoutRequests: (requests: PayoutRequest[]) => void;
+  merchantRequests?: MerchantRequest[];
+  onUpdateMerchantRequests?: (requests: MerchantRequest[]) => void;
   priceLogs: PriceChangeLog[];
   onUpdateProductPricesAndStock?: (productId: string, updates: { mrp?: number; sellingPrice?: number; msp?: number; price?: number; stock?: number; name?: string; nameHi?: string; image?: string }, changedBy: 'seller' | 'admin', changerName: string) => void;
   restaurants: Restaurant[];
@@ -92,6 +94,8 @@ export default function AdminPortal({
   onUpdateOrders,
   payoutRequests,
   onUpdatePayoutRequests,
+  merchantRequests = [],
+  onUpdateMerchantRequests,
   priceLogs,
   onUpdateProductPricesAndStock,
   restaurants,
@@ -628,20 +632,20 @@ export default function AdminPortal({
 
   const handleAddStore = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStoreName || !newStoreNameHi) return;
+    if (!newStoreName) return;
 
     const id = newStoreName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const newStore: Store = {
       id,
       name: newStoreName,
-      nameHi: newStoreNameHi,
+      nameHi: newStoreNameHi || newStoreName,
       address: newStoreAddress,
-      addressHi: newStoreAddressHi,
+      addressHi: newStoreAddressHi || newStoreAddress,
       rating: 5.0,
       reviewCount: 0,
       banner: newStoreBanner,
       deliveryTime: newStoreDeliveryTime,
-      deliveryTimeHi: newStoreDeliveryTimeHi,
+      deliveryTimeHi: newStoreDeliveryTimeHi || newStoreDeliveryTime,
       minOrder: Number(newStoreMinOrder),
       categories: newStoreCategories.split(',').map(s => s.trim())
     };
@@ -671,11 +675,11 @@ export default function AdminPortal({
         return {
           ...st,
           name: editStoreName,
-          nameHi: editStoreNameHi,
+          nameHi: editStoreNameHi || editStoreName,
           address: editStoreAddress,
-          addressHi: editStoreAddressHi,
+          addressHi: editStoreAddressHi || editStoreAddress,
           deliveryTime: editStoreDeliveryTime,
-          deliveryTimeHi: editStoreDeliveryTimeHi,
+          deliveryTimeHi: editStoreDeliveryTimeHi || editStoreDeliveryTime,
           minOrder: Number(editStoreMinOrder),
           banner: editStoreBanner,
           categories: editStoreCategories.split(',').map(s => s.trim())
@@ -691,31 +695,31 @@ export default function AdminPortal({
 
   const handleAddProduct = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newProdName || !newProdNameHi) return;
+    if (!newProdName) return;
 
     const priceVal = Number(newProdPrice);
     const newProd: Product = {
       id: 'p-' + Date.now(),
       name: newProdName,
-      nameHi: newProdNameHi,
+      nameHi: newProdNameHi || newProdName,
       price: priceVal,
       sellingPrice: priceVal,
       mrp: Math.round(priceVal * 1.25),
       msp: Math.round(priceVal * 0.85),
       unit: newProdUnit,
-      unitHi: newProdUnitHi,
+      unitHi: newProdUnitHi || newProdUnit,
       stock: Number(newProdStock),
       category: newProdCategory,
-      categoryHi: newProdCategoryHi,
+      categoryHi: newProdCategoryHi || newProdCategory,
       storeId: newProdStoreId,
       description: newProdDesc,
-      descriptionHi: newProdDescHi,
+      descriptionHi: newProdDescHi || newProdDesc,
       image: newProdImage,
       rating: 5.0,
       warrantyPeriod: newProdWarranty || undefined,
-      warrantyPeriodHi: newProdWarrantyHi || undefined,
+      warrantyPeriodHi: newProdWarrantyHi || newProdWarranty || undefined,
       replacementPolicy: newProdReplacement || undefined,
-      replacementPolicyHi: newProdReplacementHi || undefined
+      replacementPolicyHi: newProdReplacementHi || newProdReplacement || undefined
     };
 
     onUpdateProducts([newProd, ...products]);
@@ -758,14 +762,14 @@ export default function AdminPortal({
 
   const handleSendBroadcast = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!promoTitle || !promoTitleHi) return;
+    if (!promoTitle) return;
 
     const newNotif: Notification = {
       id: 'n-' + Date.now(),
       title: promoTitle,
-      titleHi: promoTitleHi,
+      titleHi: promoTitleHi || promoTitle,
       body: promoBody,
-      bodyHi: promoBodyHi,
+      bodyHi: promoBodyHi || promoBody,
       code: promoCode || undefined,
       discountAmount: promoType === 'discount' ? Number(promoDiscount) : undefined,
       type: promoType,
@@ -858,6 +862,8 @@ export default function AdminPortal({
     }
   }[language];
 
+  const pendingRequestsCount = merchantRequests.filter(r => r.status === 'pending').length;
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
       
@@ -878,7 +884,7 @@ export default function AdminPortal({
 
         {/* Quick Tabs Menu */}
         <div className="relative z-10 flex flex-wrap gap-2">
-          {(['overview', 'ai-trends', 'orders', 'stores', 'food-panel', 'fashion-panel', 'service-area', 'catalog', 'broadcast', 'payouts', 'reviews', 'users', 'support'] as const).map((tab) => (
+          {(['overview', 'ai-trends', 'orders', 'merchant-requests', 'stores', 'food-panel', 'fashion-panel', 'service-area', 'catalog', 'broadcast', 'payouts', 'reviews', 'users', 'support'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveAdminTab(tab)}
@@ -894,6 +900,7 @@ export default function AdminPortal({
                tab === 'payouts' ? (language === 'en' ? 'Payouts & Wishlists' : 'भुगतान और पसंदीदा') :
                tab === 'food-panel' ? (language === 'en' ? '🍔 Food Panel' : '🍔 फूड पैनल') :
                tab === 'fashion-panel' ? (language === 'en' ? '👕 Fashion Panel' : '👕 फैशन पैनल') :
+               tab === 'merchant-requests' ? (language === 'en' ? `🏪 Merchant Requests ${pendingRequestsCount > 0 ? `(${pendingRequestsCount})` : ''}` : `🏪 मर्चेंट अनुरोध ${pendingRequestsCount > 0 ? `(${pendingRequestsCount})` : ''}`) :
                t[tab]}
             </button>
           ))}
@@ -1429,54 +1436,28 @@ export default function AdminPortal({
                 </div>
 
                 <form onSubmit={handleAddStore} className="space-y-4 text-xs">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">{t.storeName}</label>
-                      <input
-                        type="text"
-                        required
-                        value={newStoreName}
-                        onChange={e => setNewStoreName(e.target.value)}
-                        placeholder="e.g. Verma Provisions"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-emerald-500 outline-none font-bold"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">{t.storeNameHi}</label>
-                      <input
-                        type="text"
-                        required
-                        value={newStoreNameHi}
-                        onChange={e => setNewStoreNameHi(e.target.value)}
-                        placeholder="जैसे वर्मा प्रोविजन"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-emerald-500 outline-none font-bold"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">{t.storeName}</label>
+                    <input
+                      type="text"
+                      required
+                      value={newStoreName}
+                      onChange={e => setNewStoreName(e.target.value)}
+                      placeholder="e.g. Verma Provisions"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-emerald-500 outline-none font-bold"
+                    />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">{t.address} (English)</label>
-                      <input
-                        type="text"
-                        required
-                        value={newStoreAddress}
-                        onChange={e => setNewStoreAddress(e.target.value)}
-                        placeholder="Station Road, Maudaha or New Delhi, Delhi"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">{t.address} (Hindi)</label>
-                      <input
-                        type="text"
-                        required
-                        value={newStoreAddressHi}
-                        onChange={e => setNewStoreAddressHi(e.target.value)}
-                        placeholder="स्टेशन रोड, मौदहा या नई दिल्ली, दिल्ली"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-emerald-500 outline-none"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">{t.address} (English)</label>
+                    <input
+                      type="text"
+                      required
+                      value={newStoreAddress}
+                      onChange={e => setNewStoreAddress(e.target.value)}
+                      placeholder="Station Road, Maudaha or New Delhi, Delhi"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-emerald-500 outline-none"
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1501,25 +1482,14 @@ export default function AdminPortal({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">{t.deliveryTime}</label>
-                      <input
-                        type="text"
-                        value={newStoreDeliveryTime}
-                        onChange={e => setNewStoreDeliveryTime(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">{t.deliveryTime} (Hindi)</label>
-                      <input
-                        type="text"
-                        value={newStoreDeliveryTimeHi}
-                        onChange={e => setNewStoreDeliveryTimeHi(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">{t.deliveryTime}</label>
+                    <input
+                      type="text"
+                      value={newStoreDeliveryTime}
+                      onChange={e => setNewStoreDeliveryTime(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                    />
                   </div>
 
                   <div>
@@ -1558,54 +1528,28 @@ export default function AdminPortal({
                 </div>
 
                 <form onSubmit={handleEditStore} className="space-y-4 text-xs">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">Store Name</label>
-                      <input
-                        type="text"
-                        required
-                        value={editStoreName}
-                        onChange={e => setEditStoreName(e.target.value)}
-                        placeholder="e.g. Verma Provisions"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-emerald-500 outline-none font-bold text-slate-800"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">Store Name (Hindi)</label>
-                      <input
-                        type="text"
-                        required
-                        value={editStoreNameHi}
-                        onChange={e => setEditStoreNameHi(e.target.value)}
-                        placeholder="जैसे वर्मा प्रोविजन"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-emerald-500 outline-none font-bold text-slate-800"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">Store Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={editStoreName}
+                      onChange={e => setEditStoreName(e.target.value)}
+                      placeholder="e.g. Verma Provisions"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-emerald-500 outline-none font-bold text-slate-800"
+                    />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">{t.address} (English)</label>
-                      <input
-                        type="text"
-                        required
-                        value={editStoreAddress}
-                        onChange={e => setEditStoreAddress(e.target.value)}
-                        placeholder="Station Road, Maudaha or New Delhi, Delhi"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-emerald-500 outline-none text-slate-800"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">{t.address} (Hindi)</label>
-                      <input
-                        type="text"
-                        required
-                        value={editStoreAddressHi}
-                        onChange={e => setEditStoreAddressHi(e.target.value)}
-                        placeholder="स्टेशन रोड, मौदहा या नई दिल्ली, दिल्ली"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-emerald-500 outline-none text-slate-800"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">{t.address} (English)</label>
+                    <input
+                      type="text"
+                      required
+                      value={editStoreAddress}
+                      onChange={e => setEditStoreAddress(e.target.value)}
+                      placeholder="Station Road, Maudaha or New Delhi, Delhi"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-emerald-500 outline-none text-slate-800"
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1631,25 +1575,14 @@ export default function AdminPortal({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">{t.deliveryTime}</label>
-                      <input
-                        type="text"
-                        value={editStoreDeliveryTime}
-                        onChange={e => setEditStoreDeliveryTime(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">{t.deliveryTime} (Hindi)</label>
-                      <input
-                        type="text"
-                        value={editStoreDeliveryTimeHi}
-                        onChange={e => setEditStoreDeliveryTimeHi(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">{t.deliveryTime}</label>
+                    <input
+                      type="text"
+                      value={editStoreDeliveryTime}
+                      onChange={e => setEditStoreDeliveryTime(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800"
+                    />
                   </div>
 
                   <div>
@@ -1799,32 +1732,19 @@ export default function AdminPortal({
                 </div>
 
                 <form onSubmit={handleAddProduct} className="space-y-4 text-xs">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">{t.prodName} (English)</label>
-                      <input
-                        type="text"
-                        required
-                        value={newProdName}
-                        onChange={e => setNewProdName(e.target.value)}
-                        placeholder="e.g. Pure Desi Ghee"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">{t.prodName} (Hindi)</label>
-                      <input
-                        type="text"
-                        required
-                        value={newProdNameHi}
-                        onChange={e => setNewProdNameHi(e.target.value)}
-                        placeholder="जैसे शुद्ध देसी घी"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">{t.prodName}</label>
+                    <input
+                      type="text"
+                      required
+                      value={newProdName}
+                      onChange={e => setNewProdName(e.target.value)}
+                      placeholder="e.g. Pure Desi Ghee"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold"
+                    />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-slate-500 font-bold mb-1">{t.price}</label>
                       <input
@@ -1842,16 +1762,6 @@ export default function AdminPortal({
                         required
                         value={newProdUnit}
                         onChange={e => setNewProdUnit(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">Unit (Hindi)</label>
-                      <input
-                        type="text"
-                        required
-                        value={newProdUnitHi}
-                        onChange={e => setNewProdUnitHi(e.target.value)}
                         className="w-full px-3 py-2 border border-slate-200 rounded-xl"
                       />
                     </div>
@@ -1884,46 +1794,24 @@ export default function AdminPortal({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">Category (English)</label>
-                      <input
-                        type="text"
-                        required
-                        value={newProdCategory}
-                        onChange={e => setNewProdCategory(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">Category (Hindi)</label>
-                      <input
-                        type="text"
-                        required
-                        value={newProdCategoryHi}
-                        onChange={e => setNewProdCategoryHi(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">Category</label>
+                    <input
+                      type="text"
+                      required
+                      value={newProdCategory}
+                      onChange={e => setNewProdCategory(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                    />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">Description (English)</label>
-                      <textarea
-                        value={newProdDesc}
-                        onChange={e => setNewProdDesc(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl h-16"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">Description (Hindi)</label>
-                      <textarea
-                        value={newProdDescHi}
-                        onChange={e => setNewProdDescHi(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl h-16"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">Description</label>
+                    <textarea
+                      value={newProdDesc}
+                      onChange={e => setNewProdDesc(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl h-16"
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1997,23 +1885,12 @@ export default function AdminPortal({
                       <div className="space-y-3">
                         <div>
                           <label className="block text-slate-500 font-bold mb-1">
-                            {language === 'en' ? 'Product Name (English)' : 'उत्पाद का नाम (अंग्रेज़ी)'}
+                            {language === 'en' ? 'Product Name' : 'उत्पाद का नाम'}
                           </label>
                           <input
                             type="text"
                             value={editAdminName}
                             onChange={(e) => setEditAdminName(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-800 text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-slate-500 font-bold mb-1">
-                            {language === 'en' ? 'Product Name (Hindi)' : 'उत्पाद का नाम (हिन्दी)'}
-                          </label>
-                          <input
-                            type="text"
-                            value={editAdminNameHi}
-                            onChange={(e) => setEditAdminNameHi(e.target.value)}
                             className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-800 text-xs"
                           />
                         </div>
@@ -2085,7 +1962,7 @@ export default function AdminPortal({
                               msp: editAdminMsp,
                               price: editAdminSellingPrice,
                               name: editAdminName,
-                              nameHi: editAdminNameHi,
+                              nameHi: editAdminNameHi || editAdminName,
                               image: editAdminImage
                             },
                             'admin',
@@ -2102,7 +1979,7 @@ export default function AdminPortal({
                                 mrp: editAdminMrp,
                                 msp: editAdminMsp,
                                 name: editAdminName,
-                                nameHi: editAdminNameHi,
+                                nameHi: editAdminNameHi || editAdminName,
                                 image: editAdminImage
                               };
                             }
@@ -2208,52 +2085,27 @@ export default function AdminPortal({
                 </label>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1">Title (English)</label>
-                  <input
-                    type="text"
-                    required
-                    value={promoTitle}
-                    onChange={e => setPromoTitle(e.target.value)}
-                    placeholder="e.g. Rakhi Sweet Fest!"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1">Title (Hindi)</label>
-                  <input
-                    type="text"
-                    required
-                    value={promoTitleHi}
-                    onChange={e => setPromoTitleHi(e.target.value)}
-                    placeholder="जैसे राखी स्वीट उत्सव!"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  />
-                </div>
+              <div>
+                <label className="block text-slate-500 font-bold mb-1">Title</label>
+                <input
+                  type="text"
+                  required
+                  value={promoTitle}
+                  onChange={e => setPromoTitle(e.target.value)}
+                  placeholder="e.g. Rakhi Sweet Fest!"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+                />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1">Details (English)</label>
-                  <textarea
-                    required
-                    value={promoBody}
-                    onChange={e => setPromoBody(e.target.value)}
-                    placeholder="Claim Rs. 40 off on premium local sweets!"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl h-16"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1">Details (Hindi)</label>
-                  <textarea
-                    required
-                    value={promoBodyHi}
-                    onChange={e => setPromoBodyHi(e.target.value)}
-                    placeholder="प्रीमियम स्थानीय मिठाइयों पर 40 रुपये की छूट पाएं!"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl h-16"
-                  />
-                </div>
+              <div>
+                <label className="block text-slate-500 font-bold mb-1">Details</label>
+                <textarea
+                  required
+                  value={promoBody}
+                  onChange={e => setPromoBody(e.target.value)}
+                  placeholder="Claim Rs. 40 off on premium local sweets!"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl h-16"
+                />
               </div>
 
               {promoType === 'discount' && (
@@ -3131,6 +2983,234 @@ export default function AdminPortal({
         />
       )}
 
+      {/* --- Tab: Merchant Onboarding Requests --- */}
+      {activeAdminTab === 'merchant-requests' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
+            <div className="absolute right-[-20px] top-[-20px] w-36 h-36 rounded-full bg-slate-800/20" />
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center text-slate-950 font-black">
+                <StoreIcon className="h-5 w-5 text-slate-950" />
+              </div>
+              <div>
+                <h2 className="text-base font-extrabold text-white">
+                  {language === 'en' ? 'Merchant Partner Self-Onboarding Hub' : 'मर्चेंट पार्टनर स्व-ऑनबोर्डिंग हब'}
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {language === 'en' 
+                    ? 'Review and verify requests from local Maudaha residents who want to open digital storefronts.'
+                    : 'स्थानीय मौदहा निवासियों के अनुरोधों की समीक्षा करें जो डिजिटल स्टोर खोलना चाहते हैं।'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">
+                {language === 'en' ? `Pending Requests (${merchantRequests.filter(r => r.status === 'pending').length})` : `लंबित अनुरोध (${merchantRequests.filter(r => r.status === 'pending').length})`}
+              </span>
+            </div>
+
+            {merchantRequests.length === 0 ? (
+              <div className="text-center py-16 text-slate-400 text-xs italic space-y-2">
+                <p>{language === 'en' ? 'No merchant requests found.' : 'कोई मर्चेंट अनुरोध नहीं मिला।'}</p>
+                <p className="text-[10px] text-slate-300">
+                  {language === 'en' ? 'Users can apply to be a merchant from their Resident Account profile drawer.' : 'उपयोगकर्ता अपने निवासी खाता प्रोफ़ाइल दराज से मर्चेंट बनने के लिए आवेदन कर सकते हैं।'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {merchantRequests.map((req) => (
+                  <div 
+                    key={req.id} 
+                    className="p-5 border border-slate-150 rounded-2xl bg-slate-50/50 hover:bg-slate-50 transition flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                  >
+                    <div className="space-y-2.5 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                          req.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                          req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                          'bg-rose-100 text-rose-800 border border-rose-200'
+                        }`}>
+                          {req.status}
+                        </span>
+                        <span className="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-md uppercase tracking-wider font-mono">
+                          {req.businessType === 'grocery' ? '🏪 Grocery' :
+                           req.businessType === 'restaurant' ? '🍔 Restaurant' : '👕 Boutique'}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-bold font-mono ml-auto md:ml-0">
+                          📅 {req.date}
+                        </span>
+                      </div>
+
+                      <div>
+                        <h3 className="text-sm font-extrabold text-slate-800 leading-tight">
+                          {req.businessName} <span className="text-slate-400">({req.businessNameHi})</span>
+                        </h3>
+                        <p className="text-xs text-slate-500 font-bold mt-1 flex items-center gap-1">
+                          📍 {req.businessAddress} <span className="text-slate-400">({req.businessAddressHi})</span>
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 text-[11px] text-slate-500 font-bold">
+                        <div>
+                          <span className="text-slate-400 block font-semibold text-[9px] uppercase font-mono">Applicant Name</span>
+                          <span className="text-slate-700">{req.userName}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block font-semibold text-[9px] uppercase font-mono">Phone Number</span>
+                          <span className="text-slate-700 font-mono">{req.userPhone}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block font-semibold text-[9px] uppercase font-mono">Settlement UPI ID</span>
+                          <span className="text-slate-700 font-mono text-emerald-600">{req.upiId}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {req.status === 'pending' && (
+                      <div className="flex gap-2 w-full md:w-auto shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                        <button
+                          onClick={() => {
+                            // Reject Request
+                            const updatedRequests = merchantRequests.map(r => r.id === req.id ? { ...r, status: 'rejected' as const } : r);
+                            if (onUpdateMerchantRequests) onUpdateMerchantRequests(updatedRequests);
+
+                            // Update user status
+                            const updatedUsers = users.map(u => {
+                              if (u.id === req.userId) {
+                                return { ...u, merchantRequestStatus: 'rejected' as const };
+                              }
+                              return u;
+                            });
+                            onUpdateUsers(updatedUsers);
+
+                            // Add Notification
+                            onAddNotification({
+                              id: 'notif-' + Date.now(),
+                              title: 'Merchant Application Status',
+                              titleHi: 'मर्चेंट आवेदन की स्थिति',
+                              body: `Your application for "${req.businessName}" was rejected. Please review details and apply again.`,
+                              bodyHi: `आपका "${req.businessName}" के लिए मर्चेंट आवेदन अस्वीकार कर दिया गया। कृपया जानकारी की समीक्षा करें और फिर से आवेदन करें।`,
+                              type: 'general' as const,
+                              date: new Date().toLocaleDateString('en-IN'),
+                              isRead: false
+                            });
+
+                            alert('Merchant onboarding application rejected.');
+                          }}
+                          className="flex-1 md:flex-none px-4 py-2 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 text-xs font-extrabold rounded-xl transition border border-rose-200 cursor-pointer text-center"
+                        >
+                          Reject
+                        </button>
+                        <button
+                          onClick={() => {
+                            // Approve Request
+                            const updatedRequests = merchantRequests.map(r => r.id === req.id ? { ...r, status: 'approved' as const } : r);
+                            if (onUpdateMerchantRequests) onUpdateMerchantRequests(updatedRequests);
+
+                            // Update user role & request status
+                            const updatedUsers = users.map(u => {
+                              if (u.id === req.userId) {
+                                return { 
+                                  ...u, 
+                                  role: 'merchant' as const, 
+                                  merchantRequestStatus: 'approved' as const 
+                                };
+                              }
+                              return u;
+                            });
+                            onUpdateUsers(updatedUsers);
+
+                            // Add appropriate store
+                            if (req.businessType === 'grocery') {
+                              const newStore: Store = {
+                                id: `store-merchant-${req.userId}`,
+                                name: req.businessName,
+                                nameHi: req.businessNameHi,
+                                address: req.businessAddress,
+                                addressHi: req.businessAddressHi,
+                                area: 'Maudaha Central',
+                                rating: 4.5,
+                                reviewCount: 1,
+                                banner: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=60',
+                                deliveryTime: '25-40 mins',
+                                deliveryTimeHi: '25-40 मिनट',
+                                minOrder: 100,
+                                upiId: req.upiId,
+                                categories: ['Groceries', 'Fruits', 'Vegetables']
+                              };
+                              onUpdateStores([newStore, ...stores]);
+                            } else if (req.businessType === 'restaurant') {
+                              const newRestaurant: Restaurant = {
+                                id: `rest-merchant-${req.userId}`,
+                                name: req.businessName,
+                                nameHi: req.businessNameHi,
+                                address: req.businessAddress,
+                                addressHi: req.businessAddressHi,
+                                area: 'Maudaha Central',
+                                rating: 4.5,
+                                deliveryTime: '30-45 mins',
+                                deliveryTimeHi: '30-45 मिनट',
+                                minOrder: 100,
+                                upiId: req.upiId,
+                                cuisine: 'North Indian, Fast Food',
+                                cuisineHi: 'उत्तर भारतीय, फास्ट फूड',
+                                banner: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&auto=format&fit=crop&q=60',
+                                menu: []
+                              };
+                              onUpdateRestaurants([newRestaurant, ...restaurants]);
+                            } else if (req.businessType === 'boutique') {
+                              const newBoutique: ClothingBoutique = {
+                                id: `boutique-merchant-${req.userId}`,
+                                name: req.businessName,
+                                nameHi: req.businessNameHi,
+                                address: req.businessAddress,
+                                addressHi: req.businessAddressHi,
+                                area: 'Maudaha Central',
+                                rating: 4.5,
+                                deliveryTime: '1-2 days',
+                                deliveryTimeHi: '1-2 दिन',
+                                minOrder: 200,
+                                upiId: req.upiId,
+                                specialty: 'Ethnic Wear, Custom Stitching',
+                                specialtyHi: 'पारंपरिक पोशाक, कस्टम सिलाई',
+                                banner: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&auto=format&fit=crop&q=60',
+                                items: [],
+                                shopType: 'boutique'
+                              };
+                              onUpdateBoutiques([newBoutique, ...boutiques]);
+                            }
+
+                            // Add Notification
+                            onAddNotification({
+                              id: 'notif-' + Date.now(),
+                              title: '🎉 Welcome Partner Store!',
+                              titleHi: '🎉 आपका स्वागत है पार्टनर स्टोर!',
+                              body: `Your partner application for "${req.businessName}" has been APPROVED. You can now access your merchant portal dashboard and manage catalog.`,
+                              bodyHi: `"${req.businessName}" के लिए आपका पार्टनर आवेदन स्वीकार कर लिया गया है। अब आप मर्चेंट पोर्टल तक पहुंच सकते हैं और कैटलॉग प्रबंधित कर सकते हैं।`,
+                              type: 'general' as const,
+                              date: new Date().toLocaleDateString('en-IN'),
+                              isRead: false
+                            });
+
+                            alert(`Merchant onboarding approved successfully! A new ${req.businessType} storefront has been provisioned.`);
+                          }}
+                          className="flex-1 md:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-emerald-600/10 cursor-pointer text-center"
+                        >
+                          Approve Onboarding
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* --- Tab: Payouts & Wishlists Manager --- */}
       {activeAdminTab === 'payouts' && (
         <div className="space-y-6">
@@ -3497,8 +3577,56 @@ export default function AdminPortal({
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input 
                         type="checkbox" 
-                        checked={settings.enableUpiPayment} 
+                        checked={settings.enableUpiPayment ?? true} 
                         onChange={e => onUpdateSettings({ ...settings, enableUpiPayment: e.target.checked })}
+                        className="sr-only peer" 
+                      />
+                      <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                  </div>
+
+                  {/* UPI Shops Toggle */}
+                  <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200 hover:border-slate-300 transition ml-4">
+                    <div>
+                      <span className="font-bold text-slate-700 text-xs block">🛒 {language === 'en' ? 'UPI for Shops' : 'दुकानों के लिए UPI'}</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={settings.enableUpiPaymentShops ?? true} 
+                        onChange={e => onUpdateSettings({ ...settings, enableUpiPaymentShops: e.target.checked })}
+                        className="sr-only peer" 
+                      />
+                      <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                  </div>
+
+                  {/* UPI Restaurants Toggle */}
+                  <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200 hover:border-slate-300 transition ml-4">
+                    <div>
+                      <span className="font-bold text-slate-700 text-xs block">🍔 {language === 'en' ? 'UPI for Restaurants' : 'रेस्तरां के लिए UPI'}</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={settings.enableUpiPaymentRestaurants ?? true} 
+                        onChange={e => onUpdateSettings({ ...settings, enableUpiPaymentRestaurants: e.target.checked })}
+                        className="sr-only peer" 
+                      />
+                      <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                  </div>
+
+                  {/* UPI Fashion Toggle */}
+                  <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200 hover:border-slate-300 transition ml-4">
+                    <div>
+                      <span className="font-bold text-slate-700 text-xs block">👗 {language === 'en' ? 'UPI for Fashion' : 'फैशन के लिए UPI'}</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={settings.enableUpiPaymentFashion ?? true} 
+                        onChange={e => onUpdateSettings({ ...settings, enableUpiPaymentFashion: e.target.checked })}
                         className="sr-only peer" 
                       />
                       <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
@@ -3607,20 +3735,11 @@ export default function AdminPortal({
 
                 <div className="space-y-4 text-xs font-semibold">
                   <div>
-                    <label className="block text-slate-500 font-bold mb-1">Banner Alert Text (English)</label>
+                    <label className="block text-slate-500 font-bold mb-1">Banner Alert Text</label>
                     <input 
                       type="text"
                       value={settings.globalPromoBannerText}
-                      onChange={e => onUpdateSettings({ ...settings, globalPromoBannerText: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-amber-500 outline-none bg-slate-50 font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-500 font-bold mb-1">Banner Alert Text (Hindi)</label>
-                    <input 
-                      type="text"
-                      value={settings.globalPromoBannerTextHi}
-                      onChange={e => onUpdateSettings({ ...settings, globalPromoBannerTextHi: e.target.value })}
+                      onChange={e => onUpdateSettings({ ...settings, globalPromoBannerText: e.target.value, globalPromoBannerTextHi: settings.globalPromoBannerTextHi || e.target.value })}
                       className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-amber-500 outline-none bg-slate-50 font-bold"
                     />
                   </div>
@@ -3649,7 +3768,7 @@ export default function AdminPortal({
                 <form 
                   onSubmit={e => {
                     e.preventDefault();
-                    if (!newPanelName || !newPanelNameHi) {
+                    if (!newPanelName) {
                       alert(language === 'en' ? 'Please fill in the Panel Name' : 'कृपया पैनल का नाम भरें');
                       return;
                     }
@@ -3677,13 +3796,13 @@ export default function AdminPortal({
                     const newPanelObj: CustomPanel = {
                       id: panelId,
                       name: newPanelName,
-                      nameHi: newPanelNameHi,
+                      nameHi: newPanelNameHi || newPanelName,
                       icon: newPanelIcon,
                       description: newPanelDescription || 'Live dynamic panel operational area',
-                      descriptionHi: newPanelDescriptionHi || 'लाइव गतिशील पैनल परिचालन क्षेत्र',
+                      descriptionHi: newPanelDescriptionHi || newPanelDescription || 'लाइव गतिशील पैनल परिचालन क्षेत्र',
                       metrics: metricsList,
                       richContent: newPanelRichContent || 'Default generated panel workspace logs.',
-                      richContentHi: newPanelRichContentHi || 'डिफ़ॉल्ट जेनरेट किया गया पैनल वर्कस्पेस लॉग।',
+                      richContentHi: newPanelRichContentHi || newPanelRichContent || 'डिफ़ॉल्ट जेनरेट किया गया पैनल वर्कस्पेस लॉग।',
                       dateCreated: new Date().toISOString().split('T')[0],
                       status: 'active'
                     };
@@ -3709,52 +3828,27 @@ export default function AdminPortal({
                   }}
                   className="space-y-4 text-xs font-semibold"
                 >
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">Panel Name (EN)</label>
-                      <input 
-                        type="text"
-                        required
-                        value={newPanelName}
-                        onChange={e => setNewPanelName(e.target.value)}
-                        placeholder="e.g. Audit Logs"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-amber-500 outline-none bg-slate-50 font-bold"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">Panel Name (HI)</label>
-                      <input 
-                        type="text"
-                        required
-                        value={newPanelNameHi}
-                        onChange={e => setNewPanelNameHi(e.target.value)}
-                        placeholder="जैसे ऑडिट लॉग्स"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-amber-500 outline-none bg-slate-50 font-bold"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">Panel Name</label>
+                    <input 
+                      type="text"
+                      required
+                      value={newPanelName}
+                      onChange={e => setNewPanelName(e.target.value)}
+                      placeholder="e.g. Audit Logs"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-amber-500 outline-none bg-slate-50 font-bold"
+                    />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">Brief Subtitle (EN)</label>
-                      <input 
-                        type="text"
-                        value={newPanelDescription}
-                        onChange={e => setNewPanelDescription(e.target.value)}
-                        placeholder="Live system logs"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 font-bold"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 font-bold mb-1">Brief Subtitle (HI)</label>
-                      <input 
-                        type="text"
-                        value={newPanelDescriptionHi}
-                        onChange={e => setNewPanelDescriptionHi(e.target.value)}
-                        placeholder="लाइव सिस्टम लॉग्स"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 font-bold"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold mb-1">Brief Subtitle</label>
+                    <input 
+                      type="text"
+                      value={newPanelDescription}
+                      onChange={e => setNewPanelDescription(e.target.value)}
+                      placeholder="Live system logs"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 font-bold"
+                    />
                   </div>
 
                   {/* Metric 1 Form */}
@@ -3776,18 +3870,11 @@ export default function AdminPortal({
                         className="px-2 py-1.5 border border-slate-200 rounded-lg bg-white text-[11px] font-bold"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input 
-                        type="text"
-                        value={newMetric1LabelHi}
-                        onChange={e => setNewMetric1LabelHi(e.target.value)}
-                        placeholder="Label Hindi"
-                        className="px-2 py-1.5 border border-slate-200 rounded-lg bg-white text-[11px] font-bold"
-                      />
+                    <div>
                       <select
                         value={newMetric1Icon}
                         onChange={e => setNewMetric1Icon(e.target.value)}
-                        className="px-2 py-1.5 border border-slate-200 rounded-lg bg-white text-[11px] font-bold"
+                        className="w-full px-2 py-1.5 border border-slate-200 rounded-lg bg-white text-[11px] font-bold"
                       >
                         <option value="star">⭐ Star Icon</option>
                         <option value="users">👥 Users Icon</option>
@@ -3817,18 +3904,11 @@ export default function AdminPortal({
                         className="px-2 py-1.5 border border-slate-200 rounded-lg bg-white text-[11px] font-bold"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input 
-                        type="text"
-                        value={newMetric2LabelHi}
-                        onChange={e => setNewMetric2LabelHi(e.target.value)}
-                        placeholder="Label Hindi"
-                        className="px-2 py-1.5 border border-slate-200 rounded-lg bg-white text-[11px] font-bold"
-                      />
+                    <div>
                       <select
                         value={newMetric2Icon}
                         onChange={e => setNewMetric2Icon(e.target.value)}
-                        className="px-2 py-1.5 border border-slate-200 rounded-lg bg-white text-[11px] font-bold"
+                        className="w-full px-2 py-1.5 border border-slate-200 rounded-lg bg-white text-[11px] font-bold"
                       >
                         <option value="star">⭐ Star Icon</option>
                         <option value="users">👥 Users Icon</option>
@@ -3840,20 +3920,11 @@ export default function AdminPortal({
                   </div>
 
                   <div>
-                    <label className="block text-slate-500 font-bold mb-1">Rich Narrative Context (English)</label>
+                    <label className="block text-slate-500 font-bold mb-1">Rich Narrative Context</label>
                     <textarea 
                       value={newPanelRichContent}
                       onChange={e => setNewPanelRichContent(e.target.value)}
                       placeholder="Write system notes, summaries, or static analytical logs here..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl h-20 bg-slate-50 font-bold outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-500 font-bold mb-1">Rich Narrative Context (Hindi)</label>
-                    <textarea 
-                      value={newPanelRichContentHi}
-                      onChange={e => setNewPanelRichContentHi(e.target.value)}
-                      placeholder="यहाँ सिस्टम नोट्स, विवरण या सांख्यिकीय रिपोर्ट लिखें..."
                       className="w-full px-3 py-2 border border-slate-200 rounded-xl h-20 bg-slate-50 font-bold outline-none"
                     />
                   </div>

@@ -39,6 +39,7 @@ interface ClothingHubProps {
   language: 'en' | 'hi';
   onAddActivity: (userId: string, activityEn: string, activityHi: string) => void;
   boutiques?: ClothingBoutique[];
+  settings: any;
 }
 
 export default function ClothingHub({
@@ -47,7 +48,8 @@ export default function ClothingHub({
   onUpdateUsers,
   language,
   onAddActivity,
-  boutiques = INITIAL_BOUTIQUES
+  boutiques = INITIAL_BOUTIQUES,
+  settings
 }: ClothingHubProps) {
   const activeUser = users.find(u => u.id === activeUserId) || null;
   // User specific state extraction
@@ -313,6 +315,7 @@ export default function ClothingHub({
     }
 
     const orderId = 'ODR-FSH-' + Math.floor(100000 + Math.random() * 90000);
+    const actualPaymentMethod = (paymentMethod === 'UPI' && settings.enableUpiPaymentFashion !== false) ? 'UPI' : 'COD';
     const newOrder: ClothingOrder = {
       id: orderId,
       boutiqueId: currentBoutique.id,
@@ -322,7 +325,7 @@ export default function ClothingHub({
       subtotal,
       deliveryFee: baseDeliveryCharge,
       total: grandTotal,
-      paymentMethod,
+      paymentMethod: actualPaymentMethod,
       status: 'processing',
       date: new Date().toLocaleDateString('en-IN', {
         day: '2-digit',
@@ -351,7 +354,7 @@ export default function ClothingHub({
   };
 
   const handleCheckoutBtn = () => {
-    if (paymentMethod === 'UPI') {
+    if (paymentMethod === 'UPI' && settings.enableUpiPaymentFashion !== false) {
       setShowUpiCheckout(true);
     } else {
       executePlaceOrder();
@@ -1087,27 +1090,29 @@ export default function ClothingHub({
                       <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider block mb-2">
                         {t.paymentMethod}
                       </span>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className={`grid ${settings.enableUpiPaymentFashion !== false ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
                         <button
                           onClick={() => setPaymentMethod('COD')}
                           className={`p-2 rounded-lg border text-xs font-black transition text-center ${
-                            paymentMethod === 'COD'
+                            paymentMethod === 'COD' || (settings.enableUpiPaymentFashion === false)
                               ? 'border-pink-500 bg-pink-50 text-pink-700 shadow-sm'
                               : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'
                           }`}
                         >
                           💸 {t.cod}
                         </button>
-                        <button
-                          onClick={() => setPaymentMethod('UPI')}
-                          className={`p-2 rounded-lg border text-xs font-black transition text-center ${
-                            paymentMethod === 'UPI'
-                              ? 'border-pink-500 bg-pink-50 text-pink-700 shadow-sm'
-                              : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'
-                          }`}
-                        >
-                          📱 {t.upi}
-                        </button>
+                        {settings.enableUpiPaymentFashion !== false && (
+                          <button
+                            onClick={() => setPaymentMethod('UPI')}
+                            className={`p-2 rounded-lg border text-xs font-black transition text-center ${
+                              paymentMethod === 'UPI'
+                                ? 'border-pink-500 bg-pink-50 text-pink-700 shadow-sm'
+                                : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'
+                            }`}
+                          >
+                            📱 {t.upi}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

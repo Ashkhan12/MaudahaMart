@@ -122,6 +122,19 @@ export async function getAllOrders() {
   }
 }
 
+export async function getOrderById(id: string) {
+  try {
+    const result = await db.select()
+      .from(orders)
+      .where(eq(orders.id, id))
+      .limit(1);
+    return result[0] || null;
+  } catch (error) {
+    console.error("Database getOrderById failed:", error);
+    throw new Error("Database query failed. Please try again later.", { cause: error });
+  }
+}
+
 // 3. Support Tickets
 export async function saveSupportTicket(data: {
   id: string;

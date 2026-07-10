@@ -61,6 +61,7 @@ export interface Store {
   minOrder: number;
   upiId?: string;
   categories: string[];
+  shopCategory?: string;
 }
 
 export interface Review {
@@ -160,6 +161,23 @@ export interface RegisteredUser {
   trainQueries?: TrainQuery[];
   flightBookings?: FlightBooking[];
   trainBookings?: TrainBooking[];
+  merchantRequestStatus?: 'none' | 'pending' | 'approved' | 'rejected';
+}
+
+export interface MerchantRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhone: string;
+  businessName: string;
+  businessNameHi: string;
+  businessAddress: string;
+  businessAddressHi: string;
+  businessType: 'grocery' | 'restaurant' | 'boutique';
+  shopCategory?: string;
+  upiId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  date: string;
 }
 
 export interface RestaurantMenuItem {
@@ -296,6 +314,9 @@ export interface SystemSettings {
   enableRiderPortal: boolean;
   enableSupportPanel: boolean;
   enableUpiPayment: boolean;
+  enableUpiPaymentShops: boolean;
+  enableUpiPaymentRestaurants: boolean;
+  enableUpiPaymentFashion: boolean;
   enableLiveRouteTracker: boolean;
   deliveryCharge: number;
   minCheckoutAmount: number;
@@ -446,6 +467,71 @@ export interface ScratchCard {
   isUsed: boolean;
   createdAt: string;
   storeId: string;
+}export interface Doctor {
+  id: string;
+  name: string;
+  nameHi: string;
+  specialty: string;
+  specialtyHi: string;
+  experience: number;
+  rating: number;
+  clinicName: string;
+  clinicNameHi: string;
+  address: string;
+  addressHi: string;
+  consultationFee: number;
+  telehealthFee: number;
+  availableTimeslots: string[];
+  banner: string;
+  isTelehealthAvailable: boolean;
+  isClinicBookingAvailable: boolean;
+  upiId?: string;
 }
 
+export interface DoctorAppointment {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhone: string;
+  doctorId: string;
+  doctorName: string;
+  specialty: string;
+  appointmentType: 'telehealth' | 'clinic';
+  date: string;
+  timeslot: string;
+  feePaid: number;
+  paymentStatus: 'paid' | 'pending';
+  status: 'booked' | 'completed' | 'cancelled';
+  telehealthLink?: string;
+  prescription?: string;
+}
 
+export interface LocalService {
+  id: string;
+  category: 'beauty' | 'tailor' | 'plumber' | 'electrician' | 'mechanic';
+  name: string;
+  nameHi: string;
+  phone: string;
+  experience: number;
+  rating: number;
+  address: string;
+  addressHi: string;
+  baseCharge: number;
+  available: boolean;
+  banner: string;
+}
+
+export interface LocalServiceBooking {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhone: string;
+  serviceId: string;
+  serviceName: string;
+  category: string;
+  date: string;
+  timeslot: string;
+  status: 'pending' | 'accepted' | 'completed' | 'cancelled';
+  address: string;
+  notes?: string;
+}

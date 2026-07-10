@@ -85,11 +85,11 @@ export default function AdminFashionPanel({
         return {
           ...b,
           name: btName,
-          nameHi: btNameHi,
+          nameHi: btNameHi || btName,
           address: btAddress,
-          addressHi: btAddressHi,
+          addressHi: btAddressHi || btAddress,
           specialty: btSpecialty,
-          specialtyHi: btSpecialtyHi,
+          specialtyHi: btSpecialtyHi || btSpecialty,
           minOrder: Number(btMinOrder),
           deliveryTime: btDeliveryTime,
           deliveryTimeHi: btDeliveryTimeHi,
@@ -151,12 +151,12 @@ export default function AdminFashionPanel({
             return {
               ...item,
               name: clothItemName,
-              nameHi: clothItemNameHi,
+              nameHi: clothItemNameHi || clothItemName,
               price: Number(clothItemPrice),
               category: clothItemCategory,
               image: clothItemImage,
               description: clothItemDesc,
-              descriptionHi: clothItemDescHi,
+              descriptionHi: clothItemDescHi || clothItemDesc,
               sizes: sizeArr,
               hasStitchingOption: clothItemHasStitching
             };
@@ -408,25 +408,13 @@ export default function AdminFashionPanel({
               </button>
             </div>
             <form onSubmit={handleAddBoutique} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (English)</label>
-                  <input required type="text" value={btName} onChange={e => setBtName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (Hindi)</label>
-                  <input required type="text" value={btNameHi} onChange={e => setBtNameHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name</label>
+                <input required type="text" value={btName} onChange={e => setBtName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Specialty/Type (English)</label>
-                  <input required type="text" value={btSpecialty} onChange={e => setBtSpecialty(e.target.value)} placeholder="Sarees, Custom Boutique" className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Specialty/Type (Hindi)</label>
-                  <input required type="text" value={btSpecialtyHi} onChange={e => setBtSpecialtyHi(e.target.value)} placeholder="साड़ी, बुटीक" className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Specialty/Type</label>
+                <input required type="text" value={btSpecialty} onChange={e => setBtSpecialty(e.target.value)} placeholder="Sarees, Custom Boutique" className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -442,15 +430,9 @@ export default function AdminFashionPanel({
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Address (English)</label>
-                  <input required type="text" value={btAddress} onChange={e => setBtAddress(e.target.value)} placeholder="Naya Bazar, Maudaha" className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Address (Hindi)</label>
-                  <input required type="text" value={btAddressHi} onChange={e => setBtAddressHi(e.target.value)} placeholder="नया बाजार, मौदहा" className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Address</label>
+                <input required type="text" value={btAddress} onChange={e => setBtAddress(e.target.value)} placeholder="Naya Bazar, Maudaha" className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
               <div>
                 <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Banner Image URL</label>
@@ -476,25 +458,13 @@ export default function AdminFashionPanel({
               </button>
             </div>
             <form onSubmit={handleEditBoutique} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (English)</label>
-                  <input required type="text" value={btName} onChange={e => setBtName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (Hindi)</label>
-                  <input required type="text" value={btNameHi} onChange={e => setBtNameHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name</label>
+                <input required type="text" value={btName} onChange={e => setBtName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Specialty/Type (English)</label>
-                  <input required type="text" value={btSpecialty} onChange={e => setBtSpecialty(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Specialty/Type (Hindi)</label>
-                  <input required type="text" value={btSpecialtyHi} onChange={e => setBtSpecialtyHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Specialty/Type</label>
+                <input required type="text" value={btSpecialty} onChange={e => setBtSpecialty(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -510,15 +480,9 @@ export default function AdminFashionPanel({
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Address (English)</label>
-                  <input required type="text" value={btAddress} onChange={e => setBtAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Address (Hindi)</label>
-                  <input required type="text" value={btAddressHi} onChange={e => setBtAddressHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Address</label>
+                <input required type="text" value={btAddress} onChange={e => setBtAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
               <div>
                 <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Banner URL</label>
@@ -544,15 +508,9 @@ export default function AdminFashionPanel({
               </button>
             </div>
             <form onSubmit={handleManageClothingItemAdd} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (English)</label>
-                  <input required type="text" value={clothItemName} onChange={e => setClothItemName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (Hindi)</label>
-                  <input required type="text" value={clothItemNameHi} onChange={e => setClothItemNameHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name</label>
+                <input required type="text" value={clothItemName} onChange={e => setClothItemName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -585,15 +543,9 @@ export default function AdminFashionPanel({
                 <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Image URL</label>
                 <input required type="text" value={clothItemImage} onChange={e => setClothItemImage(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Description (English)</label>
-                  <textarea value={clothItemDesc} onChange={e => setClothItemDesc(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500 h-16 resize-none" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Description (Hindi)</label>
-                  <textarea value={clothItemDescHi} onChange={e => setClothItemDescHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500 h-16 resize-none" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Description</label>
+                <textarea value={clothItemDesc} onChange={e => setClothItemDesc(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500 h-16 resize-none" />
               </div>
               <div className="flex gap-2 justify-end pt-2">
                 <button type="button" onClick={() => setShowAddClothingItemModal(false)} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">{language === 'en' ? 'Cancel' : 'रद्द करें'}</button>
@@ -615,15 +567,9 @@ export default function AdminFashionPanel({
               </button>
             </div>
             <form onSubmit={handleManageClothingItemEdit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (English)</label>
-                  <input required type="text" value={clothItemName} onChange={e => setClothItemName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name (Hindi)</label>
-                  <input required type="text" value={clothItemNameHi} onChange={e => setClothItemNameHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Name</label>
+                <input required type="text" value={clothItemName} onChange={e => setClothItemName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -656,15 +602,9 @@ export default function AdminFashionPanel({
                 <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Image URL</label>
                 <input required type="text" value={clothItemImage} onChange={e => setClothItemImage(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Description (English)</label>
-                  <textarea value={clothItemDesc} onChange={e => setClothItemDesc(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500 h-16 resize-none" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Description (Hindi)</label>
-                  <textarea value={clothItemDescHi} onChange={e => setClothItemDescHi(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500 h-16 resize-none" />
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block mb-1">Description</label>
+                <textarea value={clothItemDesc} onChange={e => setClothItemDesc(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-emerald-500 h-16 resize-none" />
               </div>
               <div className="flex gap-2 justify-end pt-2">
                 <button type="button" onClick={() => setShowEditClothingItemModal(false)} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">{language === 'en' ? 'Cancel' : 'रद्द करें'}</button>

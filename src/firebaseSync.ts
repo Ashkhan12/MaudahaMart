@@ -5,7 +5,7 @@
 
 import { collection, doc, setDoc, getDocs, writeBatch, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
-import { Store, Product, Review, Notification, RegisteredUser, SupportTicket, Order, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, Restaurant, ClothingBoutique } from './types';
+import { Store, Product, Review, Notification, RegisteredUser, SupportTicket, Order, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, Restaurant, ClothingBoutique, MerchantRequest } from './types';
 import { INITIAL_STORES, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_NOTIFICATIONS, INITIAL_USERS, INITIAL_SUPPORT_TICKETS, INITIAL_ORDERS } from './data';
 import { INITIAL_RESTAURANTS } from './dataRestaurants';
 import { INITIAL_BOUTIQUES } from './dataClothing';
@@ -69,6 +69,9 @@ export async function seedDatabaseIfEmpty() {
         enableRiderPortal: true,
         enableSupportPanel: true,
         enableUpiPayment: true,
+        enableUpiPaymentShops: true,
+        enableUpiPaymentRestaurants: true,
+        enableUpiPaymentFashion: true,
         enableLiveRouteTracker: true,
         deliveryCharge: 15,
         minCheckoutAmount: 49,
@@ -174,7 +177,8 @@ export async function loadAllCollections() {
       payoutsSnap,
       priceLogsSnap,
       restaurantsSnap,
-      boutiquesSnap
+      boutiquesSnap,
+      merchantRequestsSnap
     ] = await Promise.all([
       getDocs(collection(db, 'stores')),
       getDocs(collection(db, 'products')),
@@ -188,7 +192,8 @@ export async function loadAllCollections() {
       getDocs(collection(db, 'payoutRequests')),
       getDocs(collection(db, 'priceLogs')),
       getDocs(collection(db, 'restaurants')),
-      getDocs(collection(db, 'boutiques'))
+      getDocs(collection(db, 'boutiques')),
+      getDocs(collection(db, 'merchantRequests'))
     ]);
 
     return {
@@ -204,7 +209,8 @@ export async function loadAllCollections() {
       payoutRequests: payoutsSnap.docs.map(d => ({ ...d.data(), id: d.id } as PayoutRequest)),
       priceLogs: priceLogsSnap.docs.map(d => ({ ...d.data(), id: d.id } as PriceChangeLog)),
       restaurants: restaurantsSnap.docs.map(d => ({ ...d.data(), id: d.id } as Restaurant)),
-      boutiques: boutiquesSnap.docs.map(d => ({ ...d.data(), id: d.id } as ClothingBoutique))
+      boutiques: boutiquesSnap.docs.map(d => ({ ...d.data(), id: d.id } as ClothingBoutique)),
+      merchantRequests: merchantRequestsSnap.docs.map(d => ({ ...d.data(), id: d.id } as MerchantRequest))
     };
   } catch (err) {
     console.error('Failed to load collections from Firestore:', err);

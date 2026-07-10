@@ -30,6 +30,7 @@ interface RestaurantCornerProps {
   language: 'en' | 'hi';
   onAddActivity: (userId: string, actionEn: string, actionHi: string) => void;
   restaurants?: Restaurant[];
+  settings: any;
 }
 
 export default function RestaurantCorner({
@@ -38,7 +39,8 @@ export default function RestaurantCorner({
   onUpdateUsers,
   language,
   onAddActivity,
-  restaurants = INITIAL_RESTAURANTS
+  restaurants = INITIAL_RESTAURANTS,
+  settings
 }: RestaurantCornerProps) {
   const activeUser = users.find(u => u.id === activeUserId);
   
@@ -160,6 +162,7 @@ export default function RestaurantCorner({
     }
 
     const orderId = `FOOD-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const actualPaymentMethod = (paymentMethod === 'UPI' && settings.enableUpiPaymentRestaurants !== false) ? 'UPI' : 'COD';
     const newOrder: RestaurantOrder = {
       id: orderId,
       restaurantId: currentRestaurant.id,
@@ -169,7 +172,7 @@ export default function RestaurantCorner({
       subtotal,
       deliveryFee,
       total: grandTotal,
-      paymentMethod,
+      paymentMethod: actualPaymentMethod,
       status: 'cooking',
       date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', Today'
     };
@@ -200,7 +203,7 @@ export default function RestaurantCorner({
   };
 
   const handleCheckoutBtn = () => {
-    if (paymentMethod === 'UPI') {
+    if (paymentMethod === 'UPI' && settings.enableUpiPaymentRestaurants !== false) {
       setShowUpiCheckout(true);
     } else {
       executePlaceOrder();
@@ -877,27 +880,29 @@ export default function RestaurantCorner({
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                     {language === 'en' ? 'Payment Method' : 'भुगतान का प्रकार'}
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={`grid ${settings.enableUpiPaymentRestaurants !== false ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
                     <button
                       onClick={() => setPaymentMethod('COD')}
                       className={`py-2 rounded-xl text-xs font-bold transition border cursor-pointer text-center ${
-                        paymentMethod === 'COD'
+                        paymentMethod === 'COD' || (settings.enableUpiPaymentRestaurants === false)
                           ? 'bg-rose-50 border-rose-300 text-rose-700'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
                       💵 {language === 'en' ? 'Cash on Delivery' : 'कैश ऑन डिलीवरी'}
                     </button>
-                    <button
-                      onClick={() => setPaymentMethod('UPI')}
-                      className={`py-2 rounded-xl text-xs font-bold transition border cursor-pointer text-center ${
-                        paymentMethod === 'UPI'
-                          ? 'bg-rose-50 border-rose-300 text-rose-700'
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      📱 {language === 'en' ? 'Instant UPI' : 'त्वरित UPI'}
-                    </button>
+                    {settings.enableUpiPaymentRestaurants !== false && (
+                      <button
+                        onClick={() => setPaymentMethod('UPI')}
+                        className={`py-2 rounded-xl text-xs font-bold transition border cursor-pointer text-center ${
+                          paymentMethod === 'UPI'
+                            ? 'bg-rose-50 border-rose-300 text-rose-700'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        📱 {language === 'en' ? 'Instant UPI' : 'त्वरित UPI'}
+                      </button>
+                    )}
                   </div>
                 </div>
 

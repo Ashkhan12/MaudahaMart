@@ -10,7 +10,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { INITIAL_PRODUCTS, INITIAL_STORES } from './src/data';
 import Razorpay from "razorpay";
 import { requireAuth, AuthRequest } from './src/middleware/auth.ts';
-import { upsertUser, getUser, saveOrder, getUserOrders, getAllOrders, saveSupportTicket, getUserSupportTickets, getAllSupportTickets } from './src/db/queries.ts';
+import { upsertUser, getUser, saveOrder, getUserOrders, getAllOrders, saveSupportTicket, getUserSupportTickets, getAllSupportTickets, getOrderById } from './src/db/queries.ts';
 
 dotenv.config();
 
@@ -93,17 +93,6 @@ app.post('/api/auth/send-otp', async (req, res) => {
     const twilioFrom = process.env.TWILIO_PHONE_NUMBER;
     const fast2smsKey = process.env.FAST2SMS_API_KEY;
 
-    const vonageKey = process.env.VONAGE_API_KEY;
-    const vonageSecret = process.env.VONAGE_API_SECRET;
-    const vonageBrand = process.env.VONAGE_BRAND_NAME || 'MaudahaMart';
-
-    const msg91Key = process.env.MSG91_AUTH_KEY;
-    const msg91Template = process.env.MSG91_TEMPLATE_ID;
-
-    const plivoId = process.env.PLIVO_AUTH_ID;
-    const plivoToken = process.env.PLIVO_AUTH_TOKEN;
-    const plivoSrc = process.env.PLIVO_SOURCE_NUMBER;
-
     if (twilioSid && twilioToken && twilioFrom) {
       try {
         const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
@@ -174,98 +163,6 @@ app.post('/api/auth/send-otp', async (req, res) => {
         console.error('[Fast2SMS SMS Integration Error]', smsErr);
         realSmsStatus = `Fast2SMS network/integration error: ${smsErr.message || smsErr}`;
       }
-    } else if (vonageKey && vonageSecret) {
-      try {
-        const formattedTo = cleanedPhone.startsWith('+') ? cleanedPhone.replace('+', '') : `91${cleanedPhone}`;
-        console.log(`[SMS Gateway] Triggering Vonage (Nexmo) API to send SMS to ${formattedTo}...`);
-        
-        const vonageRes = await fetch('https://rest.nexmo.com/sms/json', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            api_key: vonageKey,
-            api_secret: vonageSecret,
-            from: vonageBrand,
-            to: formattedTo,
-            text: `Your Maudaha Mart verification OTP is ${generatedOtp}. Valid for 5 mins.`
-          })
-        });
-
-        const data: any = await vonageRes.json();
-        if (vonageRes.ok && data.messages && data.messages[0] && data.messages[0].status === '0') {
-          gatewayUsed = 'Vonage Gateway';
-          realSmsStatus = `Successfully sent! MsgId: ${data.messages[0]['message-id']}`;
-          console.log(`[Vonage Gateway] OTP successfully sent to ${formattedTo}.`);
-        } else {
-          console.error('[Vonage SMS Error]', data);
-          const errorMsg = data.messages && data.messages[0] ? data.messages[0]['error-text'] : 'Unknown Vonage error';
-          realSmsStatus = `Failed: ${errorMsg}`;
-        }
-      } catch (smsErr: any) {
-        console.error('[Vonage SMS Integration Error]', smsErr);
-        realSmsStatus = `Vonage network/integration error: ${smsErr.message || smsErr}`;
-      }
-    } else if (msg91Key && msg91Template) {
-      try {
-        const formattedTo = cleanedPhone.startsWith('+') ? cleanedPhone.replace('+', '') : `91${cleanedPhone}`;
-        console.log(`[SMS Gateway] Triggering MSG91 API to send OTP to ${formattedTo}...`);
-        
-        const msg91Url = `https://control.msg91.com/api/v5/otp?template_id=${msg91Template}&mobile=${formattedTo}&authkey=${msg91Key}&otp=${generatedOtp}`;
-        const msg91Res = await fetch(msg91Url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-
-        const data: any = await msg91Res.json();
-        if (msg91Res.ok && data.type === 'success') {
-          gatewayUsed = 'MSG91 Gateway';
-          realSmsStatus = `Successfully sent!`;
-          console.log(`[MSG91 Gateway] OTP successfully sent to ${formattedTo}.`);
-        } else {
-          console.error('[MSG91 SMS Error]', data);
-          realSmsStatus = `Failed: ${data.message || 'Unknown MSG91 error'}`;
-        }
-      } catch (smsErr: any) {
-        console.error('[MSG91 SMS Integration Error]', smsErr);
-        realSmsStatus = `MSG91 network/integration error: ${smsErr.message || smsErr}`;
-      }
-    } else if (plivoId && plivoToken && plivoSrc) {
-      try {
-        const formattedTo = cleanedPhone.startsWith('+') ? cleanedPhone : `+91${cleanedPhone}`;
-        console.log(`[SMS Gateway] Triggering Plivo API to send SMS to ${formattedTo}...`);
-        
-        const plivoUrl = `https://api.plivo.com/v1/Account/${plivoId}/Message/`;
-        const auth = Buffer.from(`${plivoId}:${plivoToken}`).toString('base64');
-        const plivoRes = await fetch(plivoUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Basic ${auth}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            src: plivoSrc,
-            dst: formattedTo,
-            text: `Your Maudaha Mart verification OTP is ${generatedOtp}. Valid for 5 mins.`
-          })
-        });
-
-        const data: any = await plivoRes.json();
-        if (plivoRes.ok && data.message === 'message(s) queued') {
-          gatewayUsed = 'Plivo Gateway';
-          realSmsStatus = `Successfully queued! UUID: ${data.message_uuid ? data.message_uuid[0] : ''}`;
-          console.log(`[Plivo Gateway] OTP successfully sent/queued to ${formattedTo}.`);
-        } else {
-          console.error('[Plivo SMS Error]', data);
-          realSmsStatus = `Failed: ${data.error || 'Unknown Plivo error'}`;
-        }
-      } catch (smsErr: any) {
-        console.error('[Plivo SMS Integration Error]', smsErr);
-        realSmsStatus = `Plivo network/integration error: ${smsErr.message || smsErr}`;
-      }
     }
 
     console.log(`\n======================================================\n[Maudaha Mart SMS Gateway] OTP sent to +91 ${cleanedPhone}\nMessage: "Your Maudaha Mart verification OTP is ${generatedOtp}. Valid for 5 mins."\nGateway Used: ${gatewayUsed}\nStatus: ${realSmsStatus}\n======================================================\n`);
@@ -326,6 +223,40 @@ app.get('/api/health', (req, res) => {
     api_key_configured: !!apiKey,
     environment: process.env.NODE_ENV || 'development'
   });
+});
+
+// AI Translation API for easy product catalog management
+app.post('/api/translate', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: 'Text to translate is required.' });
+    }
+
+    if (!apiKey) {
+      return res.json({ translatedText: text });
+    }
+
+    const systemInstruction = `You are a high-fidelity translator for Maudaha Mart, an e-commerce platform in India. 
+Translate the provided English text into clean, colloquial Hindi (Devanagari script). 
+If it is a product name, keep it natural (e.g., "Mustard Oil" -> "सरसों का तेल", "Desi Ghee" -> "देसी घी", "Potato" -> "आलू"). 
+Output ONLY the translated text. Do not write any explanation, intro, or extra characters.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: text,
+      config: {
+        systemInstruction,
+        temperature: 0.3
+      }
+    });
+
+    const translatedText = response.text ? response.text.trim() : text;
+    res.json({ translatedText });
+  } catch (error: any) {
+    console.error('Error in /api/translate:', error);
+    res.status(500).json({ error: error.message || 'An error occurred during translation.' });
+  }
 });
 
 // AI Voice Search for Smart Intelligence Bar
@@ -451,6 +382,60 @@ app.get('/api/db/orders/all', requireAuth, async (req: AuthRequest, res) => {
   try {
     const orders = await getAllOrders();
     res.json(orders);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 1.5.1 Public Order Tracking API
+app.get('/api/orders/track/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: 'Order ID is required.' });
+    }
+    const order = await getOrderById(id);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+    
+    // Simulate real-time tracking details or generate an estimate
+    // Some mock/simulated GPS coordinates and status timelines
+    const statusTimeline = [
+      { status: 'pending', label: 'Order Placed', labelHi: 'ऑर्डर दिया गया', time: order.date, completed: true },
+      { status: 'accepted', label: 'Accepted by Merchant', labelHi: 'विक्रेता द्वारा स्वीकृत', time: order.date, completed: ['accepted', 'preparing', 'dispatched', 'arrived'].includes(order.deliveryStatus) },
+      { status: 'preparing', label: 'Preparing Items', labelHi: 'सामग्री तैयार की जा रही है', time: order.date, completed: ['preparing', 'dispatched', 'arrived'].includes(order.deliveryStatus) },
+      { status: 'dispatched', label: 'Out for Delivery', labelHi: 'वितरण के लिए निकला', time: order.date, completed: ['dispatched', 'arrived'].includes(order.deliveryStatus) },
+      { status: 'arrived', label: 'Delivered', labelHi: 'पहुंचा दिया गया', time: order.date, completed: order.deliveryStatus === 'arrived' },
+    ];
+
+    // Simple ETA calculation
+    let etaMinutes = 30;
+    if (order.deliveryStatus === 'pending') etaMinutes = 45;
+    else if (order.deliveryStatus === 'accepted') etaMinutes = 35;
+    else if (order.deliveryStatus === 'preparing') etaMinutes = 25;
+    else if (order.deliveryStatus === 'dispatched') etaMinutes = 10;
+    else if (order.deliveryStatus === 'arrived') etaMinutes = 0;
+
+    res.json({
+      orderId: order.id,
+      storeId: order.storeId,
+      storeName: order.storeName,
+      total: order.total,
+      discount: order.discount,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      deliveryStatus: order.deliveryStatus,
+      date: order.date,
+      items: order.items,
+      createdAt: order.createdAt,
+      etaMinutes,
+      statusTimeline,
+      trackingCoordinates: {
+        latitude: 25.6844, // Maudaha default coords approximately
+        longitude: 80.1167
+      }
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

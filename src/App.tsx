@@ -4,8 +4,8 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, Sparkles, MapPin, Layers, History, Bell, Languages, Store as StoreIcon, ShieldAlert, Palette, LogOut, User, Heart, Utensils, Shirt, Package, MessageSquare, Train, Plane, ArrowRight, X, LifeBuoy } from 'lucide-react';
-import { Language, Store, Product, Review, Order, OrderItem, LoyaltyInfo, Notification, RegisteredUser, UserActivity, AppState, SupportTicket, SupportMessage, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, ScratchCard, Restaurant, ClothingBoutique } from './types';
+import { ShoppingBag, Sparkles, MapPin, Layers, History, Bell, Languages, Store as StoreIcon, ShieldAlert, Shield, Palette, LogOut, User, Heart, Utensils, Shirt, Package, MessageSquare, Train, Plane, ArrowRight, X, LifeBuoy, FileText, Wrench, Stethoscope } from 'lucide-react';
+import { Language, Store, Product, Review, Order, OrderItem, LoyaltyInfo, Notification, RegisteredUser, UserActivity, AppState, SupportTicket, SupportMessage, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, ScratchCard, Restaurant, ClothingBoutique, MerchantRequest } from './types';
 import { INITIAL_STORES, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_NOTIFICATIONS, INITIAL_USERS, INITIAL_SUPPORT_TICKETS, INITIAL_ORDERS, TRANSLATIONS } from './data';
 import { INITIAL_RESTAURANTS } from './dataRestaurants';
 import { INITIAL_BOUTIQUES } from './dataClothing';
@@ -19,7 +19,8 @@ import UserOrderPanel from './components/UserOrderPanel';
 import LoginPage from './components/LoginPage';
 import RestaurantCorner from './components/RestaurantCorner';
 import ClothingHub from './components/ClothingHub';
-import TrainStatusCorner from './components/TrainStatusCorner';
+import ServicesCorner from './components/ServicesCorner';
+import DoctorsCorner from './components/DoctorsCorner';
 import FlightBookingCorner from './components/FlightBookingCorner';
 import ManagerPortal from './components/ManagerPortal';
 import { THEMES, generateThemeStyles, getColorsAndDescForWeather } from './theme';
@@ -32,6 +33,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import AndroidAppHub from './components/AndroidAppHub';
 import OrderReviewPopup from './components/OrderReviewPopup';
 import ScratchCardComponent from './components/ScratchCardComponent';
+import BusinessPitchDeck from "./components/BusinessPitchDeck";
 
 const AnimatedBagSparklesIcon = () => {
   return (
@@ -110,6 +112,7 @@ const AnimatedBagSparklesIcon = () => {
           }}
         />
       </motion.svg>
+
     </div>
   );
 };
@@ -121,6 +124,8 @@ export default function App() {
     return (saved as Language) || 'en';
   });
 
+  const [showAdminPortal, setShowAdminPortal] = useState(false);
+  const [showPitchDeck, setShowPitchDeck] = useState(false);
   const [role, setRole] = useState<'customer' | 'merchant' | 'admin' | 'rider' | 'manager'>(() => {
     const savedRole = localStorage.getItem('mau_role');
     const savedActiveUid = localStorage.getItem('mau_active_uid');
@@ -252,6 +257,9 @@ export default function App() {
       enableRiderPortal: true,
       enableSupportPanel: true,
       enableUpiPayment: true,
+      enableUpiPaymentShops: true,
+      enableUpiPaymentRestaurants: true,
+      enableUpiPaymentFashion: true,
       enableLiveRouteTracker: true,
       deliveryCharge: 15,
       minCheckoutAmount: 49,
@@ -318,6 +326,15 @@ export default function App() {
     localStorage.setItem('mau_payout_requests', JSON.stringify(payoutRequests));
   }, [payoutRequests]);
 
+  const [merchantRequests, setMerchantRequests] = useState<MerchantRequest[]>(() => {
+    const saved = localStorage.getItem('mau_merchant_requests');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mau_merchant_requests', JSON.stringify(merchantRequests));
+  }, [merchantRequests]);
+
   const [priceLogs, setPriceLogs] = useState<PriceChangeLog[]>(() => {
     const saved = localStorage.getItem('mau_price_logs');
     return saved ? JSON.parse(saved) : [];
@@ -343,7 +360,7 @@ export default function App() {
   const [useCoins, setUseCoins] = useState<boolean>(false);
   const [showNotificationBadge, setShowNotificationBadge] = useState(false);
   const [viewingNotificationPanel, setViewingNotificationPanel] = useState(false);
-  const [activeTab, setActiveTab] = useState<'browse' | 'orders' | 'loyalty' | 'support' | 'restaurants' | 'clothing' | 'trains' | 'flights'>('browse');
+  const [activeTab, setActiveTab] = useState<'browse' | 'orders' | 'loyalty' | 'support' | 'restaurants' | 'clothing' | 'services' | 'doctors' | 'flights'>('browse');
   const [showAndroidHub, setShowAndroidHub] = useState<boolean>(false);
 
   const [isDbLoading, setIsDbLoading] = useState<boolean>(true);
@@ -450,6 +467,9 @@ export default function App() {
               return merged;
             });
           }
+          if (data.merchantRequests && data.merchantRequests.length > 0) {
+            setMerchantRequests(data.merchantRequests);
+          }
         }
       } catch (err) {
         console.error('Failed to initialize and load database:', err);
@@ -542,6 +562,13 @@ export default function App() {
       syncDocToFirestore('payoutRequests', req.id, req);
     });
   }, [payoutRequests, isDbLoading]);
+
+  useEffect(() => {
+    if (isDbLoading) return;
+    merchantRequests.forEach(req => {
+      syncDocToFirestore('merchantRequests', req.id, req);
+    });
+  }, [merchantRequests, isDbLoading]);
 
   useEffect(() => {
     if (isDbLoading) return;
@@ -1461,6 +1488,7 @@ export default function App() {
             className="flex items-center gap-2 cursor-pointer group"
           >
             <img src="/src/assets/images/maudaha_mart_logo_1783437069583.jpg" alt="Maudaha Mart" className="h-10 w-10 rounded-xl object-cover shadow-lg transform group-hover:rotate-3 transition duration-200" />
+
           </div>
 
           {/* My Orders Header Trigger (Replaces Live Weather) */}
@@ -1469,6 +1497,7 @@ export default function App() {
                title={language === 'en' ? 'Orders' : 'ऑर्डर'}>
             <ShoppingBag className="h-4 w-4 text-emerald-600" />
             <span className="text-[8px] text-slate-700 font-extrabold uppercase">{language === 'en' ? 'Orders' : 'ऑर्डर'}</span>
+
           </div>
 
           {/* Settings & Switches */}
@@ -1493,8 +1522,27 @@ export default function App() {
                   {language === 'en' ? 'AI Assistant' : 'एआई सहायक'}
                 </span>
               </motion.button>
+
             </div>
 
+            <button
+              onClick={() => setShowPitchDeck(true)}
+              className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition flex items-center gap-1"
+              title="Download Pitch Deck"
+            >
+              <FileText className="h-5 w-5" />
+              <span className="text-xs font-bold hidden sm:inline">Pitch Deck</span>
+            </button>
+            {role === "admin" && (
+              <button
+                onClick={() => setShowAdminPortal(!showAdminPortal)}
+                className="p-2 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition flex items-center gap-1"
+                title={language === "en" ? "Admin Settings" : "एडमिन सेटिंग्स"}
+              >
+                <Shield className="h-5 w-5" />
+                <span className="text-xs font-bold hidden md:inline">Admin</span>
+              </button>
+            )}
             {/* Notification Drawer trigger */}
             <div className="relative">
               <button
@@ -1524,10 +1572,13 @@ export default function App() {
                       <p className="text-[11px] text-slate-500 leading-normal mt-0.5">
                         {language === 'hi' ? notif.bodyHi : notif.body}
                       </p>
+
                     </div>
                   ))}
+
                 </div>
               )}
+
             </div>
 
             {/* Wishlist Header Trigger */}
@@ -1572,6 +1623,7 @@ export default function App() {
             >
               <div className="h-6 w-6 rounded-lg bg-emerald-600 text-white text-xs font-black flex items-center justify-center">
                 {activeUser?.name.charAt(0).toUpperCase() || 'U'}
+
               </div>
               <span className="text-[11px] font-extrabold pr-1 hidden sm:inline">
                 {activeUser?.name.split(' ')[0]}
@@ -1596,9 +1648,12 @@ export default function App() {
                 <option value="manager">👔 {language === 'en' ? 'Manager Portal' : 'मैनेजर पोर्टल'}</option>
                 <option value="admin">🛡️ {language === 'en' ? 'Admin' : 'एडमिन'}</option>
               </select>
+
             </div>
 
+
           </div>
+
 
         </div>
       </header>
@@ -1638,7 +1693,7 @@ export default function App() {
               transition={{ duration: 0.25 }}
               className="w-full h-full"
             >
-              {role === 'admin' ? (
+              {role === 'admin' && showAdminPortal ? (
           /* Central Super-Admin Console */
           <AdminPortal
             stores={stores}
@@ -1663,6 +1718,8 @@ export default function App() {
             onUpdateOrders={setOrders}
             payoutRequests={payoutRequests}
             onUpdatePayoutRequests={setPayoutRequests}
+            merchantRequests={merchantRequests}
+            onUpdateMerchantRequests={setMerchantRequests}
             priceLogs={priceLogs}
             onUpdateProductPricesAndStock={handleUpdateProductPricesAndStock}
             restaurants={restaurants}
@@ -1675,6 +1732,7 @@ export default function App() {
             <div className="max-w-md mx-auto my-16 p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-4 shadow-xl">
               <div className="mx-auto w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center">
                 <ShieldAlert className="h-8 w-8" />
+
               </div>
               <h2 className="text-xl font-extrabold text-slate-800">
                 {language === 'en' ? 'Delivery boy pannel Offline' : 'डिलीवरी बॉय पैनल ऑफ़लाइन है'}
@@ -1688,7 +1746,9 @@ export default function App() {
                 <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
                   {language === 'en' ? 'Administrative Lock Active' : 'प्रशासनिक लॉक सक्रिय है'}
                 </span>
+
               </div>
+
             </div>
           ) : (
             /* Delivery Rider Desk Console */
@@ -1703,6 +1763,7 @@ export default function App() {
             <div className="max-w-md mx-auto my-16 p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-4 shadow-xl">
               <div className="mx-auto w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center">
                 <ShieldAlert className="h-8 w-8" />
+
               </div>
               <h2 className="text-xl font-extrabold text-slate-800">
                 {language === 'en' ? 'Merchant Console Offline' : 'मर्चेंट कंसोल ऑफ़लाइन है'}
@@ -1716,7 +1777,9 @@ export default function App() {
                 <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
                   {language === 'en' ? 'Administrative Lock Active' : 'प्रशासनिक लॉक सक्रिय है'}
                 </span>
+
               </div>
+
             </div>
           ) : (
             /* Merchant inventory and store order manager dashboard */
@@ -1750,10 +1813,11 @@ export default function App() {
             language={language}
             activeUserId={activeUserId}
           />
-        ) : !settings.enableCustomerPortal ? (
+        ) : (!settings.enableCustomerPortal && role !== 'admin') ? (
           <div className="max-w-md mx-auto my-16 p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-4 shadow-xl">
             <div className="mx-auto w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center">
               <ShieldAlert className="h-8 w-8" />
+
             </div>
             <h2 className="text-xl font-extrabold text-slate-800">
               {language === 'en' ? 'Shopper Storefront Offline' : 'ग्राहक स्टोरफ्रंट ऑफ़लाइन है'}
@@ -1767,7 +1831,9 @@ export default function App() {
               <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
                 {language === 'en' ? 'Administrative Lock Active' : 'प्रशासनिक लॉक सक्रिय है'}
               </span>
+
             </div>
+
           </div>
         ) : (
           /* Main Customer store explorer and shopping cart checkout */
@@ -1780,6 +1846,7 @@ export default function App() {
                 <div className="flex items-start gap-3 relative z-10">
                   <div className="h-11 w-11 rounded-2xl bg-white border border-emerald-100 flex items-center justify-center text-2xl shadow-xs shrink-0 select-none">
                     {weather.icon}
+
                   </div>
                   <div>
                     <h3 className="text-xs font-black text-slate-800 leading-tight flex items-center gap-1.5 flex-wrap">
@@ -1806,12 +1873,15 @@ export default function App() {
                         ? '🍃 Stable weather. Enjoy seamless hyper-local grocery shopping with Maudaha Mart!'
                         : '🍃 शांत और स्थिर मौसम। मौदहा मार्ट के साथ निर्बाध हाइपर-लोकल किराना खरीदारी का आनंद लें!')}
                     </p>
+
                   </div>
+
                 </div>
                 <div className="flex items-center gap-2 w-full md:w-auto shrink-0 border-t border-emerald-100/50 md:border-0 pt-2.5 md:pt-0 justify-between">
                   <div className="text-left md:text-right">
                     <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">{language === 'en' ? 'Active Promo' : 'सक्रिय प्रोमो'}</span>
                     <span className="text-[11px] text-emerald-700 font-extrabold mt-0.5 block truncate max-w-[200px] md:max-w-xs">{language === 'hi' ? settings.globalPromoBannerTextHi : settings.globalPromoBannerText}</span>
+
                   </div>
                   <button
                     onClick={() => {
@@ -1854,8 +1924,11 @@ export default function App() {
                   >
                     🔄 {language === 'en' ? 'Sync' : 'सिंक'}
                   </button>
+
                 </div>
+
               </div>
+
             </div>
             
 
@@ -1896,6 +1969,7 @@ export default function App() {
                 onUpdateUsers={setUsers}
                 language={language}
                 onAddActivity={handleAddUserActivity}
+                settings={settings}
               />
             ) : activeTab === 'clothing' ? (
               <ClothingHub
@@ -1904,9 +1978,18 @@ export default function App() {
                 onUpdateUsers={setUsers}
                 language={language}
                 onAddActivity={handleAddUserActivity}
+                settings={settings}
               />
-            ) : activeTab === 'trains' ? (
-              <TrainStatusCorner
+            ) : activeTab === 'services' ? (
+              <ServicesCorner
+                activeUserId={activeUserId}
+                users={users}
+                onUpdateUsers={setUsers}
+                language={language}
+                onAddActivity={handleAddUserActivity}
+              />
+            ) : activeTab === 'doctors' ? (
+              <DoctorsCorner
                 activeUserId={activeUserId}
                 users={users}
                 onUpdateUsers={setUsers}
@@ -1955,6 +2038,7 @@ export default function App() {
                       <p className="text-xs text-emerald-200 max-w-md leading-relaxed">
                         {t.loyaltySub}
                       </p>
+
                     </div>
 
                     <div className="text-center md:text-right">
@@ -1962,8 +2046,11 @@ export default function App() {
                       <span className="text-5xl font-black text-amber-400 font-mono mt-1 block">
                         {loyalty.points}
                       </span>
+
                     </div>
+
                   </div>
+
                 </div>
 
                 {/* Scratch Cards & Exclusive Rewards Section */}
@@ -1978,6 +2065,7 @@ export default function App() {
                     <span className="text-xs bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full border border-amber-200/50">
                       {scratchCards.filter(c => c.userId === activeUserId).length} {language === 'en' ? 'Total' : 'कुल'}
                     </span>
+
                   </div>
 
                   {scratchCards.filter(c => c.userId === activeUserId).length === 0 ? (
@@ -1989,6 +2077,7 @@ export default function App() {
                       <p className="text-[10px] text-slate-400 max-w-xs mx-auto">
                         {language === 'en' ? 'Place grocery orders to earn exclusive scratch cards with 5-10% extra discounts!' : '5-10% अतिरिक्त छूट वाले स्क्रैच कार्ड पाने के लिए किराना ऑर्डर करें!'}
                       </p>
+
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -2021,12 +2110,16 @@ export default function App() {
                                     <ArrowRight className="h-3 w-3" />
                                   </button>
                                 )}
+
                               </div>
                             )}
+
                           </div>
                         ))}
+
                     </div>
                   )}
+
                 </div>
 
                 {/* Loyalty History logs */}
@@ -2044,24 +2137,31 @@ export default function App() {
                             {language === 'hi' ? h.descriptionHi : h.description}
                           </p>
                           <span className="text-[10px] text-slate-400 font-mono block mt-0.5">{h.date}</span>
+
                         </div>
                         <span className={`font-mono font-black text-sm ${
                           h.type === 'earn' ? 'text-emerald-600' : 'text-red-500'
                         }`}>
                           {h.type === 'earn' ? '+' : ''}{h.points}
                         </span>
+
                       </div>
                     ))}
+
                   </div>
+
                 </div>
+
 
               </div>
             ) : null}
+
 
           </div>
           )}
           </motion.div>
         )}
+      {showPitchDeck && <BusinessPitchDeck onClose={() => setShowPitchDeck(false)} />}
         </AnimatePresence>
       </main>
 
@@ -2075,6 +2175,7 @@ export default function App() {
             <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
               {language === 'en' ? 'Maudaha’s exclusive hyper-local, instant-delivery grocery platform powering local stores and merchants with zero commissions.' : 'मौदहा का विशेष हाइपर-लोकल, तत्काल-डिलिवरी किराना प्लेटफॉर्म जो स्थानीय स्टोर और व्यापारियों को शून्य कमीशन के साथ सशक्त बनाता है।'}
             </p>
+
           </div>
 
           <div className="flex flex-col md:items-end gap-2 text-xs text-slate-400 font-mono tracking-wide">
@@ -2087,7 +2188,9 @@ export default function App() {
               🛡️ {language === 'en' ? 'Privacy Policy' : 'गोपनीयता नीति (Privacy Policy)'}
             </button>
             <span>SECURE ENCRYPTED UPI TRANSACTIONS APPROVED</span>
+
           </div>
+
         </div>
       </footer>
 
@@ -2130,6 +2233,8 @@ export default function App() {
         users={users}
         onSwitchUser={setActiveUserId}
         onUpdateUsers={setUsers}
+        merchantRequests={merchantRequests}
+        onAddMerchantRequest={(newReq) => setMerchantRequests(prev => [...prev, newReq])}
         loyaltyPoints={loyalty.points}
         loyaltyTier={loyalty.tier}
         onOpenAndroidHub={() => {
@@ -2183,6 +2288,7 @@ export default function App() {
             onClose={() => setShowAndroidHub(false)}
           />
         )}
+      {showPitchDeck && <BusinessPitchDeck onClose={() => setShowPitchDeck(false)} />}
       </AnimatePresence>
 
       {/* Floating Support Button ("Help") */}
@@ -2198,6 +2304,7 @@ export default function App() {
             <LifeBuoy className="h-4 w-4 text-amber-300 animate-spin-slow" />
             <span>{language === 'en' ? 'Help' : 'सहायता'}</span>
           </motion.button>
+
         </div>
       )}
 
@@ -2233,7 +2340,9 @@ export default function App() {
                     <p className="text-[10px] text-slate-400 font-bold">
                       {language === 'en' ? 'Direct assistance from Maudaha Mart administrators' : 'मौदहा मार्ट प्रशासकों से सीधी सहायता'}
                     </p>
+
                   </div>
+
                 </div>
                 <button
                   onClick={() => setShowSupportDrawer(false)}
@@ -2241,6 +2350,7 @@ export default function App() {
                 >
                   <X className="h-4 w-4" />
                 </button>
+
               </div>
 
               {/* Drawer Body */}
@@ -2249,6 +2359,7 @@ export default function App() {
                   <div className="max-w-md mx-auto my-16 p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-4 shadow-xl">
                     <div className="mx-auto w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center">
                       <ShieldAlert className="h-8 w-8" />
+
                     </div>
                     <h2 className="text-xl font-extrabold text-slate-800">
                       {language === 'en' ? 'Support Helpdesk Offline' : 'सहायता हेल्पडेस्क ऑफ़लाइन है'}
@@ -2262,7 +2373,9 @@ export default function App() {
                       <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
                         {language === 'en' ? 'Administrative Lock Active' : 'प्रशासनिक लॉक सक्रिय है'}
                       </span>
+
                     </div>
+
                   </div>
                 ) : (
                   <SupportPanel
@@ -2274,14 +2387,17 @@ export default function App() {
                     language={language}
                   />
                 )}
+
               </div>
             </motion.div>
+
           </div>
         )}
+      {showPitchDeck && <BusinessPitchDeck onClose={() => setShowPitchDeck(false)} />}
       </AnimatePresence>
 
       {/* Mobile Sticky Bottom Navigation Bar (Material Design/Android-centric) */}
-      {role === 'customer' && settings.enableCustomerPortal && !activeOrderTrackingId && (() => {
+      {(role === 'customer' || role === 'admin') && (settings.enableCustomerPortal || role === 'admin') && !activeOrderTrackingId && (() => {
         const triggerHapticFeedback = () => {
           if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
             try {
@@ -2294,6 +2410,26 @@ export default function App() {
 
         return (
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] z-50 py-3 px-2 md:hidden flex justify-around items-center rounded-t-2xl animate-in slide-in-from-bottom duration-300">
+            <button
+              onClick={() => setShowPitchDeck(true)}
+              className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition flex items-center gap-1"
+              title="Download Pitch Deck"
+            >
+              <FileText className="h-5 w-5" />
+              <span className="text-xs font-bold hidden sm:inline">Pitch Deck</span>
+            </button>
+            {role === "admin" && (
+              <button
+                onClick={() => {
+                  triggerHapticFeedback();
+                  setShowAdminPortal(!showAdminPortal);
+                }}
+                className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-200 active:scale-95 ${showAdminPortal ? "text-purple-600 font-extrabold -translate-y-0.5" : "text-slate-400 font-medium hover:text-slate-600"}`}
+              >
+                <Shield className={`h-5 w-5 transition duration-200 ${showAdminPortal ? "text-purple-600 animate-pulse" : "text-slate-400"}`} />
+                <span className="text-[10px] tracking-tight">{language === "en" ? "Admin" : "एडमिन"}</span>
+              </button>
+            )}
             <button
               onClick={() => {
                 triggerHapticFeedback();
@@ -2336,14 +2472,27 @@ export default function App() {
             <button
               onClick={() => {
                 triggerHapticFeedback();
-                setActiveTab('trains');
+                setActiveTab('services');
               }}
               className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-200 active:scale-95 ${
-                activeTab === 'trains' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
+                activeTab === 'services' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
               }`}
             >
-              <Train className={`h-5 w-5 transition duration-200 ${activeTab === 'trains' ? 'text-emerald-600' : 'text-slate-400'}`} />
-              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Train' : 'ट्रेन'}</span>
+              <Wrench className={`h-5 w-5 transition duration-200 ${activeTab === 'services' ? 'text-emerald-600' : 'text-slate-400'}`} />
+              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Services' : 'सेवाएं'}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                triggerHapticFeedback();
+                setActiveTab('doctors');
+              }}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-200 active:scale-95 ${
+                activeTab === 'doctors' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
+              }`}
+            >
+              <Stethoscope className={`h-5 w-5 transition duration-200 ${activeTab === 'doctors' ? 'text-emerald-600' : 'text-slate-400'}`} />
+              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Doctors' : 'डॉक्टर'}</span>
             </button>
 
             <button
@@ -2358,9 +2507,11 @@ export default function App() {
               <Plane className={`h-5 w-5 transition duration-200 ${activeTab === 'flights' ? 'text-emerald-600' : 'text-slate-400'}`} />
               <span className="text-[10px] tracking-tight">{language === 'en' ? 'Flights' : 'उड़ानें'}</span>
             </button>
+
           </div>
         );
       })()}
+
 
     </div>
   );

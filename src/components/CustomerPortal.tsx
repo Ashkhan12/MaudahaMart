@@ -11,6 +11,22 @@ import UPIPayment from './UPIPayment';
 import DeliveryZoneMap from './DeliveryZoneMap';
 import SmartSearchBar from './SmartSearchBar';
 
+export const SHOP_CATEGORIES = [
+  { id: 'Super Mart', name: 'Super Mart', nameHi: 'सुपर मार्ट', icon: '🛒' },
+  { id: 'Vegetable Shop', name: 'Vegetable Shop', nameHi: 'सब्जी की दुकान', icon: '🥦' },
+  { id: 'Fruits shop', name: 'Fruits shop', nameHi: 'फलों की दुकान', icon: '🍎' },
+  { id: 'Kirana shops', name: 'Kirana shops', nameHi: 'किराना दुकान', icon: '🏪' },
+  { id: 'Sweets shops', name: 'Sweets shops', nameHi: 'मिठाई की दुकान', icon: '🍬' },
+  { id: 'Stationary shops', name: 'Stationary shops', nameHi: 'स्टेशनरी की दुकान', icon: '📝' },
+  { id: 'Electronics shops', name: 'Electronics shops', nameHi: 'इलेक्ट्रॉनिक्स दुकान', icon: '⚡' },
+  { id: 'Convenience stores', name: 'Convenience stores', nameHi: 'सुविधा स्टोर', icon: '🛍️' },
+  { id: 'Bakery & Confectionery stores', name: 'Bakery & Confectionery stores', nameHi: 'बेकरी और कन्फेक्शनरी', icon: '🍞' },
+  { id: 'Cosmetics stores', name: 'Cosmetics stores', nameHi: 'सौंदर्य प्रसाधन दुकान', icon: '💅' },
+  { id: 'Crokery stores', name: 'Crokery stores', nameHi: 'क्रॉकरी की दुकान', icon: '🍽️' },
+  { id: 'Cookware & kitchenware Store', name: 'Cookware & kitchenware Store', nameHi: 'कुकवेयर और किचनवेयर', icon: '🍳' },
+  { id: 'Enterprises & agency', name: 'Enterprises & agency', nameHi: 'एंटरप्राइजेज और एजेंसी', icon: '🏢' }
+];
+
 interface CustomerPortalProps {
   stores: Store[];
   products: Product[];
@@ -36,7 +52,7 @@ interface CustomerPortalProps {
   onAddSearch: (userId: string, query: string) => void;
   settings: SystemSettings;
   onUpdateUsers: (users: RegisteredUser[]) => void;
-  onNavigateTab?: (tab: 'browse' | 'orders' | 'loyalty' | 'support' | 'restaurants' | 'clothing' | 'trains' | 'flights') => void;
+  onNavigateTab?: (tab: 'browse' | 'orders' | 'loyalty' | 'support' | 'restaurants' | 'clothing' | 'services' | 'doctors' | 'flights') => void;
   scratchCards?: ScratchCard[];
 }
 
@@ -71,6 +87,7 @@ export default function CustomerPortal({
   const t = TRANSLATIONS[language];
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
+  const [selectedStoreCategory, setSelectedStoreCategory] = useState<string | null>(null);
 
   const activeUser = users.find(u => u.id === activeUserId);
   const watchlist = activeUser?.watchlist || [];
@@ -94,6 +111,50 @@ export default function CustomerPortal({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isStoreSearchFocused, setIsStoreSearchFocused] = useState(false);
+
+  // Debounced search query state to prevent excessive API calls
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500); // 500ms debounce
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
+
+  // Handle clearing user's search history
+  const handleClearSearchHistory = () => {
+    const updatedUsers = users.map(user => {
+      if (user.id === activeUserId) {
+        return { ...user, searchHistory: [] };
+      }
+      return user;
+    });
+    onUpdateUsers(updatedUsers);
+  };
+
+  // Handle deleting a single item from search history
+  const handleDeleteSearchHistoryItem = (queryToDelete: string) => {
+    const updatedUsers = users.map(user => {
+      if (user.id === activeUserId) {
+        const nextHistory = (user.searchHistory || []).filter(q => q.toLowerCase() !== queryToDelete.toLowerCase());
+        return { ...user, searchHistory: nextHistory };
+      }
+      return user;
+    });
+    onUpdateUsers(updatedUsers);
+  };
+
+  // Memoized matching queries from user's search history
+  const matchedRecentSearches = React.useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return [];
+    const history = activeUser?.searchHistory || [];
+    return history.filter(q => q.toLowerCase().includes(query) && q.toLowerCase() !== query);
+  }, [activeUser?.searchHistory, searchQuery]);
 
   // --- Customer Needs, Demands & Trends Intelligence ---
   const [aiRecsLoading, setAiRecsLoading] = useState(false);
@@ -285,6 +346,39 @@ export default function CustomerPortal({
     }
   };
 
+  // Automatically trigger AI-Search when debounced query is non-empty (at least 3 characters)
+  React.useEffect(() => {
+    const trimmed = debouncedSearchQuery.trim();
+    if (trimmed.length >= 3) {
+      const fetchAiSearchDebounced = async () => {
+        setAiSearchLoading(true);
+        setAiSearchError('');
+        try {
+          const response = await fetch('/api/ai-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: trimmed, language })
+          });
+
+          if (!response.ok) {
+            throw new Error('AI search request failed.');
+          }
+
+          const data = await response.json();
+          setAiSearchResponse(data);
+        } catch (err: any) {
+          console.error(err);
+        } finally {
+          setAiSearchLoading(false);
+        }
+      };
+
+      fetchAiSearchDebounced();
+    } else if (trimmed.length === 0) {
+      setAiSearchResponse(null);
+    }
+  }, [debouncedSearchQuery, language]);
+
   // Voice search state
   const [isListening, setIsListening] = useState(false);
   const [activeRecognitionInstance, setActiveRecognitionInstance] = useState<any>(null);
@@ -422,6 +516,9 @@ export default function CustomerPortal({
     : [];
 
   const filteredStores = stores.filter(s => {
+    if (selectedStoreCategory && s.shopCategory !== selectedStoreCategory) {
+      return false;
+    }
     const query = searchQuery.toLowerCase().trim();
     if (!query) return true;
     const matchName = (s.name || '').toLowerCase().includes(query) || (s.nameHi || '').toLowerCase().includes(query);
@@ -506,9 +603,10 @@ export default function CustomerPortal({
       alert(language === 'en' ? 'Please enter a delivery address.' : 'कृपया वितरण का पता दर्ज करें।');
       return;
     }
+    const actualPaymentMethod = (paymentMethod === 'UPI' && settings.enableUpiPaymentShops !== false) ? 'UPI' : 'COD';
     onCheckout(
       selectedStoreId,
-      paymentMethod,
+      actualPaymentMethod,
       confirmedUpiId || upiId,
       finalDiscount,
       useCoinsState ? coinsRedeemValue : 0
@@ -522,7 +620,7 @@ export default function CustomerPortal({
       alert(language === 'en' ? 'Please enter a delivery address.' : 'कृपया वितरण का पता दर्ज करें।');
       return;
     }
-    if (paymentMethod === 'UPI') {
+    if (paymentMethod === 'UPI' && settings.enableUpiPaymentShops !== false) {
       setShowUpiCheckout(true);
     } else {
       executeCheckout();
@@ -580,6 +678,54 @@ export default function CustomerPortal({
                       </span>
                     </div>
 
+                    {/* Recent Searches section - only when search query is empty */}
+                    {!searchQuery && (activeUser?.searchHistory || []).length > 0 && (
+                      <div className="p-3 bg-white border-b border-slate-100">
+                        <div className="flex items-center justify-between mb-2 select-none">
+                          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wide">
+                            {language === 'en' ? 'Recent Searches' : 'हालिया खोजें'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleClearSearchHistory}
+                            className="text-[9px] text-rose-500 hover:text-rose-600 font-extrabold hover:underline"
+                          >
+                            {language === 'en' ? 'Clear All' : 'सभी मिटाएं'}
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(activeUser?.searchHistory || []).map((historyQuery, idx) => (
+                            <div
+                              key={idx}
+                              className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-xs font-bold text-slate-600 transition border border-slate-200/40 pl-2.5 pr-1.5 py-1"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSearchQuery(historyQuery);
+                                  onAddSearch(activeUserId, historyQuery);
+                                }}
+                                className="focus:outline-none flex items-center gap-1"
+                              >
+                                ⏱️ {historyQuery}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSearchHistoryItem(historyQuery);
+                                }}
+                                className="p-0.5 hover:bg-slate-200 hover:text-rose-600 rounded-md transition text-[10px] font-bold"
+                                title="Remove"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Quick Tags section - only when search query is empty */}
                     {!searchQuery && (
                       <div className="p-3 bg-white border-b border-slate-100">
@@ -598,6 +744,30 @@ export default function CustomerPortal({
                               className="px-2.5 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-xs font-bold text-slate-600 transition border border-slate-200/40"
                             >
                               🔍 {kw[language]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Matching Recent Searches from searchHistory */}
+                    {searchQuery && matchedRecentSearches.length > 0 && (
+                      <div className="p-3 bg-emerald-50/20 border-b border-slate-100">
+                        <span className="text-[9px] text-emerald-600 font-extrabold block mb-2 uppercase tracking-wide select-none">
+                          {language === 'en' ? 'Matches in Search History' : 'हालिया खोजों से मेल'}
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {matchedRecentSearches.map((historyQuery, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setSearchQuery(historyQuery);
+                                onAddSearch(activeUserId, historyQuery);
+                              }}
+                              className="px-2.5 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-xs font-bold text-emerald-600 transition border border-emerald-200/40"
+                            >
+                              ⏱️ {historyQuery}
                             </button>
                           ))}
                         </div>
@@ -1068,6 +1238,35 @@ export default function CustomerPortal({
                 {t.popularStores}
               </h2>
 
+              {/* Shop Categories Horizontal Filter Bar */}
+              <div className="flex gap-2 overflow-x-auto pb-3 pr-1 scrollbar-thin">
+                <button
+                  onClick={() => setSelectedStoreCategory(null)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
+                    selectedStoreCategory === null
+                      ? 'bg-emerald-600 text-white border-emerald-500'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                  }`}
+                >
+                  <span>🏪</span>
+                  <span>{language === 'en' ? 'All Shops' : 'सभी दुकानें'}</span>
+                </button>
+                {SHOP_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedStoreCategory(cat.id)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
+                      selectedStoreCategory === cat.id
+                        ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                    }`}
+                  >
+                    <span>{cat.icon}</span>
+                    <span>{language === 'en' ? cat.name : cat.nameHi}</span>
+                  </button>
+                ))}
+              </div>
+
               {filteredStores.length === 0 ? (
                 <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 text-xs font-black text-slate-400">
                   {language === 'en' ? 'No local Maudaha stores match your search.' : 'आपकी खोज से मेल खाने वाली कोई स्थानीय मौदहा दुकान नहीं मिली।'}
@@ -1301,9 +1500,10 @@ export default function CustomerPortal({
                           setSearchQuery('');
                           setIsStoreSearchFocused(false);
                         }}
-                        className="absolute right-11 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600 px-1 hover:bg-slate-100 rounded"
+                        className="absolute right-11 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all"
+                        title={language === 'en' ? 'Clear search' : 'खोज साफ करें'}
                       >
-                        Clear
+                        <X className="h-4 w-4" />
                       </button>
                     )}
 
@@ -1329,6 +1529,78 @@ export default function CustomerPortal({
                             {suggestions.length} {language === 'en' ? 'Available' : 'उपलब्ध'}
                           </span>
                         </div>
+                        
+                        {/* Recent Searches section - only when search query is empty */}
+                        {!searchQuery && (activeUser?.searchHistory || []).length > 0 && (
+                          <div className="p-3 bg-white border-b border-slate-100">
+                            <div className="flex items-center justify-between mb-2 select-none">
+                              <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wide">
+                                {language === 'en' ? 'Recent Searches' : 'हालिया खोजें'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={handleClearSearchHistory}
+                                className="text-[9px] text-rose-500 hover:text-rose-600 font-extrabold hover:underline"
+                              >
+                                {language === 'en' ? 'Clear All' : 'सभी मिटाएं'}
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {(activeUser?.searchHistory || []).map((historyQuery, idx) => (
+                                <div
+                                  key={idx}
+                                  className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-xs font-bold text-slate-600 transition border border-slate-200/40 pl-2.5 pr-1.5 py-1"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSearchQuery(historyQuery);
+                                      onAddSearch(activeUserId, historyQuery);
+                                    }}
+                                    className="focus:outline-none flex items-center gap-1"
+                                  >
+                                    ⏱️ {historyQuery}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteSearchHistoryItem(historyQuery);
+                                    }}
+                                    className="p-0.5 hover:bg-slate-200 hover:text-rose-600 rounded-md transition text-[10px] font-bold"
+                                    title="Remove"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Matching Recent Searches from searchHistory */}
+                        {searchQuery && matchedRecentSearches.length > 0 && (
+                          <div className="p-3 bg-emerald-50/20 border-b border-slate-100">
+                            <span className="text-[9px] text-emerald-600 font-extrabold block mb-2 uppercase tracking-wide select-none">
+                              {language === 'en' ? 'Matches in Search History' : 'हालिया खोजों से मेल'}
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {matchedRecentSearches.map((historyQuery, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => {
+                                    setSearchQuery(historyQuery);
+                                    onAddSearch(activeUserId, historyQuery);
+                                  }}
+                                  className="px-2.5 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-xs font-bold text-emerald-600 transition border border-emerald-200/40"
+                                >
+                                  ⏱️ {historyQuery}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* List */}
                         <div className="divide-y divide-slate-100/60">
@@ -1835,23 +2107,25 @@ export default function CustomerPortal({
 
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">{t.selectPayment}</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setPaymentMethod('UPI')}
-                            className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition text-center ${
-                              paymentMethod === 'UPI'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-500'
-                                : 'bg-slate-50 text-slate-600 border-slate-200'
-                            }`}
-                          >
-                            UPI
-                          </button>
+                        <div className={`grid ${settings.enableUpiPaymentShops !== false ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
+                          {settings.enableUpiPaymentShops !== false && (
+                            <button
+                              type="button"
+                              onClick={() => setPaymentMethod('UPI')}
+                              className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition text-center ${
+                                paymentMethod === 'UPI'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-500'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                              }`}
+                            >
+                              UPI
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => setPaymentMethod('COD')}
                             className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition text-center ${
-                              paymentMethod === 'COD'
+                              paymentMethod === 'COD' || (settings.enableUpiPaymentShops === false)
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-500'
                                 : 'bg-slate-50 text-slate-600 border-slate-200'
                             }`}
