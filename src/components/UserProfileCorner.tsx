@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { User, Phone, Mail, MapPin, Award, History, X, Edit2, Check, Languages, Palette, Layers, LogOut, Smartphone, Sparkles, Building, Landmark, ChevronLeft } from 'lucide-react';
 import { RegisteredUser, Language, MerchantRequest } from '../types';
+import MapLocationPicker from './MapLocationPicker';
 import { THEMES } from '../theme';
 
 interface UserProfileCornerProps {
@@ -68,6 +69,7 @@ export default function UserProfileCorner({
   const [editPhone, setEditPhone] = useState(activeUser?.phone || '');
   const [editEmail, setEditEmail] = useState(activeUser?.email || '');
   const [editLocation, setEditLocation] = useState(activeUser?.location || '');
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
   // Merchant request form states
   const [showMerchantRequestForm, setShowMerchantRequestForm] = useState(false);
@@ -416,10 +418,19 @@ export default function UserProfileCorner({
                   />
                 </div>
 
-                <div>
-                  <label className="text-[10px] text-slate-400 font-extrabold block mb-1 uppercase tracking-wide">
-                    {language === 'en' ? 'Delivery Address' : 'वितरण का पता'}
-                  </label>
+                 <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] text-slate-400 font-extrabold block uppercase tracking-wide">
+                      {language === 'en' ? 'Delivery Address' : 'वितरण का पता'}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsMapOpen(true)}
+                      className="text-[10px] text-emerald-600 hover:text-emerald-700 font-extrabold flex items-center gap-1 hover:underline transition cursor-pointer"
+                    >
+                      📍 {language === 'en' ? 'Choose on Map' : 'नक्शे पर चुनें'}
+                    </button>
+                  </div>
                   <input
                     type="text"
                     value={editLocation}
@@ -595,60 +606,7 @@ export default function UserProfileCorner({
             </div>
           )}
 
-          {/* Account Switcher - Global Simulation Sandbox */}
-          <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 space-y-3">
-            <div>
-              <span className="text-[11px] font-mono text-amber-600 font-black uppercase tracking-wider flex items-center gap-1 select-none">
-                <span>🔄</span>
-                <span>{language === 'en' ? 'Simulate Other Accounts' : 'अन्य खाते सिम्युलेट करें'}</span>
-              </span>
-              <p className="text-[10px] text-slate-400 mt-1 leading-normal font-semibold">
-                {language === 'en' 
-                  ? 'Instantly switch user sessions to experience different profiles (Merchant, Admin, loyal customers).'
-                  : 'विभिन्न प्रोफाइल (व्यापारी, एडमिन, वफादार ग्राहकों) का अनुभव करने के लिए तुरंत यूज़र सत्र बदलें।'}
-              </p>
-            </div>
 
-            <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
-              {users.map((u) => {
-                const isActive = u.id === activeUserId;
-                return (
-                  <button
-                    key={u.id}
-                    onClick={() => {
-                      onSwitchUser(u.id);
-                      onClose();
-                    }}
-                    className={`w-full text-left p-2.5 rounded-xl border transition flex items-center justify-between ${
-                      isActive 
-                        ? 'bg-amber-500/15 border-amber-400 text-amber-900 font-bold' 
-                        : 'bg-white border-slate-100 text-slate-700 hover:bg-slate-50 border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-black ${
-                        isActive ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {u.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold block">{u.name}</span>
-                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block leading-none mt-0.5">
-                          {u.role === 'customer' ? '🛒 Customer' : u.role === 'merchant' ? '🏪 Merchant' : u.role === 'rider' ? '🚴 Rider' : '🛡️ Admin'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {isActive && (
-                      <span className="text-[9px] bg-amber-500 text-white font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
-                        Active
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
           {/* Mobile and Desktop Quick Settings & Controls */}
           <div className="pt-4 border-t border-slate-100 space-y-4">
@@ -745,7 +703,7 @@ export default function UserProfileCorner({
             )}
 
             {/* Role/Portal Switcher */}
-            {onSwitchRole && role && (
+            {onSwitchRole && role && activeUser.role === 'admin' && (
               <div className="space-y-2">
                 <span className="text-xs font-bold text-slate-600 block">
                   {language === 'en' ? 'Switch Portal' : 'पोर्टल बदलें'}
@@ -824,6 +782,17 @@ export default function UserProfileCorner({
         </div>
 
       </div>
+
+      {/* Google Maps Location Picker Modal */}
+      <MapLocationPicker
+        isOpen={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        initialAddress={editLocation}
+        language={language}
+        onSelectLocation={(addr) => {
+          setEditLocation(addr);
+        }}
+      />
     </div>
   );
 }

@@ -1564,8 +1564,8 @@ export default function App() {
                   <h3 className="font-extrabold text-slate-800 text-sm border-b border-slate-100 pb-2 mb-3">
                     {language === 'en' ? 'Alerts & Messages' : 'अलर्ट और संदेश'}
                   </h3>
-                  {notifications.map((notif) => (
-                    <div key={notif.id} className="py-2.5 border-b border-slate-50 last:border-0">
+                  {notifications.map((notif, idx) => (
+                    <div key={`${notif.id}-${idx}`} className="py-2.5 border-b border-slate-50 last:border-0">
                       <p className="text-xs font-bold text-slate-800">
                         {language === 'hi' ? notif.titleHi : notif.title}
                       </p>
@@ -2083,8 +2083,8 @@ export default function App() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                       {scratchCards
                         .filter(c => c.userId === activeUserId)
-                        .map(card => (
-                          <div key={card.id} className="relative flex flex-col space-y-2">
+                        .map((card, idx) => (
+                          <div key={`${card.id}-${idx}`} className="relative flex flex-col space-y-2">
                             <ScratchCardComponent
                               card={card}
                               language={language}

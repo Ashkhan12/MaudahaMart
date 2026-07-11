@@ -10,6 +10,7 @@ import { TRANSLATIONS } from '../data';
 import UPIPayment from './UPIPayment';
 import DeliveryZoneMap from './DeliveryZoneMap';
 import SmartSearchBar from './SmartSearchBar';
+import MapLocationPicker from './MapLocationPicker';
 
 export const SHOP_CATEGORIES = [
   { id: 'Super Mart', name: 'Super Mart', nameHi: 'सुपर मार्ट', icon: '🛒' },
@@ -88,6 +89,7 @@ export default function CustomerPortal({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
   const [selectedStoreCategory, setSelectedStoreCategory] = useState<string | null>(null);
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
   const activeUser = users.find(u => u.id === activeUserId);
   const watchlist = activeUser?.watchlist || [];
@@ -1304,8 +1306,8 @@ export default function CustomerPortal({
                           
                           {/* Categories badge list */}
                           <div className="flex flex-wrap gap-1 mt-3">
-                            {(s.categories || []).slice(0, 2).map((cat) => (
-                              <span key={cat} className="text-[10px] bg-slate-50 text-slate-500 font-extrabold px-2 py-0.5 rounded-md border border-slate-100">
+                            {(s.categories || []).slice(0, 2).map((cat, idx) => (
+                              <span key={`${cat}-${idx}`} className="text-[10px] bg-slate-50 text-slate-500 font-extrabold px-2 py-0.5 rounded-md border border-slate-100">
                                 {cat}
                               </span>
                             ))}
@@ -1731,9 +1733,9 @@ export default function CustomerPortal({
                     )}
                   </button>
 
-                  {(activeStore?.categories || []).map((cat) => (
+                  {(activeStore?.categories || []).map((cat, idx) => (
                     <button
-                      key={cat}
+                      key={`${cat}-${idx}`}
                       onClick={() => {
                         setSelectedCategory(cat);
                         setShowWatchlistOnly(false);
@@ -2009,11 +2011,11 @@ export default function CustomerPortal({
                             {language === 'en' ? 'TAP TO APPLY ACTIVE OFFERS:' : 'ऑफ़र लागू करने के लिए टैप करें:'}
                           </p>
                           <div className="flex flex-wrap gap-2">
-                            {notifications.filter(n => n.type === 'discount' && n.code).map(n => {
+                            {notifications.filter(n => n.type === 'discount' && n.code).map((n, idx) => {
                               const isThisApplied = couponDiscount > 0 && couponCode.trim().toUpperCase() === n.code?.toUpperCase();
                               return (
                                 <button
-                                  key={n.id}
+                                  key={`${n.id}-${idx}`}
                                   type="button"
                                   onClick={() => {
                                     if (isThisApplied) {
@@ -2094,7 +2096,16 @@ export default function CustomerPortal({
                       <h4 className="font-extrabold text-xs text-slate-800">{t.checkout}</h4>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">{t.deliveryAddress}</label>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase">{t.deliveryAddress}</label>
+                          <button
+                            type="button"
+                            onClick={() => setIsMapOpen(true)}
+                            className="text-[10px] text-emerald-600 hover:text-emerald-700 font-extrabold flex items-center gap-1 hover:underline transition cursor-pointer"
+                          >
+                            📍 {language === 'hi' ? 'नक्शे पर लाइव लोकेशन चुनें' : 'Choose Live Location on Map'}
+                          </button>
+                        </div>
                         <textarea
                           required
                           value={deliveryAddress}
@@ -2192,6 +2203,17 @@ export default function CustomerPortal({
           </div>
         </div>
       )}
+
+      {/* Google Maps Location Picker Modal */}
+      <MapLocationPicker
+        isOpen={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        initialAddress={deliveryAddress}
+        language={language}
+        onSelectLocation={(addr) => {
+          setDeliveryAddress(addr);
+        }}
+      />
 
     </div>
   );
