@@ -188,11 +188,6 @@ app.post('/api/auth/verify-otp', (req, res) => {
     }
     const cleanedPhone = phone.replace(/\D/g, '');
 
-    // Allow quick 123456 override for demo convenience
-    if (otp === '123456') {
-      return res.json({ success: true, message: 'OTP verified successfully (Demo Bypass)!' });
-    }
-
     const record = otpStore.get(cleanedPhone);
     if (!record) {
       return res.status(400).json({ error: 'No OTP requested for this phone number. Please click resend/send.' });
@@ -204,7 +199,7 @@ app.post('/api/auth/verify-otp', (req, res) => {
     }
 
     if (record.otp !== otp) {
-      return res.status(400).json({ error: 'Incorrect verification code. Please try again or use 123456.' });
+      return res.status(400).json({ error: 'Incorrect verification code. Please try again.' });
     }
 
     // Verified! Delete the single-use OTP

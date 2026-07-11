@@ -38,7 +38,29 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
   // Google reCAPTCHA state variables
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const recaptchaRef = React.useRef<ReCAPTCHA>(null);
-  const siteKey = (import.meta as any).env?.VITE_RECAPTCHA_SITE_KEY || '';
+  const rawSiteKey = (import.meta as any).env?.VITE_RECAPTCHA_SITE_KEY || '';
+  const isRecaptchaConfigured = React.useMemo(() => {
+    if (!rawSiteKey) return false;
+    const normalized = rawSiteKey.trim().toLowerCase();
+    if (
+      normalized === '' ||
+      normalized.includes('placeholder') ||
+      normalized.includes('your_') ||
+      normalized.includes('insert-') ||
+      normalized.includes('site_key') ||
+      normalized.includes('dummy') ||
+      normalized.includes('some_key')
+    ) {
+      return false;
+    }
+    // Google reCAPTCHA v2 keys typically start with '6L'
+    if (!rawSiteKey.startsWith('6L') || rawSiteKey.length < 20) {
+      return false;
+    }
+    return true;
+  }, [rawSiteKey]);
+
+  const siteKey = isRecaptchaConfigured ? rawSiteKey : '';
 
   // Status & loading
   const [loading, setLoading] = useState(false);
@@ -92,7 +114,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
       errorInvalidEmail: 'Please enter a valid email address.',
       errorUserNotFound: 'No account matches these credentials.',
       errorIncorrectPassword: 'The password entered is incorrect.',
-      errorWrongOtp: 'Incorrect verification code. Try "123456" for demo!',
+      errorWrongOtp: 'Incorrect verification code. Please try again.',
       otpSentMsg: 'OTP sent! Use verification code: ',
       otpPlaceholder: 'Enter 6-digit OTP code',
       verifyBtn: 'Verify & Login',
@@ -134,7 +156,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
       errorInvalidEmail: 'कृपया एक मान्य ईमेल पता दर्ज करें।',
       errorUserNotFound: 'कोई भी खाता इन क्रेडेंशियल्स से मेल नहीं खाता।',
       errorIncorrectPassword: 'दर्ज किया गया पासवर्ड गलत है।',
-      errorWrongOtp: 'गलत सत्यापन कोड। डेमो के लिए "123456" आजमाएं!',
+      errorWrongOtp: 'गलत सत्यापन कोड। कृपया पुनः प्रयास करें।',
       otpSentMsg: 'ओटीपी भेजा गया! सत्यापन कोड का उपयोग करें: ',
       otpPlaceholder: '6 अंकों का ओटीपी कोड दर्ज करें',
       verifyBtn: 'सत्यापित करें और लॉगिन करें',
@@ -410,16 +432,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
     }, 1500);
   };
 
-  // Predefined role demo quick login
-  const handleDemoLogin = (user: RegisteredUser) => {
-    setLoading(true);
-    setError('');
-    setSuccessMsg('');
-    setTimeout(() => {
-      setLoading(false);
-      onLoginSuccess(user, user.role);
-    }, 800);
-  };
+
 
   return (
     <div id="login_portal_wrapper" className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 font-sans transition-all duration-500 relative overflow-hidden">
@@ -770,8 +783,8 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                     <span>⚠️</span>
                     <span>
                       {language === 'en' 
-                        ? 'Invalid OTP: Code does not match. Try again or use demo bypass "123456".' 
-                        : 'अमान्य ओटीपी: कोड मेल नहीं खाता। फिर से प्रयास करें या डेमो बाईपास "123456" का उपयोग करें।'}
+                        ? 'Invalid OTP: Code does not match. Please try again.' 
+                        : 'अमान्य ओटीपी: कोड मेल नहीं खाता। कृपया पुनः प्रयास करें।'}
                     </span>
                   </p>
                 )}
@@ -1007,43 +1020,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
           <span>{t.googleBtn}</span>
         </motion.button>
 
-        {/* Demo Mode Quick Access Grid */}
-        <div className="mt-8 pt-6 border-t border-slate-100">
-          <div className="flex items-center gap-1.5 mb-3.5">
-            <span className="text-xs">⚡</span>
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono block">
-              {t.demoTitle}
-            </span>
-          </div>
-          <p className="text-[10px] text-slate-500 font-semibold mb-3 leading-normal">
-            {t.demoDesc}
-          </p>
-          <div className="grid grid-cols-2 gap-2.5">
-            {(existingUsers || []).slice(0, 8).map((user, idx) => (
-              <motion.button
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                whileHover={{ scale: 1.02, translateY: -1, borderColor: 'rgba(16, 185, 129, 0.35)' }}
-                whileTap={{ scale: 0.98 }}
-                key={user.id}
-                type="button"
-                onClick={() => handleDemoLogin(user)}
-                disabled={loading}
-                className="p-3 bg-slate-50/75 hover:bg-white border border-slate-100/90 rounded-2xl text-left transition-all text-[10px] font-black flex flex-col justify-between cursor-pointer shadow-2xs hover:shadow-xs group/demo"
-              >
-                <span className="truncate block font-bold text-slate-800 group-hover/demo:text-emerald-700 transition-colors">{user.name}</span>
-                <span className="text-[9px] text-emerald-600 font-extrabold uppercase mt-1.5 flex items-center gap-1">
-                  {user.role === 'customer' && '🛒 Customer'}
-                  {user.role === 'merchant' && '🏪 Merchant'}
-                  {user.role === 'admin' && '🛡️ Admin'}
-                  {user.role === 'rider' && '🚴 Delivery'}
-                  {user.role === 'manager' && '👔 Manager'}
-                </span>
-              </motion.button>
-            ))}
-          </div>
-        </div>
+
 
         {/* Footer legal notes */}
         <p className="text-[9px] text-slate-400 font-mono text-center leading-normal mt-6 max-w-xs mx-auto">
