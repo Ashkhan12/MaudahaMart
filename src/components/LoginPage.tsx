@@ -215,7 +215,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
           setSuccessMsg(language === 'en' ? 'OTP sent successfully!' : 'ओटीपी सफलतापूर्वक भेजा गया!');
         } catch (err: any) {
           console.error("Firebase Phone Auth Error", err);
-          setError(language === 'en' ? 'Failed to send OTP. Check phone number format or try again later.' : 'ओटीपी भेजने में विफल।');
+          setError((language === 'en' ? 'Failed to send OTP: ' : 'ओटीपी भेजने में विफल: ') + (err?.message || ''));
           if ((window as any).recaptchaVerifier) {
             try {
               (window as any).recaptchaVerifier.clear();
@@ -586,7 +586,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                         setSuccessMsg(language === 'en' ? 'New OTP code sent!' : 'नया ओटीपी कोड भेजा गया!');
                       } catch (err: any) {
                         console.error("Firebase Resend Error", err);
-                        setError(language === 'en' ? 'Failed to send OTP.' : 'ओटीपी भेजने में विफल।');
+                        setError((language === 'en' ? 'Failed to send OTP: ' : 'ओटीपी भेजने में विफल: ') + (err?.message || ''));
                         if ((window as any).recaptchaVerifier) {
                           try { (window as any).recaptchaVerifier.clear(); } catch(e) {}
                           (window as any).recaptchaVerifier = null;
