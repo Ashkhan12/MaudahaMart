@@ -4,8 +4,8 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, Sparkles, MapPin, Layers, History, Bell, Languages, Store as StoreIcon, ShieldAlert, Shield, Palette, LogOut, User, Heart, Utensils, Shirt, Package, MessageSquare, Train, Plane, ArrowRight, X, LifeBuoy, FileText, Wrench, Stethoscope } from 'lucide-react';
-import { Language, Store, Product, Review, Order, OrderItem, LoyaltyInfo, Notification, RegisteredUser, UserActivity, AppState, SupportTicket, SupportMessage, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, ScratchCard, Restaurant, ClothingBoutique, MerchantRequest } from './types';
+import { ShoppingBag, Sparkles, MapPin, Layers, History, Bell, Languages, Store as StoreIcon, ShieldAlert, Shield, Palette, LogOut, User, Heart, Utensils, Shirt, Package, MessageSquare, Train, Plane, ArrowRight, X, LifeBuoy, FileText, Wrench, Stethoscope, Grid, Gift, ArrowLeft } from 'lucide-react';
+import { Language, Store, Product, Review, Order, OrderItem, LoyaltyInfo, Notification, RegisteredUser, UserActivity, AppState, SupportTicket, SupportMessage, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, ScratchCard, Restaurant, ClothingBoutique, MerchantRequest, UserRole, ServiceArea } from './types';
 import { INITIAL_STORES, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_NOTIFICATIONS, INITIAL_USERS, INITIAL_SUPPORT_TICKETS, INITIAL_ORDERS, TRANSLATIONS } from './data';
 import { INITIAL_RESTAURANTS } from './dataRestaurants';
 import { INITIAL_BOUTIQUES } from './dataClothing';
@@ -20,14 +20,14 @@ import LoginPage from './components/LoginPage';
 import RestaurantCorner from './components/RestaurantCorner';
 import ClothingHub from './components/ClothingHub';
 import ServicesCorner from './components/ServicesCorner';
-import DoctorsCorner from './components/DoctorsCorner';
-import FlightBookingCorner from './components/FlightBookingCorner';
+import TravelCorner from './components/TravelCorner';
+import CustomerHome from './components/CustomerHome';
 import ManagerPortal from './components/ManagerPortal';
+import RoleDashboards from './components/RoleDashboards';
 import { THEMES, generateThemeStyles, getColorsAndDescForWeather } from './theme';
 import PrivacyPolicyModal from './components/PrivacyPolicyModal';
 import UserProfileCorner from './components/UserProfileCorner';
 import WishlistCartDrawer from './components/WishlistCartDrawer';
-import AiAssistantDrawer from './components/AiAssistantDrawer';
 import { seedDatabaseIfEmpty, loadAllCollections, syncDocToFirestore } from './firebaseSync';
 import { motion, AnimatePresence } from 'motion/react';
 import AndroidAppHub from './components/AndroidAppHub';
@@ -126,7 +126,7 @@ export default function App() {
 
   const [showAdminPortal, setShowAdminPortal] = useState(false);
   const [showPitchDeck, setShowPitchDeck] = useState(false);
-  const [role, setRole] = useState<'customer' | 'merchant' | 'admin' | 'rider' | 'manager'>(() => {
+  const [role, setRole] = useState<UserRole>(() => {
     const savedRole = localStorage.getItem('mau_role');
     const savedActiveUid = localStorage.getItem('mau_active_uid');
     const savedUsers = localStorage.getItem('mau_users');
@@ -141,7 +141,7 @@ export default function App() {
         console.error('Error parsing saved users at startup:', e);
       }
     }
-    return (savedRole as 'customer' | 'merchant' | 'admin' | 'rider' | 'manager') || 'customer';
+    return (savedRole as UserRole) || 'customer';
   });
 
   const [stores, setStores] = useState<Store[]>(() => {
@@ -272,6 +272,54 @@ export default function App() {
     };
   });
 
+  const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>(() => {
+    const saved = localStorage.getItem('mau_service_areas');
+    if (saved) return JSON.parse(saved);
+    return [
+      {
+        id: 'area-maudaha',
+        area_name: 'Maudaha Central',
+        pincode: '210507',
+        city: 'Maudaha',
+        state: 'Uttar Pradesh',
+        delivery_charge: 15,
+        free_delivery_above: 199,
+        minimum_order_amount: 49,
+        estimated_delivery_time: '15-30 Mins',
+        max_distance_km: 5,
+        polygon_coordinates: [
+          { lat: 25.682, lng: 80.124 },
+          { lat: 25.690, lng: 80.135 },
+          { lat: 25.675, lng: 80.145 },
+          { lat: 25.668, lng: 80.130 }
+        ],
+        status: 'Active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        total_orders: 142,
+        monthly_orders: 48,
+        active_customers: 35,
+        revenue: 18450,
+        average_delivery_time: '18 mins',
+        cancellation_rate: 1.5,
+        delivery_slots: ["Morning (08:00 AM - 12:00 PM)", "Afternoon (12:00 PM - 04:00 PM)", "Evening (04:00 PM - 08:00 PM)", "Instant Delivery"],
+        delivery_types: ["Instant", "Scheduled", "Free", "Paid"]
+      }
+    ];
+  });
+
+  const [selectedServiceAreaId, setSelectedServiceAreaId] = useState<string>(() => {
+    return localStorage.getItem('mau_selected_area_id') || 'area-maudaha';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mau_service_areas', JSON.stringify(serviceAreas));
+  }, [serviceAreas]);
+
+  useEffect(() => {
+    localStorage.setItem('mau_selected_area_id', selectedServiceAreaId);
+  }, [selectedServiceAreaId]);
+
   const [customPanels, setCustomPanels] = useState<CustomPanel[]>(() => {
     const saved = localStorage.getItem('mau_custom_panels');
     if (saved) return JSON.parse(saved);
@@ -360,7 +408,7 @@ export default function App() {
   const [useCoins, setUseCoins] = useState<boolean>(false);
   const [showNotificationBadge, setShowNotificationBadge] = useState(false);
   const [viewingNotificationPanel, setViewingNotificationPanel] = useState(false);
-  const [activeTab, setActiveTab] = useState<'browse' | 'orders' | 'loyalty' | 'support' | 'restaurants' | 'clothing' | 'services' | 'doctors' | 'flights'>('browse');
+  const [activeTab, setActiveTab] = useState<'browse' | 'orders' | 'loyalty' | 'support' | 'restaurants' | 'clothing' | 'services' | 'travel' | 'home'>('home');
   const [showAndroidHub, setShowAndroidHub] = useState<boolean>(false);
 
   const [isDbLoading, setIsDbLoading] = useState<boolean>(true);
@@ -467,6 +515,18 @@ export default function App() {
               return merged;
             });
           }
+          if (data.serviceAreas && data.serviceAreas.length > 0) {
+            setServiceAreas(prev => {
+              const merged = [...data.serviceAreas];
+              prev.forEach(localArea => {
+                if (!merged.some(a => a.id === localArea.id)) {
+                  merged.push(localArea);
+                }
+              });
+              localStorage.setItem('mau_service_areas', JSON.stringify(merged));
+              return merged;
+            });
+          }
           if (data.merchantRequests && data.merchantRequests.length > 0) {
             setMerchantRequests(data.merchantRequests);
           }
@@ -565,6 +625,13 @@ export default function App() {
 
   useEffect(() => {
     if (isDbLoading) return;
+    serviceAreas.forEach(area => {
+      syncDocToFirestore('serviceAreas', area.id, area);
+    });
+  }, [serviceAreas, isDbLoading]);
+
+  useEffect(() => {
+    if (isDbLoading) return;
     merchantRequests.forEach(req => {
       syncDocToFirestore('merchantRequests', req.id, req);
     });
@@ -581,7 +648,6 @@ export default function App() {
   const [showProfileDrawer, setShowProfileDrawer] = useState<boolean>(false);
   const [showWishlistDrawer, setShowWishlistDrawer] = useState<boolean>(false);
   const [showSupportDrawer, setShowSupportDrawer] = useState<boolean>(false);
-  const [showAiAssistant, setShowAiAssistant] = useState<boolean>(false);
   const [drawerInitialTab, setDrawerInitialTab] = useState<'cart' | 'wishlist'>('cart');
 
   // --- User-Specific Theming and Privacy Modal States ---
@@ -592,112 +658,15 @@ export default function App() {
   const [showThemePicker, setShowThemePicker] = useState<boolean>(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState<boolean>(false);
 
-  const [weather, setWeather] = useState<{
-    temp: number;
-    code: number;
-    wind: number;
-    description: string;
-    descriptionHi: string;
-    icon: string;
-    primaryColor: string;
-    secondaryColor: string;
-    primaryHover: string;
-    primaryDark: string;
-    borderLight: string;
-    borderLighter: string;
-    gradientStart: string;
-    gradientEnd: string;
-  }>(() => {
-    const saved = localStorage.getItem('mau_weather');
-    return saved ? JSON.parse(saved) : {
-      temp: 32,
-      code: 0,
-      wind: 12,
-      description: 'Clear Sunny',
-      descriptionHi: 'साफ धूप',
-      icon: '☀️',
-      primaryColor: '#059669', // emerald fallback
-      secondaryColor: '#f0fdf4',
-      primaryHover: '#047857',
-      primaryDark: '#064e3b',
-      borderLight: '#a7f3d0',
-      borderLighter: '#d1fae5',
-      gradientStart: '#059669',
-      gradientEnd: '#0d9488',
-    };
-  });
-
-  // Fetch real weather of Maudaha (UP) India on mount
-  useEffect(() => {
-    async function fetchWeather() {
-      try {
-        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=25.68&longitude=80.12&current_weather=true');
-        if (!res.ok) throw new Error('Weather API fetch failed');
-        const data = await res.json();
-        if (data && data.current_weather) {
-          const tempVal = Math.round(data.current_weather.temperature);
-          const codeVal = data.current_weather.weathercode;
-          const windVal = Math.round(data.current_weather.windspeed);
-          
-          const mapped = getColorsAndDescForWeather(codeVal, tempVal);
-          const newWeather = {
-            temp: tempVal,
-            code: codeVal,
-            wind: windVal,
-            description: mapped.description,
-            descriptionHi: mapped.descriptionHi,
-            icon: mapped.icon,
-            primaryColor: mapped.primary,
-            secondaryColor: mapped.secondary,
-            primaryHover: mapped.primaryHover,
-            primaryDark: mapped.primaryDark,
-            borderLight: mapped.borderLight,
-            borderLighter: mapped.borderLighter,
-            gradientStart: mapped.gradientStart,
-            gradientEnd: mapped.gradientEnd,
-          };
-          setWeather(newWeather);
-          localStorage.setItem('mau_weather', JSON.stringify(newWeather));
-        }
-      } catch (err) {
-        // Log gracefully to avoid triggering error flags in container environments
-        console.warn('Maudaha weather sync status: Using stable offline weather profile.', err);
-      }
-    }
-    fetchWeather();
-    
-    // Auto refresh every 10 minutes
-    const interval = setInterval(fetchWeather, 600000);
-    return () => clearInterval(interval);
-  }, []);
-
   // Sync theme when active user switches
   useEffect(() => {
     const savedTheme = localStorage.getItem(`mau_theme_${activeUserId}`) || 'emerald';
     setThemeId(savedTheme);
   }, [activeUserId]);
 
-  // Inject generated CSS styles into document head whenever themeId or weather changes
+  // Inject generated CSS styles into document head whenever themeId changes
   useEffect(() => {
-    let theme;
-    if (themeId === 'weather') {
-      theme = {
-        id: 'weather',
-        name: `Weather Adaptive (${weather.icon} ${weather.description})`,
-        nameHi: `मौसम अनुकूलन (${weather.icon} ${weather.descriptionHi})`,
-        primary: weather.primaryColor,
-        primaryHover: weather.primaryHover,
-        primaryDark: weather.primaryDark,
-        secondary: weather.secondaryColor,
-        secondaryHover: weather.secondaryColor, // maps to secondary Hover as fallback
-        borderLight: weather.borderLight,
-        borderLighter: weather.borderLighter,
-        gradientStart: weather.gradientStart,
-        gradientEnd: weather.gradientEnd,
-      };
-    } else {
-      theme = THEMES.find(t => t.id === themeId) || THEMES[0];
-    }
+    const theme = THEMES.find(t => t.id === themeId) || THEMES[0];
     
     let styleEl = document.getElementById('mau-theme-styles');
     if (!styleEl) {
@@ -706,7 +675,7 @@ export default function App() {
       document.head.appendChild(styleEl);
     }
     styleEl.innerHTML = generateThemeStyles(theme);
-  }, [themeId, weather]);
+  }, [themeId]);
 
   const t = TRANSLATIONS[language];
   const activeUser = users.find(u => u.id === activeUserId);
@@ -993,7 +962,8 @@ export default function App() {
       coinsEarned: pointsEarned,
       coinsRedeemed: redeemedCoins,
       customerLocation: activeUser?.location || 'Station Road, Maudaha',
-      customerLocationHi: activeUser?.locationHi || 'स्टेशन रोड, मौदहा'
+      customerLocationHi: activeUser?.locationHi || 'स्टेशन रोड, मौदहा',
+      serviceAreaId: selectedServiceAreaId
     };
 
     // Update orders history
@@ -1379,10 +1349,15 @@ export default function App() {
     }));
   };
 
-  const userArea = activeUser?.assignedArea || activeUser?.location || 'Maudaha';
   const visibleStores = role === 'customer' 
-    ? stores.filter(s => s.area ? s.area === userArea || userArea.includes(s.area) : true) 
+    ? stores.filter(s => (s as any).serviceAreaId === selectedServiceAreaId || (!(s as any).serviceAreaId && selectedServiceAreaId === 'area-maudaha')) 
     : stores;
+  const visibleRestaurants = role === 'customer' 
+    ? restaurants.filter(r => (r as any).serviceAreaId === selectedServiceAreaId || (!(r as any).serviceAreaId && selectedServiceAreaId === 'area-maudaha')) 
+    : restaurants;
+  const visibleBoutiques = role === 'customer' 
+    ? boutiques.filter(b => (b as any).serviceAreaId === selectedServiceAreaId || (!(b as any).serviceAreaId && selectedServiceAreaId === 'area-maudaha')) 
+    : boutiques;
   const visibleStoreIds = visibleStores.map(s => s.id);
   const visibleProducts = role === 'customer' 
     ? products.filter(p => visibleStoreIds.includes(p.storeId)) 
@@ -1478,18 +1453,48 @@ export default function App() {
       <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50 px-4 py-3.5">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           
-          {/* Logo */}
-          <div
-            onClick={() => {
-              setSelectedStoreId(null);
-              setActiveOrderTrackingId(null);
-              setActiveTab('browse');
-            }}
-            className="flex items-center gap-2 cursor-pointer group"
-          >
-            <img src="/src/assets/images/maudaha_mart_logo_1783437069583.jpg" alt="Maudaha Mart" className="h-10 w-10 rounded-xl object-cover shadow-lg transform group-hover:rotate-3 transition duration-200" />
+          <div className="flex items-center gap-2">
+            {/* Back Button */}
+            {(activeTab !== 'home' || selectedStoreId || activeOrderTrackingId || showAdminPortal) && (
+              <button 
+                onClick={() => {
+                   if (showAdminPortal) {
+                      setShowAdminPortal(false);
+                   } else if (activeOrderTrackingId) {
+                      setActiveOrderTrackingId(null);
+                   } else if (selectedStoreId) {
+                      setSelectedStoreId(null);
+                   } else if (activeTab !== 'home') {
+                      setActiveTab('home');
+                   }
+                }}
+                className="mr-1 p-2 rounded-full hover:bg-slate-100 text-slate-600 transition"
+                title="Go Back"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            )}
 
+            {/* Logo */}
+            <div
+              onClick={() => {
+                setSelectedStoreId(null);
+                setActiveOrderTrackingId(null);
+                setActiveTab('home');
+              }}
+              className="flex items-center gap-2 cursor-pointer group"
+            >
+              <div className="h-10 w-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg transform group-hover:rotate-3 transition duration-200">
+                <ShoppingBag className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-black tracking-tight text-slate-800 leading-none">Maudaha</h1>
+                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">Mart</p>
+              </div>
+            </div>
           </div>
+
+
 
           {/* My Orders Header Trigger (Replaces Live Weather) */}
           <div className="flex flex-col items-center gap-0 bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-0.5 cursor-pointer hover:bg-slate-100 transition duration-200 select-none" 
@@ -1503,36 +1508,6 @@ export default function App() {
           {/* Settings & Switches */}
           <div className="flex items-center gap-1 md:gap-4">
 
-            {/* AI Assistant Trigger Button (Named AI Assistant, styled like a shopping cart with sparkles) */}
-            <div className="relative" id="ai-assistant-trigger-button">
-              {/* Soft infinite pulsing background glow to draw attention */}
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-400/20 to-teal-400/20 rounded-lg blur-xs opacity-75 animate-pulse pointer-events-none" />
-              <motion.button
-                onClick={() => setShowAiAssistant(true)}
-                initial={{ scale: 0, rotate: -15, opacity: 0 }}
-                animate={{ scale: 1, rotate: 0, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="relative p-1.5 bg-white border border-slate-150 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-500/20 rounded-lg text-slate-600 hover:text-emerald-600 transition-all duration-300 flex items-center gap-1 cursor-pointer group shadow-xs"
-                title={language === 'en' ? 'AI Assistant' : 'एआई सहायक'}
-              >
-                <AnimatedBagSparklesIcon />
-                <span className="text-[10px] font-black tracking-tight text-slate-600 group-hover:text-emerald-600 transition hidden md:inline">
-                  {language === 'en' ? 'AI Assistant' : 'एआई सहायक'}
-                </span>
-              </motion.button>
-
-            </div>
-
-            <button
-              onClick={() => setShowPitchDeck(true)}
-              className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition flex items-center gap-1"
-              title="Download Pitch Deck"
-            >
-              <FileText className="h-5 w-5" />
-              <span className="text-xs font-bold hidden sm:inline">Pitch Deck</span>
-            </button>
             {role === "admin" && (
               <button
                 onClick={() => setShowAdminPortal(!showAdminPortal)}
@@ -1630,27 +1605,6 @@ export default function App() {
               </span>
             </button>
 
-            {/* Multi-role Hub Switcher */}
-            <div className="hidden md:flex items-center gap-1 bg-slate-100 border border-slate-200 p-1 rounded-xl">
-              <select
-                value={role}
-                onChange={(e) => {
-                  const nextRole = e.target.value as 'customer' | 'merchant' | 'admin' | 'rider' | 'manager';
-                  setRole(nextRole);
-                  setSelectedStoreId(null);
-                  setActiveOrderTrackingId(null);
-                }}
-                className="bg-transparent text-slate-800 text-xs font-extrabold px-2 py-1 outline-none cursor-pointer rounded-lg hover:text-emerald-600 transition"
-              >
-                <option value="customer">🛒 {language === 'en' ? 'User Portal' : 'ग्राहक पोर्टल'}</option>
-                <option value="merchant">🏪 {language === 'en' ? 'Merchant Console' : 'मर्चेंट पोर्टल'}</option>
-                <option value="rider">🚴 {language === 'en' ? 'Delivery boy pannel' : 'डिलीवरी बॉय पैनल'}</option>
-                <option value="manager">👔 {language === 'en' ? 'Manager Portal' : 'मैनेजर पोर्टल'}</option>
-                <option value="admin">🛡️ {language === 'en' ? 'Admin' : 'एडमिन'}</option>
-              </select>
-
-            </div>
-
 
           </div>
 
@@ -1726,6 +1680,8 @@ export default function App() {
             onUpdateRestaurants={setRestaurants}
             boutiques={boutiques}
             onUpdateBoutiques={setBoutiques}
+            serviceAreas={serviceAreas}
+            onUpdateServiceAreas={setServiceAreas}
           />
         ) : role === 'rider' ? (
           !settings.enableRiderPortal ? (
@@ -1753,7 +1709,11 @@ export default function App() {
           ) : (
             /* Delivery Rider Desk Console */
             <DeliveryAgentPortal
-              orders={orders}
+              orders={orders.filter(o => {
+                const riderAreaId = activeUser?.assignedArea || activeUser?.serviceAreaId || 'area-maudaha';
+                const oArea = (o as any).serviceAreaId || 'area-maudaha';
+                return oArea === riderAreaId;
+              })}
               language={language}
               onUpdateOrders={setOrders}
             />
@@ -1813,6 +1773,18 @@ export default function App() {
             language={language}
             activeUserId={activeUserId}
           />
+        ) : (role === 'restaurant_owner' || role === 'jewellery_owner' || role === 'footwear_owner' || role === 'boutique_owner' || role === 'beautician' || role === 'tailor' || role === 'plumber' || role === 'electrician' || role === 'mechanic') ? (
+          <RoleDashboards
+            role={role}
+            language={language}
+            activeUserId={activeUserId}
+            users={users}
+            onUpdateUsers={setUsers}
+            restaurants={restaurants}
+            onUpdateRestaurants={setRestaurants}
+            boutiques={boutiques}
+            onUpdateBoutiques={setBoutiques}
+          />
         ) : (!settings.enableCustomerPortal && role !== 'admin') ? (
           <div className="max-w-md mx-auto my-16 p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-4 shadow-xl">
             <div className="mx-auto w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center">
@@ -1838,101 +1810,7 @@ export default function App() {
         ) : (
           /* Main Customer store explorer and shopping cart checkout */
           <div className="space-y-4">
-
-            {/* Real-time Weather & Promo Alert Bar */}
-            <div className="max-w-6xl mx-auto px-4 mt-2">
-              <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-emerald-50/80 border border-emerald-100/75 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-md relative overflow-hidden group hover:shadow-lg hover:border-emerald-200/80 transition-all duration-300 animate-in fade-in duration-300">
-                <div className="absolute right-0 top-0 w-36 h-36 bg-emerald-200/20 rounded-full blur-3xl pointer-events-none group-hover:scale-110 transition duration-500" />
-                <div className="flex items-start gap-3 relative z-10">
-                  <div className="h-11 w-11 rounded-2xl bg-white border border-emerald-100 flex items-center justify-center text-2xl shadow-xs shrink-0 select-none">
-                    {weather.icon}
-
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-black text-slate-800 leading-tight flex items-center gap-1.5 flex-wrap">
-                      <span>{language === 'en' ? `Maudaha Live Climate: ${weather.temp}°C` : `मौदहा लाइव मौसम: ${weather.temp}°C`}</span>
-                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold">
-                        {language === 'hi' ? weather.descriptionHi : weather.description}
-                      </span>
-                    </h3>
-                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-1">
-                      {/* Generates custom weather-specific delivery descriptions */}
-                      {weather.code <= 1 && (language === 'en' 
-                        ? '☀️ Clear blue skies in Maudaha! Standard delivery times are ultra-fast (< 15 mins). Keep cool!' 
-                        : '☀️ मौदहा में बिल्कुल साफ आसमान! वितरण समय अत्यधिक तेज़ है (< 15 मिनट)। ठंडक बनाए रखें!')}
-                      {(weather.code === 2 || weather.code === 3) && (language === 'en'
-                        ? '☁️ Overcast conditions over Maudaha. Great weather for hot samosas or tea!'
-                        : '☁️ मौदहा में घने बादल छाए हैं। गरमागरम समोसे या चाय के लिए बेहतरीन मौसम है!')}
-                      {((weather.code >= 51 && weather.code <= 55) || (weather.code >= 61 && weather.code <= 65) || (weather.code >= 80 && weather.code <= 82)) && (language === 'en'
-                        ? '🌧️ Light showers in progress. Deliveries may take 5-10 mins longer. Thank you for supporting our safe-riding riders!'
-                        : '🌧️ हल्की बारिश हो रही है। वितरण में 5-10 मिनट का अतिरिक्त समय लग सकता है। सुरक्षित राइडर्स का समर्थन करने के लिए धन्यवाद!')}
-                      {(weather.code >= 95 && weather.code <= 99) && (language === 'en'
-                        ? '⛈️ Thunderstorm alert! Heavy wind or rain might affect active delivery boys. Order now with free rain-protection packaging.'
-                        : '⛈️ आंधी-तूफान की चेतावनी! भारी हवा या बारिश से डिलीवरी प्रभावित हो सकती है। मुफ्त रेन-प्रोटेक्शन पैकेजिंग के साथ अभी ऑर्डर करें।')}
-                      {(weather.code > 3 && weather.code < 51) && (language === 'en'
-                        ? '🍃 Stable weather. Enjoy seamless hyper-local grocery shopping with Maudaha Mart!'
-                        : '🍃 शांत और स्थिर मौसम। मौदहा मार्ट के साथ निर्बाध हाइपर-लोकल किराना खरीदारी का आनंद लें!')}
-                    </p>
-
-                  </div>
-
-                </div>
-                <div className="flex items-center gap-2 w-full md:w-auto shrink-0 border-t border-emerald-100/50 md:border-0 pt-2.5 md:pt-0 justify-between">
-                  <div className="text-left md:text-right">
-                    <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">{language === 'en' ? 'Active Promo' : 'सक्रिय प्रोमो'}</span>
-                    <span className="text-[11px] text-emerald-700 font-extrabold mt-0.5 block truncate max-w-[200px] md:max-w-xs">{language === 'hi' ? settings.globalPromoBannerTextHi : settings.globalPromoBannerText}</span>
-
-                  </div>
-                  <button
-                    onClick={() => {
-                      // refresh weather manually
-                      const triggerRefresh = async () => {
-                        try {
-                          const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=25.68&longitude=80.12&current_weather=true');
-                          const d = await res.json();
-                          if (d && d.current_weather) {
-                            const tVal = Math.round(d.current_weather.temperature);
-                            const cVal = d.current_weather.weathercode;
-                            const wVal = Math.round(d.current_weather.windspeed);
-                            const mapped = getColorsAndDescForWeather(cVal, tVal);
-                            setWeather({
-                              temp: tVal,
-                              code: cVal,
-                              wind: wVal,
-                              description: mapped.description,
-                              descriptionHi: mapped.descriptionHi,
-                              icon: mapped.icon,
-                              primaryColor: mapped.primary,
-                              secondaryColor: mapped.secondary,
-                              primaryHover: mapped.primaryHover,
-                              primaryDark: mapped.primaryDark,
-                              borderLight: mapped.borderLight,
-                              borderLighter: mapped.borderLighter,
-                              gradientStart: mapped.gradientStart,
-                              gradientEnd: mapped.gradientEnd,
-                            });
-                            alert(language === 'en' ? 'Weather status updated successfully!' : 'मौसम की जानकारी सफलतापूर्वक अपडेट की गई!');
-                          }
-                        } catch (err) {
-                          alert('Offline/API limit: weather holds steady.');
-                        }
-                      };
-                      triggerRefresh();
-                    }}
-                    className="p-1.5 hover:bg-emerald-100 rounded-xl text-emerald-700 transition active:scale-95 text-[10px] font-extrabold flex items-center gap-1 cursor-pointer"
-                    title={language === 'en' ? 'Update Weather' : 'मौसम जानकारी अपडेट करें'}
-                  >
-                    🔄 {language === 'en' ? 'Sync' : 'सिंक'}
-                  </button>
-
-                </div>
-
-              </div>
-
-            </div>
             
-
-
             {activeTab === 'browse' ? (
               <CustomerPortal
                 stores={visibleStores}
@@ -1961,6 +1839,8 @@ export default function App() {
                 onUpdateUsers={setUsers}
                 onNavigateTab={setActiveTab}
                 scratchCards={scratchCards}
+                serviceAreas={serviceAreas}
+                selectedServiceAreaId={selectedServiceAreaId}
               />
             ) : activeTab === 'restaurants' ? (
               <RestaurantCorner
@@ -1969,6 +1849,7 @@ export default function App() {
                 onUpdateUsers={setUsers}
                 language={language}
                 onAddActivity={handleAddUserActivity}
+                restaurants={visibleRestaurants}
                 settings={settings}
               />
             ) : activeTab === 'clothing' ? (
@@ -1978,6 +1859,7 @@ export default function App() {
                 onUpdateUsers={setUsers}
                 language={language}
                 onAddActivity={handleAddUserActivity}
+                boutiques={visibleBoutiques}
                 settings={settings}
               />
             ) : activeTab === 'services' ? (
@@ -1988,21 +1870,15 @@ export default function App() {
                 language={language}
                 onAddActivity={handleAddUserActivity}
               />
-            ) : activeTab === 'doctors' ? (
-              <DoctorsCorner
-                activeUserId={activeUserId}
-                users={users}
-                onUpdateUsers={setUsers}
+            ) : activeTab === 'travel' ? (
+              <TravelCorner
                 language={language}
-                onAddActivity={handleAddUserActivity}
+                onBack={() => setActiveTab('home')}
               />
-            ) : activeTab === 'flights' ? (
-              <FlightBookingCorner
-                activeUserId={activeUserId}
-                users={users}
-                onUpdateUsers={setUsers}
+            ) : activeTab === 'home' ? (
+              <CustomerHome
                 language={language}
-                onAddActivity={handleAddUserActivity}
+                onNavigateTab={setActiveTab}
               />
             ) : activeTab === 'orders' ? (
               <UserOrderPanel
@@ -2222,7 +2098,6 @@ export default function App() {
         language={language}
         onSwitchLanguage={setLanguage}
         themeId={themeId}
-        weather={weather}
         onSwitchTheme={(tid) => {
           setThemeId(tid);
           localStorage.setItem(`mau_theme_${activeUserId}`, tid);
@@ -2241,6 +2116,7 @@ export default function App() {
           setShowAndroidHub(true);
           setShowProfileDrawer(false);
         }}
+        onOpenPitchDeck={() => setShowPitchDeck(true)}
         onLogOut={() => {
           setIsLoggedIn(false);
           localStorage.removeItem('mau_logged_in');
@@ -2267,18 +2143,6 @@ export default function App() {
           setActiveTab('browse');
         }}
         settings={settings}
-      />
-
-      {/* Persistent Global AI Assistant & Parser Drawer */}
-      <AiAssistantDrawer
-        isOpen={showAiAssistant}
-        onClose={() => setShowAiAssistant(false)}
-        language={language}
-        products={visibleProducts}
-        stores={visibleStores}
-        onAddToCart={handleAddToCart}
-        activeUserId={activeUserId}
-        onAddSearch={handleAddUserSearch}
       />
 
       <AnimatePresence>
@@ -2410,14 +2274,6 @@ export default function App() {
 
         return (
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] z-50 py-3 px-2 md:hidden flex justify-around items-center rounded-t-2xl animate-in slide-in-from-bottom duration-300">
-            <button
-              onClick={() => setShowPitchDeck(true)}
-              className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition flex items-center gap-1"
-              title="Download Pitch Deck"
-            >
-              <FileText className="h-5 w-5" />
-              <span className="text-xs font-bold hidden sm:inline">Pitch Deck</span>
-            </button>
             {role === "admin" && (
               <button
                 onClick={() => {
@@ -2433,79 +2289,53 @@ export default function App() {
             <button
               onClick={() => {
                 triggerHapticFeedback();
-                setActiveTab('browse');
+                setActiveTab('home');
               }}
               className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-200 active:scale-95 ${
-                activeTab === 'browse' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
+                activeTab === 'home' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
               }`}
             >
-              <StoreIcon className={`h-5 w-5 transition duration-200 ${activeTab === 'browse' ? 'text-emerald-600 animate-pulse' : 'text-slate-400'}`} />
-              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Shop' : 'सामग्री'}</span>
+              <Grid className={`h-5 w-5 transition duration-200 ${activeTab === 'home' ? 'text-emerald-600 animate-pulse' : 'text-slate-400'}`} />
+              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Home' : 'होम'}</span>
             </button>
 
             <button
               onClick={() => {
                 triggerHapticFeedback();
-                setActiveTab('restaurants');
+                setActiveTab('orders');
               }}
               className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-200 active:scale-95 ${
-                activeTab === 'restaurants' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
+                activeTab === 'orders' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
               }`}
             >
-              <Utensils className={`h-5 w-5 transition duration-200 ${activeTab === 'restaurants' ? 'text-emerald-600' : 'text-slate-400'}`} />
-              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Food' : 'भोजन'}</span>
+              <Package className={`h-5 w-5 transition duration-200 ${activeTab === 'orders' ? 'text-emerald-600' : 'text-slate-400'}`} />
+              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Orders' : 'ऑर्डर'}</span>
             </button>
 
             <button
               onClick={() => {
                 triggerHapticFeedback();
-                setActiveTab('clothing');
+                setActiveTab('loyalty');
               }}
               className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-200 active:scale-95 ${
-                activeTab === 'clothing' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
+                activeTab === 'loyalty' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
               }`}
             >
-              <Shirt className={`h-5 w-5 transition duration-200 ${activeTab === 'clothing' ? 'text-emerald-600' : 'text-slate-400'}`} />
-              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Fashion' : 'फैशन'}</span>
+              <Gift className={`h-5 w-5 transition duration-200 ${activeTab === 'loyalty' ? 'text-emerald-600' : 'text-slate-400'}`} />
+              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Rewards' : 'इनाम'}</span>
             </button>
 
             <button
               onClick={() => {
                 triggerHapticFeedback();
-                setActiveTab('services');
+                setActiveTab('support');
               }}
               className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-200 active:scale-95 ${
-                activeTab === 'services' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
+                activeTab === 'support' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
               }`}
             >
-              <Wrench className={`h-5 w-5 transition duration-200 ${activeTab === 'services' ? 'text-emerald-600' : 'text-slate-400'}`} />
-              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Services' : 'सेवाएं'}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                triggerHapticFeedback();
-                setActiveTab('doctors');
-              }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-200 active:scale-95 ${
-                activeTab === 'doctors' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
-              }`}
-            >
-              <Stethoscope className={`h-5 w-5 transition duration-200 ${activeTab === 'doctors' ? 'text-emerald-600' : 'text-slate-400'}`} />
-              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Doctors' : 'डॉक्टर'}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                triggerHapticFeedback();
-                setActiveTab('flights');
-              }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-200 active:scale-95 ${
-                activeTab === 'flights' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
-              }`}
-            >
-              <Plane className={`h-5 w-5 transition duration-200 ${activeTab === 'flights' ? 'text-emerald-600' : 'text-slate-400'}`} />
-              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Flights' : 'उड़ानें'}</span>
+              <LifeBuoy className={`h-5 w-5 transition duration-200 ${activeTab === 'support' ? 'text-emerald-600' : 'text-slate-400'}`} />
+              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Help' : 'मदद'}</span>
             </button>
 
           </div>

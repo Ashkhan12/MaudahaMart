@@ -28,6 +28,7 @@ export interface Product {
   warrantyPeriodHi?: string;
   replacementPolicy?: string;
   replacementPolicyHi?: string;
+  serviceAreaId?: string;
 }
 
 export interface PriceChangeLog {
@@ -62,6 +63,7 @@ export interface Store {
   upiId?: string;
   categories: string[];
   shopCategory?: string;
+  serviceAreaId?: string;
 }
 
 export interface Review {
@@ -98,6 +100,7 @@ export interface Order {
   coinsEarned: number;
   coinsRedeemed: number;
   photoUrl?: string;
+  serviceAreaId?: string;
   riderLat?: number;
   riderLng?: number;
   deliveredAt?: number;
@@ -141,6 +144,22 @@ export interface UserActivity {
   actionHi: string;
 }
 
+export type UserRole = 
+  | 'customer' 
+  | 'merchant' 
+  | 'rider' 
+  | 'admin' 
+  | 'manager'
+  | 'restaurant_owner' 
+  | 'jewellery_owner' 
+  | 'footwear_owner' 
+  | 'boutique_owner' 
+  | 'beautician' 
+  | 'tailor' 
+  | 'plumber' 
+  | 'electrician' 
+  | 'mechanic';
+
 export interface RegisteredUser {
   id: string;
   name: string;
@@ -148,8 +167,9 @@ export interface RegisteredUser {
   email?: string;
   location: string;
   locationHi: string;
-  role: 'customer' | 'merchant' | 'rider' | 'admin' | 'manager';
+  role: UserRole;
   assignedArea?: string;
+  serviceAreaId?: string;
   activities: UserActivity[];
   searchHistory: string[];
   watchlist?: string[];
@@ -326,6 +346,7 @@ export interface SystemSettings {
   enableHindiTranslation: boolean;
   globalPromoBannerText: string;
   globalPromoBannerTextHi: string;
+  db_cleared_shops_v2?: boolean;
 }
 
 export interface CustomPanelMetric {
@@ -444,6 +465,8 @@ export interface ServiceArea {
   revenue: number;
   average_delivery_time: string;
   cancellation_rate: number; // e.g. 2.4 (for 2.4%)
+  delivery_slots?: string[];
+  delivery_types?: string[];
 }
 
 export interface ServiceAreaAuditLog {
@@ -467,43 +490,6 @@ export interface ScratchCard {
   isUsed: boolean;
   createdAt: string;
   storeId: string;
-}export interface Doctor {
-  id: string;
-  name: string;
-  nameHi: string;
-  specialty: string;
-  specialtyHi: string;
-  experience: number;
-  rating: number;
-  clinicName: string;
-  clinicNameHi: string;
-  address: string;
-  addressHi: string;
-  consultationFee: number;
-  telehealthFee: number;
-  availableTimeslots: string[];
-  banner: string;
-  isTelehealthAvailable: boolean;
-  isClinicBookingAvailable: boolean;
-  upiId?: string;
-}
-
-export interface DoctorAppointment {
-  id: string;
-  userId: string;
-  userName: string;
-  userPhone: string;
-  doctorId: string;
-  doctorName: string;
-  specialty: string;
-  appointmentType: 'telehealth' | 'clinic';
-  date: string;
-  timeslot: string;
-  feePaid: number;
-  paymentStatus: 'paid' | 'pending';
-  status: 'booked' | 'completed' | 'cancelled';
-  telehealthLink?: string;
-  prescription?: string;
 }
 
 export interface LocalService {

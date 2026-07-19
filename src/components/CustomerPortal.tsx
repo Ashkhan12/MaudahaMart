@@ -5,12 +5,13 @@
 
 import React, { useState } from 'react';
 import { ShoppingCart, Star, MapPin, Clock, Copy, Plus, Minus, Tag, Gift, Sparkles, Send, MessageSquare, ArrowRight, Mic, MicOff, X, Heart } from 'lucide-react';
-import { Store, Product, Review, OrderItem, Language, Notification, LoyaltyInfo, RegisteredUser, SystemSettings, Order, ScratchCard } from '../types';
+import { Store, Product, Review, OrderItem, Language, Notification, LoyaltyInfo, RegisteredUser, SystemSettings, Order, ScratchCard, ServiceArea } from '../types';
 import { TRANSLATIONS } from '../data';
 import UPIPayment from './UPIPayment';
 import DeliveryZoneMap from './DeliveryZoneMap';
 import SmartSearchBar from './SmartSearchBar';
 import MapLocationPicker from './MapLocationPicker';
+import { isCoordinateInServiceArea } from './ServiceAreaManagement';
 
 export const SHOP_CATEGORIES = [
   { id: 'Super Mart', name: 'Super Mart', nameHi: 'सुपर मार्ट', icon: '🛒' },
@@ -53,8 +54,10 @@ interface CustomerPortalProps {
   onAddSearch: (userId: string, query: string) => void;
   settings: SystemSettings;
   onUpdateUsers: (users: RegisteredUser[]) => void;
-  onNavigateTab?: (tab: 'browse' | 'orders' | 'loyalty' | 'support' | 'restaurants' | 'clothing' | 'services' | 'doctors' | 'flights') => void;
+  onNavigateTab?: (tab: 'browse' | 'orders' | 'loyalty' | 'support' | 'restaurants' | 'clothing' | 'services' | 'travel' | 'home') => void;
   scratchCards?: ScratchCard[];
+  serviceAreas?: ServiceArea[];
+  selectedServiceAreaId?: string;
 }
 
 export default function CustomerPortal({
@@ -83,7 +86,9 @@ export default function CustomerPortal({
   settings,
   onUpdateUsers,
   onNavigateTab,
-  scratchCards = []
+  scratchCards = [],
+  serviceAreas = [],
+  selectedServiceAreaId = 'area-maudaha'
 }: CustomerPortalProps) {
   const t = TRANSLATIONS[language];
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -498,9 +503,15 @@ export default function CustomerPortal({
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'COD'>('UPI');
   const [upiId, setUpiId] = useState('');
   const [showUpiCheckout, setShowUpiCheckout] = useState(false);
+
+  const isSelectedLocationOutsideBoundary = React.useMemo(() => {
+    if (!selectedCoords || !selectedServiceAreaId || !serviceAreas || serviceAreas.length === 0) return false;
+    return !isCoordinateInServiceArea(selectedCoords.lat, selectedCoords.lng, selectedServiceAreaId, serviceAreas);
+  }, [selectedCoords, selectedServiceAreaId, serviceAreas]);
 
 
 
@@ -605,6 +616,14 @@ export default function CustomerPortal({
       alert(language === 'en' ? 'Please enter a delivery address.' : 'कृपया वितरण का पता दर्ज करें।');
       return;
     }
+    if (isSelectedLocationOutsideBoundary) {
+      const areaName = serviceAreas?.find(a => a.id === selectedServiceAreaId)?.area_name || 'the active region';
+      const warningMsg = language === 'en'
+        ? `Cannot Place Order: Your selected map coordinates fall outside the GeoJSON polygon boundary of "${areaName}". Please select a location inside the service region.`
+        : `ऑर्डर नहीं किया जा सकता: आपके द्वारा चयनित मानचित्र निर्देशांक "${areaName}" की GeoJSON बहुभुज सीमा (polygon boundary) से बाहर हैं। कृपया सेवा क्षेत्र के भीतर का स्थान चुनें।`;
+      alert(warningMsg);
+      return;
+    }
     const actualPaymentMethod = (paymentMethod === 'UPI' && settings.enableUpiPaymentShops !== false) ? 'UPI' : 'COD';
     onCheckout(
       selectedStoreId,
@@ -620,6 +639,14 @@ export default function CustomerPortal({
   const handleCheckoutBtn = () => {
     if (!deliveryAddress.trim()) {
       alert(language === 'en' ? 'Please enter a delivery address.' : 'कृपया वितरण का पता दर्ज करें।');
+      return;
+    }
+    if (isSelectedLocationOutsideBoundary) {
+      const areaName = serviceAreas?.find(a => a.id === selectedServiceAreaId)?.area_name || 'the active region';
+      const warningMsg = language === 'en'
+        ? `Cannot Place Order: Your selected map coordinates fall outside the GeoJSON polygon boundary of "${areaName}". Please select a location inside the service region.`
+        : `ऑर्डर नहीं किया जा सकता: आपके द्वारा चयनित मानचित्र निर्देशांक "${areaName}" की GeoJSON बहुभुज सीमा (polygon boundary) से बाहर हैं। कृपया सेवा क्षेत्र के भीतर का स्थान चुनें।`;
+      alert(warningMsg);
       return;
     }
     if (paymentMethod === 'UPI' && settings.enableUpiPaymentShops !== false) {
@@ -925,314 +952,45 @@ export default function CustomerPortal({
                 </p>
 
                 {aiSearchResponse.recommendedProductIds && aiSearchResponse.recommendedProductIds.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {Array.from(new Set(aiSearchResponse.recommendedProductIds)).map((prodId, idx) => {
-                      const prod = products.find(p => p.id === prodId);
-                      if (!prod) return null;
-                      const store = stores.find(s => s.id === prod.storeId);
-                      const isWishlisted = watchlist.includes(prod.id);
-
-                      return (
-                        <div key={`${prod.id}-${idx}`} className="bg-white border border-slate-200/60 hover:border-emerald-500/20 rounded-2xl p-3.5 flex flex-col justify-between gap-3 shadow-3xs hover:shadow-sm transition group">
-                          <div className="flex items-center gap-3">
-                            {prod.image ? (
-                              <img
-                                src={prod.image}
-                                alt={prod.name}
-                                className="w-12 h-12 object-cover rounded-xl border border-slate-100 shrink-0 group-hover:scale-105 transition"
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-sm font-bold shrink-0">
-                                🥦
-                              </div>
-                            )}
-                            <div>
-                              <span className="font-extrabold text-xs text-slate-800 block leading-snug group-hover:text-emerald-600 transition">
-                                {language === 'hi' ? prod.nameHi : prod.name}
-                              </span>
-                              <span className="text-[9px] text-slate-400 block mt-0.5 font-bold uppercase tracking-wide leading-none">
-                                🏪 {language === 'hi' ? store?.nameHi : store?.name}
-                              </span>
-                              <span className="font-mono text-xs font-black text-emerald-600 mt-1.5 block">
-                                ₹{prod.price} <span className="text-[9px] text-slate-400 font-medium">/{language === 'hi' ? prod.unitHi : prod.unit}</span>
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 border-t border-slate-100 pt-2.5 mt-1">
+                  <div className="pt-3 border-t border-slate-200/60">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2.5">
+                      {language === 'en' ? '🏪 Visit Available Stores to Purchase' : '🏪 खरीदने के लिए उपलब्ध दुकानों पर जाएं'}
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {(() => {
+                        const storeIds = Array.from(new Set(
+                          aiSearchResponse.recommendedProductIds
+                            .map(pId => products.find(p => p.id === pId)?.storeId)
+                            .filter((sId): sId is string => !!sId)
+                        ));
+                        return storeIds.map((storeId) => {
+                          const store = stores.find(s => s.id === storeId);
+                          if (!store) return null;
+                          return (
                             <button
+                              key={storeId}
                               type="button"
                               onClick={() => {
-                                onAddToCart(prod.storeId, prod);
+                                onSelectStore(storeId);
+                                setAiSearchResponse(null);
                               }}
-                              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-lg transition"
+                              className="px-4 py-2 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-slate-700 hover:text-emerald-800 text-xs font-black rounded-xl transition flex items-center gap-2 shadow-3xs cursor-pointer active:scale-95"
                             >
-                              🛒 {language === 'en' ? 'Add to Cart' : 'जोड़ें'}
+                              <span>🏪</span>
+                              <span>{language === 'hi' ? store.nameHi : store.name}</span>
+                              <span className="text-[10px] text-amber-500">★ {store.rating}</span>
+                              <span className="text-[10px] text-slate-400 font-bold">({language === 'hi' ? store.deliveryTimeHi : store.deliveryTime})</span>
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleToggleWatchlist(prod.id)}
-                              className={`p-1.5 rounded-lg border transition ${
-                                isWishlisted 
-                                  ? 'bg-rose-50 border-rose-200 text-rose-600' 
-                                  : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-rose-500'
-                              }`}
-                              title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
-                            >
-                              <Heart className={`h-3.5 w-3.5 ${isWishlisted ? 'fill-rose-500' : ''}`} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                          );
+                        });
+                      })()}
+                    </div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* --- AI SMART PICKS & MAUDAHA TRENDS PANEL --- */}
-            <div className="bg-gradient-to-br from-emerald-500/5 via-amber-500/5 to-slate-500/5 rounded-3xl border border-slate-200/80 p-6 shadow-sm space-y-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none"></div>
 
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 relative z-10">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider rounded-md">
-                      {language === 'en' ? 'AI ACTIVE' : 'एआई सक्रिय'}
-                    </span>
-                    <span className="text-xs font-bold text-amber-600 flex items-center gap-1">
-                      ✨ {language === 'en' ? 'Smart Intelligence' : 'स्मार्ट इंटेलिजेंस'}
-                    </span>
-                  </div>
-                  <h2 className="text-xl font-black font-display text-slate-800 tracking-tight mt-1">
-                    {language === 'en' ? '💡 AI Smart Picks & Maudaha Trends' : '💡 एआई स्मार्ट पसंद और मौदहा रुझान'}
-                  </h2>
-                  <p className="text-xs text-slate-500 font-medium">
-                    {language === 'en' 
-                      ? 'Analyzing your searches, watchlists, and community orders to suggest daily essentials.' 
-                      : 'दैनिक आवश्यकताओं का सुझाव देने के लिए आपकी खोज, वॉचलिस्ट और समुदाय के ऑर्डर्स का विश्लेषण।'}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleLoadAiRecommendations}
-                  disabled={aiRecsLoading}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 active:scale-[0.98] disabled:opacity-50 text-white text-xs font-bold rounded-xl transition flex items-center gap-2 cursor-pointer shadow-sm shrink-0"
-                >
-                  {aiRecsLoading ? (
-                    <>
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
-                      <span>{language === 'en' ? 'Analyzing...' : 'विश्लेषण जारी...'}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>✨</span>
-                      <span>{language === 'en' ? 'Explain My Matches' : 'मेरे मिलान स्पष्ट करें'}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Expended AI Explanation Response */}
-              {showAiRecs && aiRecsExplanation && (
-                <div className="bg-slate-900/95 text-slate-100 rounded-2xl p-5 text-xs font-medium space-y-3 shadow-inner relative z-10 border border-slate-800 animate-in slide-in-from-top-3 duration-300">
-                  <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-                    <span className="font-bold text-amber-400 flex items-center gap-1.5 font-mono uppercase tracking-wider text-[10px]">
-                      🤖 {language === 'en' ? 'Gemini Insight Engine' : 'जेमिनी इनसाइट इंजन'}
-                    </span>
-                    <button 
-                      onClick={() => setShowAiRecs(false)} 
-                      className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <p className="leading-relaxed font-sans text-slate-200">
-                    {language === 'hi' ? aiRecsExplanation.explanationHi : aiRecsExplanation.explanation}
-                  </p>
-                  <div className="pt-2 border-t border-slate-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-emerald-400 font-bold uppercase tracking-wide text-[9px] bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-900/40">
-                        {language === 'en' ? 'Maudaha Demand Alert' : 'मौदहा डिमांड अलर्ट'}
-                      </span>
-                      <span className="italic">
-                        {language === 'hi' ? aiRecsExplanation.marketTrendAlertHi : aiRecsExplanation.marketTrendAlert}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Grid with 2 columns: Handpicked For You vs Hot Selling Trends */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10">
-                
-                {/* Section A: Handpicked personalized items */}
-                <div className="space-y-3">
-                  <div className="border-b border-slate-200 pb-1.5">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                      <span>🎯</span>
-                      <span>{language === 'en' ? 'Handpicked for You' : 'आपके लिए चुनिंदा सामान'}</span>
-                      <span className="text-[9px] bg-emerald-100 text-emerald-800 font-black px-1.5 py-0.2 rounded-full lowercase">
-                        {language === 'en' ? 'custom match' : 'अनुकूल'}
-                      </span>
-                    </h3>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      {language === 'en' ? 'Based on your watchlists, searches & order habits' : 'आपकी वॉचलिस्ट, खोज और ऑर्डर की आदतों के आधार पर'}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {recommendationsData.personalized.map((prod) => {
-                      const itemStore = stores.find(s => s.id === prod.storeId);
-                      return (
-                        <div key={prod.id} className="bg-white border border-slate-200/60 rounded-2xl p-3 flex flex-col justify-between hover:shadow-md hover:border-slate-300 transition duration-300 group">
-                          <div>
-                            <div className="relative aspect-video rounded-xl bg-slate-50 overflow-hidden mb-2">
-                              {prod.image ? (
-                                <img
-                                  src={prod.image}
-                                  alt={prod.name}
-                                  referrerPolicy="no-referrer"
-                                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-emerald-50 text-emerald-700 flex items-center justify-center text-xl">🥦</div>
-                              )}
-                              <span className="absolute top-1.5 right-1.5 bg-amber-500 text-slate-900 text-[8px] font-black px-1.5 py-0.5 rounded-lg flex items-center gap-0.5 shadow-xs">
-                                ★ {prod.rating}
-                              </span>
-                            </div>
-                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
-                              🏪 {language === 'hi' ? itemStore?.nameHi : itemStore?.name}
-                            </span>
-                            <h4 className="font-extrabold text-xs text-slate-800 truncate mt-0.5">
-                              {language === 'hi' ? prod.nameHi : prod.name}
-                            </h4>
-                          </div>
-
-                          <div className="mt-3 pt-2 border-t border-slate-50 flex items-center justify-between">
-                            <span className="font-mono text-xs font-black text-emerald-600">
-                              ₹{prod.price} <span className="text-[9px] text-slate-400 font-medium">/{language === 'hi' ? prod.unitHi : prod.unit}</span>
-                            </span>
-                            <button
-                              onClick={() => {
-                                onAddToCart(prod.storeId, prod);
-                                const actUser = users.find(u => u.id === activeUserId);
-                                if (actUser) {
-                                  const updatedUsers = users.map(u => {
-                                    if (u.id === activeUserId) {
-                                      const newAct = {
-                                        id: 'act-' + Date.now(),
-                                        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('en-US'),
-                                        action: `Added smart pick "${prod.name}" to cart`,
-                                        actionHi: `स्मार्ट पिक "${prod.nameHi}" को कार्ट में जोड़ा`
-                                      };
-                                      return { ...u, activities: [newAct, ...(u.activities || [])] };
-                                    }
-                                    return u;
-                                  });
-                                  onUpdateUsers(updatedUsers);
-                                }
-                              }}
-                              className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.95] text-white text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
-                            >
-                              <Plus className="h-3 w-3" />
-                              <span>{language === 'en' ? 'Add' : 'जोड़ें'}</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Section B: Global selling trends (HIDDEN based on user request) */}
-                {/* 
-                <div className="space-y-3">
-                  <div className="border-b border-slate-200 pb-1.5">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                      <span>📈</span>
-                      <span>{language === 'en' ? 'Trending in Maudaha' : 'मौदहा में लोकप्रिय'}</span>
-                      <span className="text-[9px] bg-amber-100 text-amber-800 font-black px-1.5 py-0.2 rounded-full lowercase">
-                        {language === 'en' ? 'high demand' : 'उच्च मांग'}
-                      </span>
-                    </h3>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      {language === 'en' ? 'Most frequently ordered items this week across town' : 'इस सप्ताह पूरे शहर में सबसे अधिक बार ऑर्डर की गई सामग्री'}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {recommendationsData.trending.map((prod) => {
-                      const itemStore = stores.find(s => s.id === prod.storeId);
-                      return (
-                        <div key={prod.id} className="bg-white border border-slate-200/60 rounded-2xl p-3 flex flex-col justify-between hover:shadow-md hover:border-slate-300 transition duration-300 group">
-                          <div>
-                            <div className="relative aspect-video rounded-xl bg-slate-50 overflow-hidden mb-2">
-                              {prod.image ? (
-                                <img
-                                  src={prod.image}
-                                  alt={prod.name}
-                                  referrerPolicy="no-referrer"
-                                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-amber-50 text-amber-700 flex items-center justify-center text-xl">🍊</div>
-                              )}
-                              <span className="absolute top-1.5 right-1.5 bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-lg flex items-center gap-0.5 shadow-xs">
-                                {language === 'en' ? 'HOT' : 'पॉपुलर'}
-                              </span>
-                            </div>
-                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
-                              🏪 {language === 'hi' ? itemStore?.nameHi : itemStore?.name}
-                            </span>
-                            <h4 className="font-extrabold text-xs text-slate-800 truncate mt-0.5">
-                              {language === 'hi' ? prod.nameHi : prod.name}
-                            </h4>
-                          </div>
-
-                          <div className="mt-3 pt-2 border-t border-slate-50 flex items-center justify-between">
-                            <span className="font-mono text-xs font-black text-emerald-600">
-                              ₹{prod.price} <span className="text-[9px] text-slate-400 font-medium">/{language === 'hi' ? prod.unitHi : prod.unit}</span>
-                            </span>
-                            <button
-                              onClick={() => {
-                                onAddToCart(prod.storeId, prod);
-                                const actUser = users.find(u => u.id === activeUserId);
-                                if (actUser) {
-                                  const updatedUsers = users.map(u => {
-                                    if (u.id === activeUserId) {
-                                      const newAct = {
-                                        id: 'act-' + Date.now(),
-                                        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('en-US'),
-                                        action: `Added trending product "${prod.name}" to cart`,
-                                        actionHi: `ट्रेंडिंग उत्पाद "${prod.nameHi}" को कार्ट में जोड़ा`
-                                      };
-                                      return { ...u, activities: [newAct, ...(u.activities || [])] };
-                                    }
-                                    return u;
-                                  });
-                                  onUpdateUsers(updatedUsers);
-                                }
-                              }}
-                              className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.95] text-white text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
-                            >
-                              <Plus className="h-3 w-3" />
-                              <span>{language === 'en' ? 'Add' : 'जोड़ें'}</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                */}
-
-              </div>
-            </div>
 
             {/* Popular Stores Grid */}
             <div className="space-y-4">
@@ -1333,83 +1091,7 @@ export default function CustomerPortal({
             {/* Delivery Zone Map Section */}
             <DeliveryZoneMap language={language} />
 
-            {/* Watchlist Section - Only if they have items in their watchlist */}
-            {watchlist.length > 0 && (
-              <div className="bg-gradient-to-r from-amber-500/10 to-amber-600/5 rounded-3xl p-6 border border-amber-500/20 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">⭐</span>
-                    <h2 className="text-lg font-black text-slate-800 tracking-tight">
-                      {language === 'en' ? 'My Starred Watchlist' : 'मेरी पसंदीदा वॉचलिस्ट'} 
-                      <span className="text-amber-700 ml-1.5 text-sm font-mono font-bold">({watchlist.length} items)</span>
-                    </h2>
-                  </div>
-                  <span className="text-[10px] text-amber-700 bg-amber-100 font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                    {language === 'en' ? 'Tracked Live' : 'लाइव ट्रैक किया गया'}
-                  </span>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                  {products.filter(p => watchlist.includes(p.id)).map(p => {
-                    const store = stores.find(s => s.id === p.storeId);
-                    return (
-                      <div key={p.id} className="bg-white border border-slate-200 rounded-2xl p-3.5 flex flex-col justify-between h-full hover:shadow-md transition">
-                        <div>
-                          <div className="relative aspect-square bg-slate-50 rounded-xl overflow-hidden mb-2.5 border border-slate-100">
-                            <img src={p.image} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                            <button
-                              type="button"
-                              onClick={() => handleToggleWatchlist(p.id)}
-                              className="absolute top-1.5 right-1.5 p-1 bg-amber-400 text-slate-900 rounded-full border border-amber-300 shadow-xs cursor-pointer hover:bg-amber-500"
-                              title={language === 'en' ? 'Remove' : 'हटाएं'}
-                            >
-                              <Star className="h-3 w-3 fill-current text-slate-900" />
-                            </button>
-                          </div>
-                          <h4 className="font-extrabold text-xs text-slate-800 line-clamp-1">
-                            {language === 'hi' ? p.nameHi : p.name}
-                          </h4>
-                          <span className="text-[9px] text-slate-400 block font-medium mt-0.5">
-                            🏢 {store ? (language === 'hi' ? store.nameHi : store.name) : 'Local Store'}
-                          </span>
-                          {p.originalPrice && (
-                            <span className="text-[9px] bg-amber-500 text-white font-black px-1.5 py-0.5 rounded-md inline-flex items-center gap-0.5 mt-1 animate-pulse">
-                              🎁 {language === 'en' ? 'Extra Scratch Discount!' : 'अतिरिक्त स्क्रैच छूट!'}
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                              <span className="text-[9px] text-slate-400 line-through leading-none">₹{p.mrp}</span>
-                              {(() => {
-                                const mrp = p.mrp || Math.round((p.price || 0) * 1.25);
-                                const discountPercent = mrp > p.price ? Math.round(((mrp - p.price) / mrp) * 100) : 0;
-                                return discountPercent > 0 ? (
-                                  <span className="text-[8px] bg-rose-600 text-white font-extrabold px-1 rounded-sm">
-                                    {discountPercent}% {language === 'hi' ? 'छूट' : 'OFF'}
-                                  </span>
-                                ) : null;
-                              })()}
-                            </div>
-                            <span className="text-sm font-black text-slate-800 font-mono">₹{p.price}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onAddToCart(p.storeId, p);
-                            }}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white p-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 transition cursor-pointer"
-                          >
-                            🛒 {language === 'en' ? 'Add' : 'जोड़ें'}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         ) : (
           
@@ -2114,6 +1796,16 @@ export default function CustomerPortal({
                           rows={2}
                           className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs focus:outline-none focus:border-emerald-500 focus:bg-white"
                         />
+                        {isSelectedLocationOutsideBoundary && (
+                          <div className="mt-2 p-2 bg-rose-50 border border-rose-150 rounded-xl text-[10px] text-rose-600 font-bold flex items-start gap-1.5">
+                            <span className="text-rose-500 font-black">⚠️</span>
+                            <span className="leading-snug">
+                              {language === 'en'
+                                ? `Selected location coordinates fall OUTSIDE active service region boundaries. Instant checkout restricted.`
+                                : `चयनित स्थान निर्देशांक सक्रिय सेवा क्षेत्र सीमाओं के बाहर हैं। तत्काल चेकआउट प्रतिबंधित है।`}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -2210,8 +1902,11 @@ export default function CustomerPortal({
         onClose={() => setIsMapOpen(false)}
         initialAddress={deliveryAddress}
         language={language}
-        onSelectLocation={(addr) => {
+        onSelectLocation={(addr, lat, lng) => {
           setDeliveryAddress(addr);
+          if (lat !== undefined && lng !== undefined) {
+            setSelectedCoords({ lat, lng });
+          }
         }}
       />
 

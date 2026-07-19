@@ -270,7 +270,7 @@ export default function SmartSearchBar({ language, products, onSearch, searchQue
                 ? (language === 'hi' ? 'सोच रहा है...' : 'Thinking...')
                 : isListening 
                   ? (language === 'hi' ? 'सुन रहा हूँ...' : 'Listening...')
-                  : (language === 'hi' ? 'स्मार्ट AI सर्च' : 'Smart AI Search')
+                  : (language === 'hi' ? 'स्मार्ट सर्च' : 'Smart Search')
               }
             </span>
 

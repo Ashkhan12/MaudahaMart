@@ -4,8 +4,8 @@
  */
 
 import React, { useState } from 'react';
-import { User, Phone, Mail, MapPin, Award, History, X, Edit2, Check, Languages, Palette, Layers, LogOut, Smartphone, Sparkles, Building, Landmark, ChevronLeft } from 'lucide-react';
-import { RegisteredUser, Language, MerchantRequest } from '../types';
+import { User, Phone, Mail, MapPin, Award, History, X, Edit2, Check, Languages, Palette, Layers, LogOut, Smartphone, Sparkles, Building, Landmark, ChevronLeft, FileText } from 'lucide-react';
+import { RegisteredUser, Language, MerchantRequest, UserRole } from '../types';
 import MapLocationPicker from './MapLocationPicker';
 import { THEMES } from '../theme';
 
@@ -16,8 +16,8 @@ interface UserProfileCornerProps {
   onSwitchLanguage?: (lang: Language) => void;
   themeId?: string;
   onSwitchTheme?: (themeId: string) => void;
-  role?: 'customer' | 'merchant' | 'admin' | 'rider' | 'manager';
-  onSwitchRole?: (role: 'customer' | 'merchant' | 'admin' | 'rider' | 'manager') => void;
+  role?: UserRole;
+  onSwitchRole?: (role: UserRole) => void;
   activeUserId: string;
   users: RegisteredUser[];
   onSwitchUser: (userId: string) => void;
@@ -26,6 +26,7 @@ interface UserProfileCornerProps {
   loyaltyTier: string;
   onLogOut?: () => void;
   onOpenAndroidHub?: () => void;
+  onOpenPitchDeck?: () => void;
   merchantRequests?: MerchantRequest[];
   onAddMerchantRequest?: (req: MerchantRequest) => void;
   weather?: {
@@ -58,6 +59,7 @@ export default function UserProfileCorner({
   onLogOut,
   weather,
   onOpenAndroidHub,
+  onOpenPitchDeck,
   merchantRequests = [],
   onAddMerchantRequest
 }: UserProfileCornerProps) {
@@ -622,6 +624,7 @@ export default function UserProfileCorner({
                   {language === 'en' ? 'App Language' : 'ऐप की भाषा'}
                 </span>
                 <button
+                  type="button"
                   onClick={() => onSwitchLanguage(language === 'en' ? 'hi' : 'en')}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-800 text-xs font-black rounded-lg shadow-sm transition active:scale-95 cursor-pointer"
                 >
@@ -641,6 +644,7 @@ export default function UserProfileCorner({
                 {/* Weather Adaptive Theme Card */}
                 {weather && (
                   <button
+                    type="button"
                     onClick={() => onSwitchTheme('weather')}
                     className={`w-full p-2.5 rounded-2xl border flex items-center justify-between gap-3 transition active:scale-98 cursor-pointer ${
                       themeId === 'weather'
@@ -682,6 +686,7 @@ export default function UserProfileCorner({
                     return (
                       <button
                         key={t.id}
+                        type="button"
                         onClick={() => onSwitchTheme(t.id)}
                         className={`p-2 rounded-xl border flex flex-col items-center gap-1.5 transition active:scale-95 cursor-pointer ${
                           isSelected ? 'bg-slate-100 border-slate-300 shadow-sm font-extrabold' : 'bg-white border-slate-100 hover:bg-slate-50'
@@ -706,61 +711,31 @@ export default function UserProfileCorner({
             {onSwitchRole && role && activeUser.role === 'admin' && (
               <div className="space-y-2">
                 <span className="text-xs font-bold text-slate-600 block">
-                  {language === 'en' ? 'Switch Portal' : 'पोर्टल बदलें'}
+                  {language === 'en' ? 'Switch Active Portal' : 'सक्रिय पोर्टल बदलें'}
                 </span>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    onClick={() => {
-                      onSwitchRole('customer');
-                      onClose();
-                    }}
-                    className={`p-2.5 rounded-xl border text-left transition flex items-center gap-2 cursor-pointer ${
-                      role === 'customer' ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-extrabold' : 'bg-white border-slate-100 text-slate-600'
-                    }`}
-                  >
-                    <span className="text-sm">🛒</span>
-                    <span className="text-xs">{language === 'en' ? 'User' : 'ग्राहक'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      onSwitchRole('merchant');
-                      onClose();
-                    }}
-                    className={`p-2.5 rounded-xl border text-left transition flex items-center gap-2 cursor-pointer ${
-                      role === 'merchant' ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-extrabold' : 'bg-white border-slate-100 text-slate-600'
-                    }`}
-                  >
-                    <span className="text-sm">🏪</span>
-                    <span className="text-xs">{language === 'en' ? 'Merchant' : 'व्यापारी'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      onSwitchRole('rider');
-                      onClose();
-                    }}
-                    className={`p-2.5 rounded-xl border text-left transition flex items-center gap-2 cursor-pointer ${
-                      role === 'rider' ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-extrabold' : 'bg-white border-slate-100 text-slate-600'
-                    }`}
-                  >
-                    <span className="text-sm">🚴</span>
-                    <span className="text-xs">{language === 'en' ? 'Rider' : 'राइडर'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      onSwitchRole('admin');
-                      onClose();
-                    }}
-                    className={`p-2.5 rounded-xl border text-left transition flex items-center gap-2 cursor-pointer ${
-                      role === 'admin' ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-extrabold' : 'bg-white border-slate-100 text-slate-600'
-                    }`}
-                  >
-                    <span className="text-sm">🛡️</span>
-                    <span className="text-xs">{language === 'en' ? 'Admin' : 'एडमिन'}</span>
-                  </button>
-                </div>
+                <select
+                  value={role}
+                  onChange={(e) => {
+                    onSwitchRole(e.target.value as UserRole);
+                    onClose();
+                  }}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-black text-slate-700 bg-white shadow-3xs cursor-pointer outline-none focus:border-emerald-500"
+                >
+                  <option value="customer">🛒 Customer / Shopper</option>
+                  <option value="merchant">🏪 Merchant Store Owner</option>
+                  <option value="rider">🚴 Delivery Rider</option>
+                  <option value="admin">🛡️ Super Admin</option>
+                  <option value="manager">👔 Operational Manager</option>
+                  <option value="restaurant_owner">🍔 Restaurant Owner</option>
+                  <option value="jewellery_owner">💎 Jewellery Owner</option>
+                  <option value="footwear_owner">👟 Footwear Owner</option>
+                  <option value="boutique_owner">👗 Boutique Owner</option>
+                  <option value="beautician">💅 Beautician</option>
+                  <option value="tailor">🪡 Tailor</option>
+                  <option value="plumber">🪠 Plumber</option>
+                  <option value="electrician">⚡ Electrician</option>
+                  <option value="mechanic">🔧 Mechanic</option>
+                </select>
               </div>
             )}
 
@@ -768,11 +743,29 @@ export default function UserProfileCorner({
             {onOpenAndroidHub && (
               <div className="pt-1">
                 <button
+                  type="button"
                   onClick={onOpenAndroidHub}
                   className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-black rounded-xl transition flex items-center justify-center gap-2 shadow-sm shadow-emerald-500/10 cursor-pointer active:scale-95"
                 >
                   <Smartphone className="h-4 w-4 text-white" />
                   <span>{language === 'en' ? 'Android Native App Center' : 'एंड्रॉइड ऐप केंद्र'}</span>
+                </button>
+              </div>
+            )}
+
+            {/* Business Pitch Deck */}
+            {onOpenPitchDeck && (
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenPitchDeck();
+                    onClose(); // close profile drawer when opening pitch deck
+                  }}
+                  className="w-full py-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-black rounded-xl transition flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-95"
+                >
+                  <FileText className="h-4 w-4 text-blue-500" />
+                  <span>{language === 'en' ? 'Business Pitch Deck' : 'बिजनेस पिच डेक'}</span>
                 </button>
               </div>
             )}

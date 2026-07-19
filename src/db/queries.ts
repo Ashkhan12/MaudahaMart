@@ -11,6 +11,7 @@ export async function upsertUser(data: {
   location?: string;
   locationHi?: string;
   role?: string;
+  serviceAreaId?: string;
 }) {
   try {
     const result = await db.insert(users)
@@ -22,6 +23,7 @@ export async function upsertUser(data: {
         location: data.location || null,
         locationHi: data.locationHi || null,
         role: data.role || 'customer',
+        serviceAreaId: data.serviceAreaId || null,
       })
       .onConflictDoUpdate({
         target: users.uid,
@@ -32,6 +34,7 @@ export async function upsertUser(data: {
           location: data.location || null,
           locationHi: data.locationHi || null,
           role: data.role || 'customer',
+          serviceAreaId: data.serviceAreaId || null,
         },
       })
       .returning();
@@ -68,6 +71,7 @@ export async function saveOrder(data: {
   deliveryStatus: string;
   date: string;
   items: any;
+  serviceAreaId?: string;
 }) {
   try {
     const result = await db.insert(orders)
@@ -83,12 +87,14 @@ export async function saveOrder(data: {
         deliveryStatus: data.deliveryStatus,
         date: data.date,
         items: data.items,
+        serviceAreaId: data.serviceAreaId || null,
       })
       .onConflictDoUpdate({
         target: orders.id,
         set: {
           paymentStatus: data.paymentStatus,
           deliveryStatus: data.deliveryStatus,
+          serviceAreaId: data.serviceAreaId || null,
         },
       })
       .returning();

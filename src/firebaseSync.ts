@@ -5,7 +5,7 @@
 
 import { collection, doc, setDoc, getDocs, writeBatch, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
-import { Store, Product, Review, Notification, RegisteredUser, SupportTicket, Order, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, Restaurant, ClothingBoutique, MerchantRequest } from './types';
+import { Store, Product, Review, Notification, RegisteredUser, SupportTicket, Order, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, Restaurant, ClothingBoutique, MerchantRequest, ServiceArea } from './types';
 import { INITIAL_STORES, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_NOTIFICATIONS, INITIAL_USERS, INITIAL_SUPPORT_TICKETS, INITIAL_ORDERS } from './data';
 import { INITIAL_RESTAURANTS } from './dataRestaurants';
 import { INITIAL_BOUTIQUES } from './dataClothing';
@@ -13,6 +13,100 @@ import { INITIAL_BOUTIQUES } from './dataClothing';
 // Check if database is empty and seed it if necessary
 export async function seedDatabaseIfEmpty() {
   try {
+    // 1. One-time clear of all default shops, products, and merchants
+    const settingsDocRef = doc(db, 'settings', 'global');
+    const settingsSnap = await getDoc(settingsDocRef);
+    let isCleared = false;
+    if (settingsSnap.exists()) {
+      const data = settingsSnap.data() as SystemSettings;
+      if (data.db_cleared_shops_v2) {
+        isCleared = true;
+      }
+    }
+
+    if (!isCleared) {
+      console.log('Clearing old default stores, products, restaurants, boutiques, and merchants from Firestore...');
+      const batch = writeBatch(db);
+
+      // Delete all documents in stores collection
+      const storesSnap = await getDocs(collection(db, 'stores'));
+      storesSnap.docs.forEach((docSnap) => {
+        batch.delete(docSnap.ref);
+      });
+
+      // Delete all documents in products collection
+      const productsSnap = await getDocs(collection(db, 'products'));
+      productsSnap.docs.forEach((docSnap) => {
+        batch.delete(docSnap.ref);
+      });
+
+      // Delete all documents in restaurants collection
+      const restaurantsSnap = await getDocs(collection(db, 'restaurants'));
+      restaurantsSnap.docs.forEach((docSnap) => {
+        batch.delete(docSnap.ref);
+      });
+
+      // Delete all documents in boutiques collection
+      const boutiquesSnap = await getDocs(collection(db, 'boutiques'));
+      boutiquesSnap.docs.forEach((docSnap) => {
+        batch.delete(docSnap.ref);
+      });
+
+      // Delete all documents in merchantRequests collection
+      const merchSnap = await getDocs(collection(db, 'merchantRequests'));
+      merchSnap.docs.forEach((docSnap) => {
+        batch.delete(docSnap.ref);
+      });
+
+      // Delete/update merchant users in users collection
+      const usersSnap = await getDocs(collection(db, 'users'));
+      usersSnap.docs.forEach((docSnap) => {
+        const userData = docSnap.data();
+        if (userData.role === 'merchant' || userData.role === 'seller') {
+          batch.delete(docSnap.ref);
+        }
+      });
+
+      // Clear local storage keys so client knows they are deleted
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('mau_stores');
+        localStorage.removeItem('mau_products');
+        localStorage.removeItem('mau_restaurants');
+        localStorage.removeItem('mau_boutiques');
+        localStorage.removeItem('mau_users');
+      }
+
+      // Mark as cleared in global settings
+      if (settingsSnap.exists()) {
+        batch.update(settingsDocRef, { db_cleared_shops_v2: true });
+      } else {
+        const defaultSettings: SystemSettings = {
+          enableCustomerPortal: true,
+          enableMerchantDashboard: true,
+          enableRiderPortal: true,
+          enableSupportPanel: true,
+          enableUpiPayment: true,
+          enableUpiPaymentShops: true,
+          enableUpiPaymentRestaurants: true,
+          enableUpiPaymentFashion: true,
+          enableLiveRouteTracker: true,
+          deliveryCharge: 15,
+          minCheckoutAmount: 49,
+          welcomeLoyaltyPoints: 25,
+          coinToRupeeRate: 1,
+          manualRiderSimulation: true,
+          enableHindiTranslation: true,
+          globalPromoBannerText: "🎉 SPECIAL SALE: Use Loyalty Coins to get instant discount up to 50% off!",
+          globalPromoBannerTextHi: "🎉 विशेष सेल: 50% तक तत्काल छूट पाने के लिए लॉयल्टी कॉइन्स का उपयोग करें!",
+          db_cleared_shops_v2: true
+        };
+        batch.set(settingsDocRef, defaultSettings);
+      }
+
+      await batch.commit();
+      console.log('Successfully completed database cleanup of shops, products, and merchants.');
+    }
+
     const storesSnapshot = await getDocs(collection(db, 'stores'));
     if (storesSnapshot.empty) {
       console.log('Firebase Firestore is empty. Seeding initial data for Maudaha Mart...');
@@ -155,6 +249,106 @@ export async function seedDatabaseIfEmpty() {
       });
       await batch.commit();
     }
+
+    // Individual check to seed serviceAreas if empty
+    const serviceAreasSnapshot = await getDocs(collection(db, 'serviceAreas'));
+    if (serviceAreasSnapshot.empty) {
+      console.log('Firebase Firestore is missing service areas. Seeding initial service areas...');
+      const batch = writeBatch(db);
+      const INITIAL_SERVICE_AREAS: ServiceArea[] = [
+        {
+          id: 'area-maudaha',
+          area_name: 'Maudaha Central',
+          pincode: '210507',
+          city: 'Maudaha',
+          state: 'Uttar Pradesh',
+          delivery_charge: 15,
+          free_delivery_above: 199,
+          minimum_order_amount: 49,
+          estimated_delivery_time: '15-30 Mins',
+          max_distance_km: 5,
+          polygon_coordinates: [
+            { lat: 25.682, lng: 80.124 },
+            { lat: 25.690, lng: 80.135 },
+            { lat: 25.675, lng: 80.145 },
+            { lat: 25.668, lng: 80.130 }
+          ],
+          status: 'Active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          total_orders: 142,
+          monthly_orders: 48,
+          active_customers: 35,
+          revenue: 18450,
+          average_delivery_time: '18 mins',
+          cancellation_rate: 1.5,
+          delivery_slots: ["Morning (08:00 AM - 12:00 PM)", "Afternoon (12:00 PM - 04:00 PM)", "Evening (04:00 PM - 08:00 PM)", "Instant Delivery"],
+          delivery_types: ["Instant", "Scheduled", "Free", "Paid"]
+        },
+        {
+          id: 'area-hamirpur',
+          area_name: 'Hamirpur Town',
+          pincode: '210301',
+          city: 'Hamirpur',
+          state: 'Uttar Pradesh',
+          delivery_charge: 20,
+          free_delivery_above: 249,
+          minimum_order_amount: 59,
+          estimated_delivery_time: '20-40 Mins',
+          max_distance_km: 8,
+          polygon_coordinates: [
+            { lat: 25.952, lng: 80.144 },
+            { lat: 25.960, lng: 80.155 },
+            { lat: 25.945, lng: 80.165 },
+            { lat: 25.938, lng: 80.150 }
+          ],
+          status: 'Active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          total_orders: 89,
+          monthly_orders: 22,
+          active_customers: 19,
+          revenue: 9420,
+          average_delivery_time: '24 mins',
+          cancellation_rate: 2.1,
+          delivery_slots: ["Morning Slots", "Evening Slots", "Instant Delivery"],
+          delivery_types: ["Instant", "Scheduled", "Paid"]
+        },
+        {
+          id: 'area-banda',
+          area_name: 'Banda City',
+          pincode: '210001',
+          city: 'Banda',
+          state: 'Uttar Pradesh',
+          delivery_charge: 25,
+          free_delivery_above: 299,
+          minimum_order_amount: 69,
+          estimated_delivery_time: '25-45 Mins',
+          max_distance_km: 10,
+          polygon_coordinates: [
+            { lat: 25.482, lng: 80.324 },
+            { lat: 25.490, lng: 80.335 },
+            { lat: 25.475, lng: 80.345 },
+            { lat: 25.468, lng: 80.330 }
+          ],
+          status: 'Inactive',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          total_orders: 0,
+          monthly_orders: 0,
+          active_customers: 0,
+          revenue: 0,
+          average_delivery_time: 'N/A',
+          cancellation_rate: 0.0,
+          delivery_slots: ["Express Morning", "Express Evening"],
+          delivery_types: ["Instant", "Scheduled"]
+        }
+      ];
+      INITIAL_SERVICE_AREAS.forEach((area) => {
+        batch.set(doc(db, 'serviceAreas', area.id), area);
+      });
+      await batch.commit();
+    }
   } catch (err) {
     console.error('Failed to check/seed Firestore:', err);
     handleFirestoreError(err, OperationType.WRITE, 'seedDatabaseIfEmpty');
@@ -178,7 +372,8 @@ export async function loadAllCollections() {
       priceLogsSnap,
       restaurantsSnap,
       boutiquesSnap,
-      merchantRequestsSnap
+      merchantRequestsSnap,
+      serviceAreasSnap
     ] = await Promise.all([
       getDocs(collection(db, 'stores')),
       getDocs(collection(db, 'products')),
@@ -193,8 +388,11 @@ export async function loadAllCollections() {
       getDocs(collection(db, 'priceLogs')),
       getDocs(collection(db, 'restaurants')),
       getDocs(collection(db, 'boutiques')),
-      getDocs(collection(db, 'merchantRequests'))
+      getDocs(collection(db, 'merchantRequests')),
+      getDocs(collection(db, 'serviceAreas'))
     ]);
+    
+    const pathForGetDocs = 'serviceAreas'; // path is declared
 
     return {
       stores: storesSnap.docs.map(d => ({ ...d.data(), id: d.id } as Store)),
@@ -210,7 +408,8 @@ export async function loadAllCollections() {
       priceLogs: priceLogsSnap.docs.map(d => ({ ...d.data(), id: d.id } as PriceChangeLog)),
       restaurants: restaurantsSnap.docs.map(d => ({ ...d.data(), id: d.id } as Restaurant)),
       boutiques: boutiquesSnap.docs.map(d => ({ ...d.data(), id: d.id } as ClothingBoutique)),
-      merchantRequests: merchantRequestsSnap.docs.map(d => ({ ...d.data(), id: d.id } as MerchantRequest))
+      merchantRequests: merchantRequestsSnap.docs.map(d => ({ ...d.data(), id: d.id } as MerchantRequest)),
+      serviceAreas: serviceAreasSnap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceArea))
     };
   } catch (err) {
     console.error('Failed to load collections from Firestore:', err);

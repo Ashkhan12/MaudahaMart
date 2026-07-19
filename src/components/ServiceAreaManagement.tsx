@@ -1,1795 +1,1386 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { 
-  MapPin, 
-  Sliders, 
-  TrendingUp, 
-  Layers, 
-  Plus, 
-  Trash2, 
-  Edit2, 
-  Download, 
-  AlertTriangle, 
-  CheckCircle, 
-  X, 
-  Save, 
-  Info, 
-  Globe, 
-  Warehouse, 
-  Clock, 
-  Eye, 
-  Map as MapIcon, 
-  List, 
-  FileText, 
-  Check, 
-  Users, 
-  Activity, 
-  ChevronRight, 
-  HelpCircle,
-  Undo
+  MapPin, Plus, Shield, CheckCircle, XCircle, ToggleLeft, ToggleRight, 
+  Map, Users, Store, Package, ShoppingCart, Truck, Clock, Tag, LifeBuoy,
+  Edit2, Trash2, Check, X, AlertCircle, TrendingUp, DollarSign, Calendar, Info
 } from 'lucide-react';
-import { ServiceArea, ServiceAreaAuditLog, Language, Order } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  ServiceArea, RegisteredUser, Store as StoreType, Restaurant, ClothingBoutique,
+  Product, Order, SupportTicket, Notification 
+} from '../types';
 
 interface ServiceAreaManagementProps {
-  language: Language;
-  orders: Order[]; // to check active orders
-  onAddActivity?: (userId: string, actionEn: string, actionHi: string) => void;
+  serviceAreas: ServiceArea[];
+  onUpdateServiceAreas: (areas: ServiceArea[]) => void;
+  users: RegisteredUser[];
+  stores: StoreType[];
+  restaurants: Restaurant[];
+  boutiques: ClothingBoutique[];
+  products: Product[];
+  orders: Order[];
+  supportTickets: SupportTicket[];
+  onUpdateUsers: (users: RegisteredUser[]) => void;
+  onUpdateStores: (stores: StoreType[]) => void;
+  onUpdateRestaurants: (restaurants: Restaurant[]) => void;
+  onUpdateBoutiques: (boutiques: ClothingBoutique[]) => void;
+  onUpdateOrders: (orders: Order[]) => void;
+  onUpdateSupportTickets: (tickets: SupportTicket[]) => void;
+  language: 'en' | 'hi';
 }
 
-// Coordinate mappings for Maudaha (UP)
-// Center of Maudaha Town: 25.6815 N, 80.1132 E
-const MAP_CENTER = { lat: 25.6815, lng: 80.1132 };
+type TabType = 'controls' | 'boundary' | 'users' | 'shops' | 'products' | 'orders' | 'riders' | 'timing' | 'coupons' | 'tickets';
 
-// Known local villages/areas around Maudaha with actual coordinates
-const LOCAL_SITES = [
-  { name: "Maudaha Town Centre", nameHi: "मौदहा नगर केंद्र", lat: 25.6815, lng: 80.1132, pop: 45000, desc: "Main commercial and residential center" },
-  { name: "Husain Ganj", nameHi: "हुसैन गंज", lat: 25.6945, lng: 80.1082, pop: 8500, desc: "North-west residential expansion" },
-  { name: "Ragauli", nameHi: "रागौल", lat: 25.6605, lng: 80.1255, pop: 12000, desc: "Southern agricultural & brick-kiln suburb" },
-  { name: "Chhani", nameHi: "छानी", lat: 25.7150, lng: 80.1450, pop: 15000, desc: "Northeast highway village node" },
-  { name: "Silauli", nameHi: "सिलौली", lat: 25.6580, lng: 80.0880, pop: 6200, desc: "Southwest boundary village" },
-  { name: "Sisolar", nameHi: "सिसोलर", lat: 25.6150, lng: 80.0550, pop: 18000, desc: "Distant southwest trading outpost" },
-  { name: "Khanna", nameHi: "खन्ना", lat: 25.7510, lng: 80.1650, pop: 22000, desc: "North major junction & bypass" },
-  { name: "Ghaura", nameHi: "घौरा", lat: 25.6980, lng: 80.0750, pop: 4800, desc: "Western dairy farms settlement" },
-  { name: "Rahmanpur", nameHi: "रहमानपुर", lat: 25.6720, lng: 80.1550, pop: 5400, desc: "East fringe agricultural ward" }
-];
+/**
+ * Checks if a coordinate (lat, lng) falls within a specified polygon using the Ray Casting algorithm.
+ */
+export function isCoordinateInPolygon(
+  lat: number,
+  lng: number,
+  polygon: { lat: number; lng: number }[]
+): boolean {
+  if (!polygon || polygon.length < 3) return false;
 
-// Initial seeded Service Areas
-const INITIAL_SERVICE_AREAS: ServiceArea[] = [
-  {
-    id: "sa-1",
-    area_name: "Maudaha Town Centre",
-    pincode: "210424",
-    city: "Maudaha",
-    state: "Uttar Pradesh",
+  let inside = false;
+  const x = lng;
+  const y = lat;
+  
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].lng;
+    const yi = polygon[i].lat;
+    const xj = polygon[j].lng;
+    const yj = polygon[j].lat;
+    
+    const intersect = ((yi > y) !== (yj > y))
+        && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  
+  return inside;
+}
+
+/**
+ * Checks if a coordinate (lat, lng) falls within the selected service area's polygon boundary.
+ */
+export function isCoordinateInServiceArea(
+  lat: number,
+  lng: number,
+  selectedServiceAreaId: string,
+  serviceAreas: ServiceArea[]
+): boolean {
+  const area = serviceAreas.find(a => a.id === selectedServiceAreaId);
+  if (!area || !area.polygon_coordinates) return false;
+  return isCoordinateInPolygon(lat, lng, area.polygon_coordinates);
+}
+
+export default function ServiceAreaManagement(props: ServiceAreaManagementProps) {
+  const { 
+    serviceAreas, onUpdateServiceAreas, 
+    users, stores, restaurants, boutiques, 
+    products, orders, supportTickets,
+    onUpdateUsers, onUpdateStores, onUpdateRestaurants, onUpdateBoutiques,
+    onUpdateOrders, onUpdateSupportTickets, language 
+  } = props;
+
+  const [selectedAreaId, setSelectedAreaId] = useState<string>(serviceAreas[0]?.id || 'area-maudaha');
+  const [activeTab, setActiveTab] = useState<TabType>('controls');
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  // Form State for Adding New Service Area
+  const [newArea, setNewArea] = useState({
+    area_name: '',
+    pincode: '',
+    city: '',
+    state: 'Uttar Pradesh',
     delivery_charge: 15,
-    free_delivery_above: 299,
-    minimum_order_amount: 99,
-    estimated_delivery_time: "15-25 mins",
-    max_distance_km: 3.5,
-    status: "Active",
-    village_locality: "Naya Bazar, Devi Mandir, Station Road, Qila area",
-    created_at: "2026-01-10T10:00:00Z",
-    updated_at: "2026-06-15T14:30:00Z",
-    total_orders: 1420,
-    monthly_orders: 340,
-    active_customers: 680,
-    revenue: 245300,
-    average_delivery_time: "18 mins",
-    cancellation_rate: 1.2,
-    polygon_coordinates: [
-      { lat: 25.695, lng: 80.100 },
-      { lat: 25.695, lng: 80.130 },
-      { lat: 25.670, lng: 80.130 },
-      { lat: 25.670, lng: 80.100 }
-    ]
-  },
-  {
-    id: "sa-2",
-    area_name: "Husain Ganj & North Ward",
-    pincode: "210424",
-    city: "Maudaha",
-    state: "Uttar Pradesh",
-    delivery_charge: 20,
-    free_delivery_above: 399,
-    minimum_order_amount: 149,
-    estimated_delivery_time: "20-35 mins",
-    max_distance_km: 5.0,
-    status: "Active",
-    village_locality: "Husain Ganj, Galla Mandi, bypass links",
-    created_at: "2026-02-15T11:20:00Z",
-    updated_at: "2026-05-10T09:15:00Z",
-    total_orders: 680,
-    monthly_orders: 180,
-    active_customers: 320,
-    revenue: 112800,
-    average_delivery_time: "24 mins",
-    cancellation_rate: 1.8,
-    polygon_coordinates: [
-      { lat: 25.710, lng: 80.090 },
-      { lat: 25.710, lng: 80.120 },
-      { lat: 25.692, lng: 80.120 },
-      { lat: 25.692, lng: 80.090 }
-    ]
-  },
-  {
-    id: "sa-3",
-    area_name: "Ragauli South Suburb",
-    pincode: "210424",
-    city: "Maudaha",
-    state: "Uttar Pradesh",
-    delivery_charge: 30,
-    free_delivery_above: 499,
-    minimum_order_amount: 199,
-    estimated_delivery_time: "30-45 mins",
-    max_distance_km: 8.0,
-    status: "Active",
-    village_locality: "Ragauli proper, bypass warehouse belt",
-    created_at: "2026-03-20T14:45:00Z",
-    updated_at: "2026-03-20T14:45:00Z",
-    total_orders: 310,
-    monthly_orders: 75,
-    active_customers: 140,
-    revenue: 54200,
-    average_delivery_time: "36 mins",
-    cancellation_rate: 2.1,
-    polygon_coordinates: [
-      { lat: 25.670, lng: 80.115 },
-      { lat: 25.670, lng: 80.140 },
-      { lat: 25.650, lng: 80.140 },
-      { lat: 25.650, lng: 80.115 }
-    ]
-  },
-  {
-    id: "sa-4",
-    area_name: "Chhani Border Zone",
-    pincode: "210424",
-    city: "Maudaha",
-    state: "Uttar Pradesh",
-    delivery_charge: 45,
-    free_delivery_above: 599,
-    minimum_order_amount: 249,
-    estimated_delivery_time: "45-60 mins",
-    max_distance_km: 12.0,
-    status: "Inactive",
-    village_locality: "Chhani Kalan village, NH-34 checkpost",
-    created_at: "2026-04-12T08:30:00Z",
-    updated_at: "2026-06-01T11:45:00Z",
-    total_orders: 120,
-    monthly_orders: 25,
-    active_customers: 55,
-    revenue: 21500,
-    average_delivery_time: "52 mins",
-    cancellation_rate: 3.5,
-    polygon_coordinates: [
-      { lat: 25.730, lng: 80.130 },
-      { lat: 25.730, lng: 80.160 },
-      { lat: 25.700, lng: 80.160 },
-      { lat: 25.700, lng: 80.130 }
-    ]
-  }
-];
-
-const INITIAL_AUDIT_LOGS: ServiceAreaAuditLog[] = [
-  {
-    id: "log-1",
-    area_id: "sa-1",
-    area_name: "Maudaha Town Centre",
-    action: "Update",
-    details: "Minimum order amount adjusted from ₹79 to ₹99. Delivery charge adjusted from ₹10 to ₹15.",
-    changed_by: "SuperAdmin (Anand)",
-    timestamp: "2026-06-15T14:30:00Z"
-  },
-  {
-    id: "log-2",
-    area_id: "sa-4",
-    area_name: "Chhani Border Zone",
-    action: "Disable",
-    details: "Temporarily disabled delivery operations due to severe monsoon waterlogging on bypass.",
-    changed_by: "OpsManager (Raman)",
-    timestamp: "2026-06-01T11:45:00Z"
-  },
-  {
-    id: "log-3",
-    area_id: "sa-2",
-    area_name: "Husain Ganj & North Ward",
-    action: "Create",
-    details: "Registered new service area with initial coordinates covering the North bypass bypass link.",
-    changed_by: "SuperAdmin (Anand)",
-    timestamp: "2026-02-15T11:20:00Z"
-  }
-];
-
-// Flat earth distance calculation helper
-const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-  const R = 6371; // km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLng/2) * Math.sin(dLng/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-};
-
-export default function ServiceAreaManagement({ language, orders, onAddActivity }: ServiceAreaManagementProps) {
-  // Persistence state
-  const [areas, setAreas] = useState<ServiceArea[]>(() => {
-    const saved = localStorage.getItem('mau_service_areas');
-    return saved ? JSON.parse(saved) : INITIAL_SERVICE_AREAS;
+    free_delivery_above: 199,
+    minimum_order_amount: 49,
+    estimated_delivery_time: '15-30 Mins',
+    max_distance_km: 5,
   });
 
-  const [auditLogs, setAuditLogs] = useState<ServiceAreaAuditLog[]>(() => {
-    const saved = localStorage.getItem('mau_service_area_logs');
-    return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
+  // State for adding items to the selected service area in management tabs
+  const [newSlot, setNewSlot] = useState('');
+  const [newCouponCode, setNewCouponCode] = useState('');
+  const [newCouponDiscount, setNewCouponDiscount] = useState<number>(50);
+  const [newCouponMinOrder, setNewCouponMinOrder] = useState<number>(199);
+  const [customCoupons, setCustomCoupons] = useState<{[areaId: string]: Array<{code: string, discount: number, minOrder: number, id: string}>}>({
+    'area-maudaha': [
+      { id: 'c1', code: 'MAUMANGO', discount: 50, minOrder: 199 },
+      { id: 'c2', code: 'MAUFAST', discount: 30, minOrder: 149 }
+    ],
+    'area-hamirpur': [
+      { id: 'c3', code: 'HAMIR50', discount: 50, minOrder: 249 }
+    ]
   });
 
-  // Save to localStorage whenever state changes
-  useEffect(() => {
-    localStorage.setItem('mau_service_areas', JSON.stringify(areas));
-  }, [areas]);
+  // Map Boundary Coordinates Edit State
+  const [newLat, setNewLat] = useState('25.680');
+  const [newLng, setNewLng] = useState('80.120');
 
-  useEffect(() => {
-    localStorage.setItem('mau_service_area_logs', JSON.stringify(auditLogs));
-  }, [auditLogs]);
+  // Coordinate Checker Simulator State
+  const [testLat, setTestLat] = useState('25.6815');
+  const [testLng, setTestLng] = useState('80.1132');
+  const [testResult, setTestResult] = useState<'inside' | 'outside' | null>(null);
 
-  // Tab State
-  const [activeSubTab, setActiveSubTab] = useState<'list' | 'map' | 'logs'>('list');
+  const selectedArea = serviceAreas.find(a => a.id === selectedAreaId) || serviceAreas[0];
 
-  // Search & Filter state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
-  const [orderCountFilter, setOrderCountFilter] = useState<'All' | 'High' | 'Low'>('All');
-  const [revenueFilter, setRevenueFilter] = useState<'All' | 'High' | 'Medium' | 'Low'>('All');
-
-  // Selected Area for detailed Map or Editing
-  const [selectedAreaId, setSelectedAreaId] = useState<string>("sa-1");
-  const selectedArea = areas.find(a => a.id === selectedAreaId) || areas[0] || null;
-
-  // Active Radius control state
-  const [radiusKm, setRadiusKm] = useState<number>(5.5);
-
-  // Form states (Add / Edit)
-  const [isEditing, setIsEditing] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
-  const [formError, setFormError] = useState('');
-
-  const [formId, setFormId] = useState('');
-  const [formAreaName, setFormAreaName] = useState('');
-  const [formPincode, setFormPincode] = useState('');
-  const [formCity, setFormCity] = useState('Maudaha');
-  const [formState, setFormState] = useState('Uttar Pradesh');
-  const [formDeliveryCharge, setFormDeliveryCharge] = useState(20);
-  const [formFreeDeliveryAbove, setFormFreeDeliveryAbove] = useState(399);
-  const [formMinimumOrder, setFormMinimumOrder] = useState(149);
-  const [formEstDeliveryTime, setFormEstDeliveryTime] = useState('25-35 mins');
-  const [formMaxDistance, setFormMaxDistance] = useState(5);
-  const [formStatus, setFormStatus] = useState<'Active' | 'Inactive'>('Active');
-  const [formVillageLocality, setFormVillageLocality] = useState('');
-
-  // Bulk operation states
-  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
-  const [bulkAction, setBulkAction] = useState('');
-
-  // Safety controls dialog states
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [modalType, setModalType] = useState<'disable' | 'delete'>('disable');
-  const [targetAreaId, setTargetAreaId] = useState<string | null>(null);
-  const [modalWarning, setModalWarning] = useState('');
-  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
-
-  // Map dragging coordinate reference
-  const mapContainerRef = useRef<SVGSVGElement | null>(null);
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-
-  // Convert coordinate to/from SVG pixel map (500x500 box centered on Maudaha)
-  const latToY = (lat: number) => {
-    const diff = lat - MAP_CENTER.lat;
-    return 250 - diff * 1900; // scaling factor
-  };
-  const lngToX = (lng: number) => {
-    const diff = lng - MAP_CENTER.lng;
-    return 250 + diff * 1900;
-  };
-  const yToLat = (y: number) => {
-    const diff = 250 - y;
-    return MAP_CENTER.lat + diff / 1900;
-  };
-  const xToLng = (x: number) => {
-    const diff = x - 250;
-    return MAP_CENTER.lng + diff / 1900;
-  };
-
-  // Log audit helper
-  const addAuditLog = (areaId: string, areaName: string, action: string, details: string) => {
-    const newLog: ServiceAreaAuditLog = {
-      id: "log-" + Date.now(),
-      area_id: areaId,
-      area_name: areaName,
-      action,
-      details,
-      changed_by: "SuperAdmin (Anand)",
-      timestamp: new Date().toISOString()
-    };
-    setAuditLogs(prev => [newLog, ...prev]);
-  };
-
-  // Helper: check pending orders for an area (for Maudaha we can map active orders or generate mock orders associated with the area)
-  // Let's assume some mock pending orders exist for sa-1 (3 orders) and sa-2 (1 order)
-  const getPendingOrders = (areaId: string) => {
-    if (areaId === 'sa-1') return 3;
-    if (areaId === 'sa-2') return 1;
-    return 0;
-  };
-
-  // Filtered areas
-  const filteredAreas = areas.filter(area => {
-    const matchesSearch = area.area_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          area.pincode.includes(searchQuery);
-    const matchesStatus = statusFilter === 'All' || area.status === statusFilter;
-    
-    let matchesOrders = true;
-    if (orderCountFilter === 'High') matchesOrders = area.total_orders >= 500;
-    if (orderCountFilter === 'Low') matchesOrders = area.total_orders < 500;
-
-    let matchesRevenue = true;
-    if (revenueFilter === 'High') matchesRevenue = area.revenue >= 150000;
-    if (revenueFilter === 'Medium') matchesRevenue = area.revenue >= 50000 && area.revenue < 150000;
-    if (revenueFilter === 'Low') matchesRevenue = area.revenue < 50000;
-
-    return matchesSearch && matchesStatus && matchesOrders && matchesRevenue;
-  });
-
-  // Toggle selection
-  const handleSelectRow = (id: string) => {
-    setSelectedRowIds(prev => 
-      prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
+  if (!selectedArea) {
+    return (
+      <div className="p-8 text-center bg-white border rounded-2xl">
+        <AlertCircle className="mx-auto text-amber-500 h-12 w-12" />
+        <p className="mt-4 font-semibold text-slate-700">No Service Areas configured yet.</p>
+      </div>
     );
-  };
+  }
 
-  const handleSelectAllRows = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedRowIds(filteredAreas.map(a => a.id));
-    } else {
-      setSelectedRowIds([]);
-    }
-  };
-
-  // Add / Edit submission
-  const openEditForm = (area: ServiceArea) => {
-    setFormId(area.id);
-    setFormAreaName(area.area_name);
-    setFormPincode(area.pincode);
-    setFormCity(area.city);
-    setFormState(area.state);
-    setFormDeliveryCharge(area.delivery_charge);
-    setFormFreeDeliveryAbove(area.free_delivery_above);
-    setFormMinimumOrder(area.minimum_order_amount);
-    setFormEstDeliveryTime(area.estimated_delivery_time);
-    setFormMaxDistance(area.max_distance_km);
-    setFormStatus(area.status);
-    setFormVillageLocality(area.village_locality || '');
-    setFormError('');
-    setIsEditing(true);
-    setIsAdding(false);
-  };
-
-  const openAddForm = () => {
-    setFormId('');
-    setFormAreaName('');
-    setFormPincode('');
-    setFormCity('Maudaha');
-    setFormState('Uttar Pradesh');
-    setFormDeliveryCharge(20);
-    setFormFreeDeliveryAbove(399);
-    setFormMinimumOrder(149);
-    setFormEstDeliveryTime('25-35 mins');
-    setFormMaxDistance(5);
-    setFormStatus('Active');
-    setFormVillageLocality('');
-    setFormError('');
-    setIsAdding(true);
-    setIsEditing(false);
-  };
-
-  const handleSaveForm = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-
-    // Validations
-    if (!formAreaName.trim()) {
-      setFormError(language === 'en' ? 'Area name is required' : 'क्षेत्र का नाम आवश्यक है');
-      return;
-    }
-    if (!/^\d{6}$/.test(formPincode)) {
-      setFormError(language === 'en' ? 'Pincode must be exactly 6 digits' : 'पिनकोड ठीक 6 अंकों का होना चाहिए');
-      return;
-    }
-
-    // Pincode validation: warn if duplicate pincode in another active area
-    const duplicate = areas.find(a => a.pincode === formPincode && a.id !== formId && a.status === 'Active');
-    if (duplicate && formStatus === 'Active') {
-      // Allow saving, but show a custom alert warning in form log
-    }
-
-    if (isAdding) {
-      // Create polygon around Maudaha center with offsets
-      const offset = 0.015;
-      const defaultPolygon = [
-        { lat: MAP_CENTER.lat + offset, lng: MAP_CENTER.lng - offset },
-        { lat: MAP_CENTER.lat + offset, lng: MAP_CENTER.lng + offset },
-        { lat: MAP_CENTER.lat - offset, lng: MAP_CENTER.lng + offset },
-        { lat: MAP_CENTER.lat - offset, lng: MAP_CENTER.lng - offset }
-      ];
-
-      const newArea: ServiceArea = {
-        id: "sa-" + Date.now(),
-        area_name: formAreaName,
-        pincode: formPincode,
-        city: formCity,
-        state: formState,
-        delivery_charge: Number(formDeliveryCharge),
-        free_delivery_above: Number(formFreeDeliveryAbove),
-        minimum_order_amount: Number(formMinimumOrder),
-        estimated_delivery_time: formEstDeliveryTime,
-        max_distance_km: Number(formMaxDistance),
-        polygon_coordinates: defaultPolygon,
-        status: formStatus,
-        village_locality: formVillageLocality,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        total_orders: 0,
-        monthly_orders: 0,
-        active_customers: 0,
-        revenue: 0,
-        average_delivery_time: formEstDeliveryTime,
-        cancellation_rate: 0
-      };
-
-      setAreas(prev => [...prev, newArea]);
-      addAuditLog(newArea.id, newArea.area_name, "Create", `Created new service area with pincode ${newArea.pincode}`);
-      if (onAddActivity) {
-        onAddActivity("admin", `Created delivery area ${newArea.area_name}`, `नया वितरण क्षेत्र ${newArea.area_name} बनाया गया`);
-      }
-      setIsAdding(false);
-    } else {
-      // Update
-      setAreas(prev => prev.map(a => {
-        if (a.id === formId) {
-          const updated = {
-            ...a,
-            area_name: formAreaName,
-            pincode: formPincode,
-            city: formCity,
-            state: formState,
-            delivery_charge: Number(formDeliveryCharge),
-            free_delivery_above: Number(formFreeDeliveryAbove),
-            minimum_order_amount: Number(formMinimumOrder),
-            estimated_delivery_time: formEstDeliveryTime,
-            max_distance_km: Number(formMaxDistance),
-            status: formStatus,
-            village_locality: formVillageLocality,
-            updated_at: new Date().toISOString()
-          };
-          
-          let changeDetails = `Updated configurations: Pincode: ${formPincode}, Delivery Charge: ₹${formDeliveryCharge}, Status: ${formStatus}`;
-          addAuditLog(a.id, formAreaName, "Update", changeDetails);
-          return updated;
-        }
-        return a;
-      }));
-      if (onAddActivity) {
-        onAddActivity("admin", `Modified delivery area settings for ${formAreaName}`, `${formAreaName} की डिलीवरी क्षेत्र सेटिंग्स बदली गईं`);
-      }
-      setIsEditing(false);
-    }
-  };
-
-  // Safety dialog controls
-  const handleToggleStatus = (id: string, currentStatus: 'Active' | 'Inactive') => {
-    if (currentStatus === 'Active') {
-      const pending = getPendingOrders(id);
-      if (pending > 0) {
-        setTargetAreaId(id);
-        setModalType('disable');
-        setPendingOrdersCount(pending);
-        setModalWarning(language === 'en' 
-          ? `This area has ${pending} active pending order(s) right now! Disabling it will prevent customers from checking out in this region but will preserve current order routes.` 
-          : `इस क्षेत्र में अभी ${pending} सक्रिय लंबित ऑर्डर हैं! इसे अक्षम करने से नए ऑर्डर रुकेंगे लेकिन सक्रिय ऑर्डर प्रभावित नहीं होंगे।`
-        );
-        setShowConfirmModal(true);
-      } else {
-        // Direct disable
-        setAreas(prev => prev.map(a => a.id === id ? { ...a, status: 'Inactive', updated_at: new Date().toISOString() } : a));
-        const area = areas.find(a => a.id === id);
-        addAuditLog(id, area?.area_name || '', "Disable", "Disabled delivery service in area (No active pending orders)");
-      }
-    } else {
-      // Direct enable
-      setAreas(prev => prev.map(a => a.id === id ? { ...a, status: 'Active', updated_at: new Date().toISOString() } : a));
-      const area = areas.find(a => a.id === id);
-      addAuditLog(id, area?.area_name || '', "Enable", "Re-enabled delivery service in area");
-    }
-  };
-
-  const handleDeleteArea = (id: string) => {
-    const pending = getPendingOrders(id);
-    setTargetAreaId(id);
-    setModalType('delete');
-    setPendingOrdersCount(pending);
-    
-    if (pending > 0) {
-      setModalWarning(language === 'en' 
-        ? `CRITICAL ERROR: Deletion is blocked! There are ${pending} active pending orders inside this service area. You must fulfill or cancel these orders before deleting this boundary.` 
-        : `महत्वपूर्ण चेतावनी: विलोपन अवरुद्ध है! इस क्षेत्र में ${pending} सक्रिय ऑर्डर लंबित हैं। हटाने से पहले इन्हें पूरा या रद्द करें।`
-      );
-    } else {
-      setModalWarning(language === 'en' 
-        ? `Are you sure you want to permanently delete this service area? All delivery boundary coordinates will be removed. This action is irreversible.` 
-        : `क्या आप वाकई इस वितरण क्षेत्र को स्थायी रूप से हटाना चाहते हैं? सभी सीमा निर्देशांक हटा दिए जाएंगे। यह क्रिया अपरिवर्तनीय है।`
-      );
-    }
-    setShowConfirmModal(true);
-  };
-
-  const confirmSafetyAction = () => {
-    if (!targetAreaId) return;
-
-    const area = areas.find(a => a.id === targetAreaId);
-    if (!area) return;
-
-    if (modalType === 'disable') {
-      setAreas(prev => prev.map(a => a.id === targetAreaId ? { ...a, status: 'Inactive', updated_at: new Date().toISOString() } : a));
-      addAuditLog(targetAreaId, area.area_name, "Disable", `Forced disabled with ${pendingOrdersCount} pending active orders.`);
-    } else if (modalType === 'delete') {
-      if (pendingOrdersCount > 0) {
-        // Blocked delete
-        setShowConfirmModal(false);
-        alert(language === 'en' 
-          ? 'Cannot delete service area with pending active orders! Fulfill the orders first.' 
-          : 'सक्रिय लंबित ऑर्डरों के कारण सेवा क्षेत्र को नहीं हटाया जा सकता!'
-        );
-        return;
-      }
-      setAreas(prev => prev.filter(a => a.id !== targetAreaId));
-      addAuditLog(targetAreaId, area.area_name, "Delete", `Permanently deleted service area boundary from catalog.`);
-      if (selectedAreaId === targetAreaId) {
-        const remaining = areas.filter(a => a.id !== targetAreaId);
-        if (remaining.length > 0) setSelectedAreaId(remaining[0].id);
-      }
-    }
-    setShowConfirmModal(false);
-    setTargetAreaId(null);
-  };
-
-  // Bulk Operations
-  const handleApplyBulkAction = () => {
-    if (selectedRowIds.length === 0) {
-      alert(language === 'en' ? 'No service areas selected' : 'कोई सेवा क्षेत्र चयनित नहीं है');
-      return;
-    }
-
-    if (bulkAction === 'enable') {
-      setAreas(prev => prev.map(a => selectedRowIds.includes(a.id) ? { ...a, status: 'Active' } : a));
-      selectedRowIds.forEach(id => {
-        const area = areas.find(a => a.id === id);
-        addAuditLog(id, area?.area_name || '', "Enable", "Bulk enabled via Admin console");
-      });
-      setSelectedRowIds([]);
-      setBulkAction('');
-    } else if (bulkAction === 'disable') {
-      // Check if any selected area has active orders
-      const areasWithOrders = selectedRowIds.filter(id => getPendingOrders(id) > 0);
-      if (areasWithOrders.length > 0) {
-        const names = areasWithOrders.map(id => areas.find(a => a.id === id)?.area_name).join(', ');
-        alert(language === 'en' 
-          ? `Bulk action stopped! The following areas have pending active orders: ${names}. Fulfill them before bulk disabling.` 
-          : `थोक कार्रवाई रुकी! निम्नलिखित क्षेत्रों में लंबित आर्डर हैं: ${names}।`
-        );
-        return;
-      }
-
-      setAreas(prev => prev.map(a => selectedRowIds.includes(a.id) ? { ...a, status: 'Inactive' } : a));
-      selectedRowIds.forEach(id => {
-        const area = areas.find(a => a.id === id);
-        addAuditLog(id, area?.area_name || '', "Disable", "Bulk disabled via Admin console");
-      });
-      setSelectedRowIds([]);
-      setBulkAction('');
-    } else if (bulkAction === 'delete') {
-      const areasWithOrders = selectedRowIds.filter(id => getPendingOrders(id) > 0);
-      if (areasWithOrders.length > 0) {
-        const names = areasWithOrders.map(id => areas.find(a => a.id === id)?.area_name).join(', ');
-        alert(language === 'en' 
-          ? `Bulk deletion blocked! Active pending orders exist in: ${names}.` 
-          : `थोक विलोपन अवरुद्ध! इनमें सक्रिय आर्डर हैं: ${names}।`
-        );
-        return;
-      }
-
-      if (confirm(language === 'en' ? `Are you sure you want to bulk-delete ${selectedRowIds.length} service area(s)?` : `क्या आप वाकई ${selectedRowIds.length} सेवा क्षेत्रों को थोक में हटाना चाहते हैं?`)) {
-        setAreas(prev => prev.filter(a => !selectedRowIds.includes(a.id)));
-        selectedRowIds.forEach(id => {
-          const area = areas.find(a => a.id === id);
-          addAuditLog(id, area?.area_name || '', "Delete", "Bulk deleted permanently");
-        });
-        setSelectedRowIds([]);
-        setBulkAction('');
-      }
-    }
-  };
-
-  // CSV Exporter (Real client-side downloader)
-  const exportToCSV = () => {
-    const headers = ["ID", "Area Name", "Pincode", "City", "State", "Status", "Delivery Charge", "Min Order Amount", "Free Delivery Above", "Est. Time", "Max Distance KM", "Total Orders", "Active Customers", "Revenue"];
-    const rows = areas.map(a => [
-      a.id,
-      `"${a.area_name}"`,
-      a.pincode,
-      a.city,
-      a.state,
-      a.status,
-      a.delivery_charge,
-      a.minimum_order_amount,
-      a.free_delivery_above,
-      `"${a.estimated_delivery_time}"`,
-      a.max_distance_km,
-      a.total_orders,
-      a.active_customers,
-      a.revenue
-    ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `maudaha_mart_service_areas_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    if (onAddActivity) {
-      onAddActivity("admin", "Exported delivery service area configuration as CSV sheet", "सेवा क्षेत्र विन्यास को CSV शीट के रूप में निर्यात किया");
-    }
-  };
-
-  // Map mouse event trackers for polygon dragging
-  const handleMapMouseDown = (index: number) => {
-    setDraggingIndex(index);
-  };
-
-  const handleMapMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (draggingIndex === null || !selectedArea || !mapContainerRef.current) return;
-
-    // Get mouse position inside SVG
-    const rect = mapContainerRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    // Constrain inside map box (0 to 500)
-    const boundedX = Math.max(10, Math.min(490, mouseX));
-    const boundedY = Math.max(10, Math.min(490, mouseY));
-
-    // Convert pixel coordinates to lat/lng
-    const newLat = yToLat(boundedY);
-    const newLng = xToLng(boundedX);
-
-    // Update coordinate in the active polygon
-    const updatedCoordinates = [...selectedArea.polygon_coordinates];
-    updatedCoordinates[draggingIndex] = { lat: Number(newLat.toFixed(5)), lng: Number(newLng.toFixed(5)) };
-
-    setAreas(prev => prev.map(a => {
-      if (a.id === selectedArea.id) {
-        return {
-          ...a,
-          polygon_coordinates: updatedCoordinates,
-          updated_at: new Date().toISOString()
-        };
-      }
-      return a;
-    }));
-  };
-
-  const handleMapMouseUp = () => {
-    if (draggingIndex !== null && selectedArea) {
-      addAuditLog(selectedArea.id, selectedArea.area_name, "Map Edit", `Dragged boundary polygon vertex ${draggingIndex + 1} to customize delivery coordinates.`);
-    }
-    setDraggingIndex(null);
-  };
-
-  // Quick reset / auto-align polygon to beautiful default circle bounds
-  const resetAreaPolygon = () => {
-    if (!selectedArea) return;
-    const offset = selectedArea.max_distance_km * 0.0035; // mapping KM to Lat/Lng offsets
-    const resetPoly = [
-      { lat: MAP_CENTER.lat + offset, lng: MAP_CENTER.lng - offset },
-      { lat: MAP_CENTER.lat + offset, lng: MAP_CENTER.lng + offset },
-      { lat: MAP_CENTER.lat - offset, lng: MAP_CENTER.lng + offset },
-      { lat: MAP_CENTER.lat - offset, lng: MAP_CENTER.lng - offset }
-    ];
-
-    setAreas(prev => prev.map(a => {
-      if (a.id === selectedArea.id) {
-        return {
-          ...a,
-          polygon_coordinates: resetPoly,
-          updated_at: new Date().toISOString()
-        };
-      }
-      return a;
-    }));
-    addAuditLog(selectedArea.id, selectedArea.area_name, "Map Reset", `Reset polygon coordinates to standard delivery radius bounds (${selectedArea.max_distance_km} KM).`);
-  };
-
-  // Add click to add custom polygon vertex point
-  const handleMapClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    // Only allow adding vertex if clicking map without dragging, and with shift key or custom mode
-    if (draggingIndex !== null || !selectedArea || !mapContainerRef.current) return;
-    
-    // If clicking close to existing point, don't add
-    const rect = mapContainerRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    // Verify if clicked a node
-    let clickedNode = false;
-    selectedArea.polygon_coordinates.forEach((coord) => {
-      const px = lngToX(coord.lng);
-      const py = latToY(coord.lat);
-      const dist = Math.sqrt((px - mouseX) ** 2 + (py - mouseY) ** 2);
-      if (dist < 15) clickedNode = true;
+  // --- Multi-Tenant Data Filters ---
+  // Helper to check if a user is in this service area
+  const getAreaUsers = () => {
+    return users.filter(u => {
+      if (u.serviceAreaId) return u.serviceAreaId === selectedArea.id;
+      // Fallback: If no serviceAreaId is specified, map to 'area-maudaha' (Maudaha Central)
+      return selectedArea.id === 'area-maudaha';
     });
-
-    if (clickedNode) return;
-
-    // Add point to polygon if double click or Alt key pressed
-    if (e.altKey || e.shiftKey) {
-      const clickLat = yToLat(mouseY);
-      const clickLng = xToLng(mouseX);
-      const updated = [...selectedArea.polygon_coordinates, { lat: Number(clickLat.toFixed(5)), lng: Number(clickLng.toFixed(5)) }];
-      
-      setAreas(prev => prev.map(a => {
-        if (a.id === selectedArea.id) {
-          return {
-            ...a,
-            polygon_coordinates: updated,
-            updated_at: new Date().toISOString()
-          };
-        }
-        return a;
-      }));
-      addAuditLog(selectedArea.id, selectedArea.area_name, "Map Vertex Add", `Added vertex point ${updated.length} to boundary polygon.`);
-    }
   };
 
-  // Dynamic calculations based on slider radius (1 KM to 50 KM)
-  // Let's check which local villages fall inside the radius
-  const coveredSites = LOCAL_SITES.filter(site => {
-    const dist = getDistanceKm(MAP_CENTER.lat, MAP_CENTER.lng, site.lat, site.lng);
-    return dist <= radiusKm;
-  });
+  const handleTestCoordinate = () => {
+    const latNum = parseFloat(testLat);
+    const lngNum = parseFloat(testLng);
+    if (isNaN(latNum) || isNaN(lngNum)) {
+      alert('Please enter valid numeric latitude and longitude coordinates.');
+      return;
+    }
+    const isInside = isCoordinateInPolygon(latNum, lngNum, selectedArea.polygon_coordinates || []);
+    setTestResult(isInside ? 'inside' : 'outside');
+  };
 
-  const totalPopulationCovered = coveredSites.reduce((sum, s) => sum + s.pop, 0);
-  const estimatedCustomers = Math.round(totalPopulationCovered * 0.18); // 18% penetration rate in Maudaha
+  // Helper to check if a store, restaurant, or boutique is in this area
+  const getAreaStores = () => {
+    const sList = stores.filter(s => (s as any).serviceAreaId === selectedArea.id || (!(s as any).serviceAreaId && selectedArea.id === 'area-maudaha'));
+    const rList = restaurants.filter(r => (r as any).serviceAreaId === selectedArea.id || (!(r as any).serviceAreaId && selectedArea.id === 'area-maudaha'));
+    const bList = boutiques.filter(b => (b as any).serviceAreaId === selectedArea.id || (!(b as any).serviceAreaId && selectedArea.id === 'area-maudaha'));
+    
+    return [
+      ...sList.map(s => ({ ...s, type: 'Grocery/General' })),
+      ...rList.map(r => ({ ...r, type: 'Restaurant/Food' })),
+      ...bList.map(b => ({ ...b, type: 'Boutique/Fashion' }))
+    ];
+  };
 
-  // Calculations for KPI Cards
-  const totalAreas = areas.length;
-  const activeAreasCount = areas.filter(a => a.status === 'Active').length;
-  const inactiveAreasCount = areas.filter(a => a.status === 'Inactive').length;
-  const totalOrdersVal = areas.reduce((sum, a) => sum + a.total_orders, 0);
-  const todayOrdersVal = Math.round(areas.reduce((sum, a) => sum + a.monthly_orders, 0) / 30);
-  const totalCustomersVal = areas.reduce((sum, a) => sum + a.active_customers, 0);
+  // Helper to check products in this area
+  const getAreaProducts = () => {
+    const sIds = new Set(stores.filter(s => (s as any).serviceAreaId === selectedArea.id || (!(s as any).serviceAreaId && selectedArea.id === 'area-maudaha')).map(s => s.id));
+    return products.filter(p => sIds.has(p.storeId));
+  };
+
+  // Helper to check orders placed in this area
+  const getAreaOrders = () => {
+    return orders.filter(o => {
+      if ((o as any).serviceAreaId) return (o as any).serviceAreaId === selectedArea.id;
+      // Fallback
+      return selectedArea.id === 'area-maudaha';
+    });
+  };
+
+  // Helper to get delivery boys (riders) assigned to this area
+  const getAreaRiders = () => {
+    return users.filter(u => u.role === 'rider' && (u.assignedArea === selectedArea.id || u.serviceAreaId === selectedArea.id || (!u.serviceAreaId && selectedArea.id === 'area-maudaha')));
+  };
+
+  // Helper to get support tickets from this area
+  const getAreaTickets = () => {
+    return supportTickets.filter(t => {
+      if ((t as any).serviceAreaId) return (t as any).serviceAreaId === selectedArea.id;
+      // Or map via user location matching
+      const user = users.find(u => u.id === t.userId);
+      if (user) {
+        if (user.serviceAreaId) return user.serviceAreaId === selectedArea.id;
+        return selectedArea.id === 'area-maudaha';
+      }
+      return selectedArea.id === 'area-maudaha';
+    });
+  };
+
+  // --- Actions ---
+  const handleToggleStatus = () => {
+    const updated = serviceAreas.map(area => {
+      if (area.id === selectedArea.id) {
+        return {
+          ...area,
+          status: area.status === 'Active' ? 'Inactive' : 'Active' as 'Active' | 'Inactive',
+          updated_at: new Date().toISOString()
+        };
+      }
+      return area;
+    });
+    onUpdateServiceAreas(updated);
+  };
+
+  const handleUpdateNumericField = (field: keyof ServiceArea, val: number) => {
+    const updated = serviceAreas.map(area => {
+      if (area.id === selectedArea.id) {
+        return {
+          ...area,
+          [field]: val,
+          updated_at: new Date().toISOString()
+        };
+      }
+      return area;
+    });
+    onUpdateServiceAreas(updated);
+  };
+
+  const handleUpdateStringField = (field: keyof ServiceArea, val: string) => {
+    const updated = serviceAreas.map(area => {
+      if (area.id === selectedArea.id) {
+        return {
+          ...area,
+          [field]: val,
+          updated_at: new Date().toISOString()
+        };
+      }
+      return area;
+    });
+    onUpdateServiceAreas(updated);
+  };
+
+  const handleAddSlot = () => {
+    if (!newSlot.trim()) return;
+    const currentSlots = selectedArea.delivery_slots || [];
+    if (currentSlots.includes(newSlot.trim())) return;
+
+    const updated = serviceAreas.map(area => {
+      if (area.id === selectedArea.id) {
+        return {
+          ...area,
+          delivery_slots: [...currentSlots, newSlot.trim()],
+          updated_at: new Date().toISOString()
+        };
+      }
+      return area;
+    });
+    onUpdateServiceAreas(updated);
+    setNewSlot('');
+  };
+
+  const handleRemoveSlot = (slotToRemove: string) => {
+    const currentSlots = selectedArea.delivery_slots || [];
+    const updated = serviceAreas.map(area => {
+      if (area.id === selectedArea.id) {
+        return {
+          ...area,
+          delivery_slots: currentSlots.filter(s => s !== slotToRemove),
+          updated_at: new Date().toISOString()
+        };
+      }
+      return area;
+    });
+    onUpdateServiceAreas(updated);
+  };
+
+  const handleToggleDeliveryType = (type: string) => {
+    const currentTypes = selectedArea.delivery_types || [];
+    let updatedTypes: string[];
+    if (currentTypes.includes(type)) {
+      updatedTypes = currentTypes.filter(t => t !== type);
+    } else {
+      updatedTypes = [...currentTypes, type];
+    }
+
+    const updated = serviceAreas.map(area => {
+      if (area.id === selectedArea.id) {
+        return {
+          ...area,
+          delivery_types: updatedTypes,
+          updated_at: new Date().toISOString()
+        };
+      }
+      return area;
+    });
+    onUpdateServiceAreas(updated);
+  };
+
+  const handleAddCoordinate = () => {
+    const lat = parseFloat(newLat);
+    const lng = parseFloat(newLng);
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const currentCoords = selectedArea.polygon_coordinates || [];
+    const updated = serviceAreas.map(area => {
+      if (area.id === selectedArea.id) {
+        return {
+          ...area,
+          polygon_coordinates: [...currentCoords, { lat, lng }],
+          updated_at: new Date().toISOString()
+        };
+      }
+      return area;
+    });
+    onUpdateServiceAreas(updated);
+    setNewLat('');
+    setNewLng('');
+  };
+
+  const handleRemoveCoordinate = (index: number) => {
+    const currentCoords = selectedArea.polygon_coordinates || [];
+    const updated = serviceAreas.map(area => {
+      if (area.id === selectedArea.id) {
+        return {
+          ...area,
+          polygon_coordinates: currentCoords.filter((_, i) => i !== index),
+          updated_at: new Date().toISOString()
+        };
+      }
+      return area;
+    });
+    onUpdateServiceAreas(updated);
+  };
+
+  const handleCreateArea = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newArea.area_name.trim() || !newArea.pincode.trim() || !newArea.city.trim()) return;
+
+    const newId = `area-${newArea.area_name.toLowerCase().replace(/\s+/g, '-')}`;
+    
+    // Create actual unique ServiceArea
+    const created: ServiceArea = {
+      id: newId,
+      area_name: newArea.area_name,
+      pincode: newArea.pincode,
+      city: newArea.city,
+      state: newArea.state,
+      delivery_charge: newArea.delivery_charge,
+      free_delivery_above: newArea.free_delivery_above,
+      minimum_order_amount: newArea.minimum_order_amount,
+      estimated_delivery_time: newArea.estimated_delivery_time,
+      max_distance_km: newArea.max_distance_km,
+      polygon_coordinates: [
+        { lat: 25.680, lng: 80.120 },
+        { lat: 25.688, lng: 80.130 },
+        { lat: 25.672, lng: 80.140 }
+      ],
+      status: 'Active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      total_orders: 0,
+      monthly_orders: 0,
+      active_customers: 0,
+      revenue: 0,
+      average_delivery_time: '25 mins',
+      cancellation_rate: 0.0,
+      delivery_slots: ["Instant Delivery", "Evening Rush (05:00 PM - 09:00 PM)"],
+      delivery_types: ["Instant", "Scheduled"]
+    };
+
+    onUpdateServiceAreas([...serviceAreas, created]);
+    setSelectedAreaId(newId);
+    setShowAddModal(false);
+    
+    // Reset form
+    setNewArea({
+      area_name: '',
+      pincode: '',
+      city: '',
+      state: 'Uttar Pradesh',
+      delivery_charge: 15,
+      free_delivery_above: 199,
+      minimum_order_amount: 49,
+      estimated_delivery_time: '15-30 Mins',
+      max_distance_km: 5,
+    });
+  };
+
+  const handleAddCoupon = () => {
+    if (!newCouponCode.trim()) return;
+    const code = newCouponCode.trim().toUpperCase();
+    
+    const areaCoupons = customCoupons[selectedArea.id] || [];
+    if (areaCoupons.some(c => c.code === code)) return;
+
+    const newCoupon = {
+      id: `coupon-${Date.now()}`,
+      code,
+      discount: newCouponDiscount,
+      minOrder: newCouponMinOrder
+    };
+
+    setCustomCoupons(prev => ({
+      ...prev,
+      [selectedArea.id]: [...areaCoupons, newCoupon]
+    }));
+
+    setNewCouponCode('');
+  };
+
+  const handleRemoveCoupon = (id: string) => {
+    const areaCoupons = customCoupons[selectedArea.id] || [];
+    setCustomCoupons(prev => ({
+      ...prev,
+      [selectedArea.id]: areaCoupons.filter(c => c.id !== id)
+    }));
+  };
+
+  const areaUsers = getAreaUsers();
+  const areaStores = getAreaStores();
+  const areaProducts = getAreaProducts();
+  const areaOrders = getAreaOrders();
+  const areaRiders = getAreaRiders();
+  const areaTickets = getAreaTickets();
+  const areaCoupons = customCoupons[selectedArea.id] || [];
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left max-w-7xl mx-auto px-4 py-8">
       
-      {/* Header and Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-            <MapPin className="h-5 w-5" />
-            <h2 className="text-lg font-black tracking-tight uppercase">
-              {language === 'en' ? 'Service Area Management' : 'सेवा क्षेत्र प्रबंधन'}
-            </h2>
-            <span className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
-              {language === 'en' ? 'Maudaha Hub Only' : 'केवल मौदहा हब'}
-            </span>
+      {/* --- SIDEBAR: Available Service Areas --- */}
+      <div className="lg:col-span-4 space-y-6">
+        <div className="bg-slate-900 text-white rounded-3xl p-6 shadow-xl border border-slate-800 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+          
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold tracking-tight">Service Areas</h2>
+            <button 
+              onClick={() => setShowAddModal(true)}
+              className="p-2 bg-amber-500 text-slate-900 hover:bg-amber-400 rounded-xl transition duration-200 flex items-center justify-center shadow-lg shadow-amber-500/15"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            {language === 'en' 
-              ? 'Define geofenced delivery boundaries, regulate charges, review village demographics coverage, and monitor local cancellation rates.' 
-              : 'भू-सीमाएं परिभाषित करें, शुल्क नियंत्रित करें, गांव जनसांख्यिकी कवरेज की समीक्षा करें और स्थानीय रद्दीकरण दरों की निगरानी करें।'}
+          <p className="text-xs text-slate-400 font-medium">
+            Active service areas partitioned for absolute multi-tenant customer, rider, and seller isolation.
           </p>
         </div>
 
-        {/* Top tab menu toggles */}
-        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl">
-          <button 
-            onClick={() => { setActiveSubTab('list'); setIsEditing(false); setIsAdding(false); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              activeSubTab === 'list' && !isEditing && !isAdding
-                ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-xs' 
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
-            }`}
-          >
-            <List className="h-3.5 w-3.5" />
-            <span>{language === 'en' ? 'Area List' : 'क्षेत्र सूची'}</span>
-          </button>
-          <button 
-            onClick={() => { setActiveSubTab('map'); setIsEditing(false); setIsAdding(false); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              activeSubTab === 'map'
-                ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-xs' 
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
-            }`}
-          >
-            <MapIcon className="h-3.5 w-3.5" />
-            <span>{language === 'en' ? 'Interactive GIS Map' : 'जीआईएस मानचित्र'}</span>
-          </button>
-          <button 
-            onClick={() => { setActiveSubTab('logs'); setIsEditing(false); setIsAdding(false); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              activeSubTab === 'logs'
-                ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-xs' 
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
-            }`}
-          >
-            <Activity className="h-3.5 w-3.5" />
-            <span>{language === 'en' ? 'Audit Logs' : 'ऑडिट लॉग'}</span>
-          </button>
+        <div className="space-y-3 max-h-[580px] overflow-y-auto pr-1">
+          {serviceAreas.map(area => {
+            const isSelected = area.id === selectedArea.id;
+            return (
+              <button
+                key={area.id}
+                onClick={() => setSelectedAreaId(area.id)}
+                className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 ${
+                  isSelected 
+                    ? 'bg-white border-amber-500 shadow-md ring-1 ring-amber-400' 
+                    : 'bg-slate-50 border-slate-200/70 hover:bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className={`h-4 w-4 ${isSelected ? 'text-amber-500 animate-pulse' : 'text-slate-400'}`} />
+                      <span className="font-bold text-slate-900">{area.area_name}</span>
+                    </div>
+                    <div className="text-xs text-slate-500 font-mono">
+                      PIN: {area.pincode} | {area.city}
+                    </div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                    area.status === 'Active' 
+                      ? 'bg-emerald-50 text-emerald-700' 
+                      : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {area.status}
+                  </span>
+                </div>
+                
+                <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-[10px]">
+                  <div className="space-y-0.5">
+                    <span className="text-slate-400 block font-medium">Orders</span>
+                    <span className="text-slate-700 font-bold font-mono">{area.total_orders || 0}</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-slate-400 block font-medium">Charge</span>
+                    <span className="text-slate-700 font-bold font-mono">₹{area.delivery_charge}</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-slate-400 block font-medium">Min Order</span>
+                    <span className="text-slate-700 font-bold font-mono">₹{area.minimum_order_amount}</span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* 1. Dashboard KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <div className="bg-white dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">{language === 'en' ? 'Total Areas' : 'कुल क्षेत्र'}</span>
-          <p className="text-xl font-mono font-black mt-2 text-slate-800 dark:text-slate-100">{totalAreas}</p>
-          <span className="text-[9px] text-slate-500 mt-1">{language === 'en' ? 'Maudaha block limits' : 'मौदहा ब्लॉक सीमा'}</span>
-        </div>
-        <div className="bg-white dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">{language === 'en' ? 'Active Areas' : 'सक्रिय क्षेत्र'}</span>
-          <p className="text-xl font-mono font-black mt-2 text-emerald-600 dark:text-emerald-400">{activeAreasCount}</p>
-          <span className="text-[9px] text-emerald-600/80 font-bold mt-1">● Live Deliveries</span>
-        </div>
-        <div className="bg-white dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">{language === 'en' ? 'Inactive Areas' : 'अक्रिय क्षेत्र'}</span>
-          <p className="text-xl font-mono font-black mt-2 text-rose-500">{inactiveAreasCount}</p>
-          <span className="text-[9px] text-slate-500 mt-1">{language === 'en' ? 'Operations paused' : 'संचालन स्थगित'}</span>
-        </div>
-        <div className="bg-white dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">{language === 'en' ? 'Total Orders' : 'कुल ऑर्डर'}</span>
-          <p className="text-xl font-mono font-black mt-2 text-slate-800 dark:text-slate-100">{totalOrdersVal.toLocaleString()}</p>
-          <span className="text-[9px] text-emerald-600 font-bold mt-1">99.8% Fulfill rate</span>
-        </div>
-        <div className="bg-white dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">{language === 'en' ? "Today's Orders" : 'आज के ऑर्डर'}</span>
-          <p className="text-xl font-mono font-black mt-2 text-amber-500">{todayOrdersVal}</p>
-          <span className="text-[9px] text-slate-500 mt-1">{language === 'en' ? 'Running average' : 'चल रहा औसत'}</span>
-        </div>
-        <div className="bg-white dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">{language === 'en' ? 'Total Customers' : 'कुल ग्राहक'}</span>
-          <p className="text-xl font-mono font-black mt-2 text-indigo-500">{totalCustomersVal}</p>
-          <span className="text-[9px] text-indigo-500/80 font-bold mt-1">Active Accounts</span>
-        </div>
-      </div>
-
-      {/* 2. Main Content Split Panel (Form, Map, List depending on selection) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* --- DASHBOARD: Service Area Settings --- */}
+      <div className="lg:col-span-8 space-y-6">
         
-        {/* Left Column (Area list or Logs or main details) */}
-        <div className={`space-y-6 ${activeSubTab === 'map' ? 'lg:col-span-4' : 'lg:col-span-8'}`}>
+        {/* Header Stats */}
+        <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm relative overflow-hidden">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="space-y-1">
+              <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-black uppercase tracking-wider rounded-md inline-block">
+                Service Area ID: {selectedArea.id}
+              </span>
+              <h1 className="text-2xl font-black font-display text-slate-900 tracking-tight flex items-center gap-2">
+                {selectedArea.area_name} Management Hub
+              </h1>
+              <p className="text-sm text-slate-400 font-medium">
+                {selectedArea.city}, {selectedArea.state} — Isolated database metrics & permissions controls.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <span className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 ${
+                selectedArea.status === 'Active' 
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' 
+                  : 'bg-rose-50 text-rose-700 border border-rose-200/60'
+              }`}>
+                {selectedArea.status === 'Active' ? <CheckCircle className="h-4 w-4 text-emerald-600" /> : <XCircle className="h-4 w-4 text-rose-600" />}
+                {selectedArea.status === 'Active' ? 'Open for Business' : 'Closed Area'}
+              </span>
+            </div>
+          </div>
+
+          {/* Core Analytics Blocks for This Service Area */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
+            <div className="p-3 bg-slate-50/60 rounded-2xl border border-slate-100/80">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Orders</span>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-xl font-black font-mono text-slate-800">{areaOrders.length}</span>
+                <span className="text-[10px] text-slate-400">orders</span>
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50/60 rounded-2xl border border-slate-100/80">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Active Customers</span>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-xl font-black font-mono text-slate-800">
+                  {areaUsers.filter(u => u.role === 'customer').length}
+                </span>
+                <span className="text-[10px] text-slate-400">users</span>
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50/60 rounded-2xl border border-slate-100/80">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Shops & Partners</span>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-xl font-black font-mono text-slate-800">{areaStores.length}</span>
+                <span className="text-[10px] text-slate-400">merchants</span>
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50/60 rounded-2xl border border-slate-100/80">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Revenue Stream</span>
+              <div className="flex items-baseline gap-0.5 mt-1">
+                <span className="text-xl font-black font-mono text-slate-800">₹{
+                  areaOrders.reduce((sum, o) => sum + (o.total || 0), 0).toLocaleString()
+                }</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* --- TABS BAR --- */}
+        <div className="bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/40 flex flex-wrap gap-1">
+          {[
+            { id: 'controls', label: 'Controls', icon: ToggleLeft },
+            { id: 'boundary', label: 'Boundary', icon: Map },
+            { id: 'users', label: 'Users', icon: Users, badge: areaUsers.length },
+            { id: 'shops', label: 'Sellers', icon: Store, badge: areaStores.length },
+            { id: 'products', label: 'Products', icon: Package, badge: areaProducts.length },
+            { id: 'orders', label: 'Orders', icon: ShoppingCart, badge: areaOrders.length },
+            { id: 'riders', label: 'Riders', icon: Truck, badge: areaRiders.length },
+            { id: 'timing', label: 'Timing', icon: Clock },
+            { id: 'coupons', label: 'Coupons', icon: Tag, badge: areaCoupons.length },
+            { id: 'tickets', label: 'Tickets', icon: LifeBuoy, badge: areaTickets.length }
+          ].map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as TabType)}
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all duration-150 ${
+                  isActive 
+                    ? 'bg-slate-900 text-white shadow-sm' 
+                    : 'text-slate-600 hover:bg-slate-200 hover:text-slate-800'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span>{tab.label}</span>
+                {tab.badge !== undefined && (
+                  <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black ${
+                    isActive ? 'bg-amber-500 text-slate-950' : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* --- TAB CONTENT AREA --- */}
+        <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm min-h-[400px]">
           
-          {/* Add / Edit Form override */}
-          {isEditing || isAdding ? (
-            <div className="bg-white dark:bg-slate-950 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-900 pb-3">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Edit2 className="h-3.5 w-3.5 text-emerald-600" />
-                  {isAdding 
-                    ? (language === 'en' ? 'Register New Service Boundary' : 'नया सेवा सीमा पंजीकृत करें')
-                    : (language === 'en' ? `Edit Service Area - ${formAreaName}` : `सेवा क्षेत्र संपादित करें - ${formAreaName}`)
-                  }
-                </h3>
+          {/* TAB: CONTROLS */}
+          {activeTab === 'controls' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div className="space-y-0.5 text-left">
+                  <h3 className="font-bold text-slate-900">Service Area Operational Status</h3>
+                  <p className="text-xs text-slate-400 font-medium">Turn off to completely halt deliveries and order placement in this area.</p>
+                </div>
                 <button 
-                  onClick={() => { setIsEditing(false); setIsAdding(false); }}
-                  className="p-1 rounded-full text-slate-400 hover:text-slate-600 cursor-pointer"
+                  onClick={handleToggleStatus}
+                  className="focus:outline-none transition duration-200 active:scale-95"
                 >
-                  <X className="h-4 w-4" />
+                  {selectedArea.status === 'Active' ? (
+                    <ToggleRight className="h-14 w-14 text-emerald-500" />
+                  ) : (
+                    <ToggleLeft className="h-14 w-14 text-slate-300" />
+                  )}
                 </button>
               </div>
 
-              {formError && (
-                <div className="bg-rose-50 dark:bg-rose-950/20 text-rose-600 p-2.5 rounded-xl text-xs flex items-center gap-1.5">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>{formError}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Delivery Charge */}
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase text-slate-400 block tracking-wider">Delivery Fee (₹)</label>
+                  <div className="flex items-center gap-4">
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="100" 
+                      value={selectedArea.delivery_charge}
+                      onChange={(e) => handleUpdateNumericField('delivery_charge', parseInt(e.target.value))}
+                      className="w-full accent-slate-900" 
+                    />
+                    <span className="font-mono font-bold bg-slate-50 border px-3 py-1.5 rounded-xl text-slate-800 text-sm min-w-[50px] text-center">
+                      ₹{selectedArea.delivery_charge}
+                    </span>
+                  </div>
                 </div>
-              )}
 
-              <form onSubmit={handleSaveForm} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                      {language === 'en' ? 'Area Name *' : 'क्षेत्र का नाम *'}
-                    </label>
+                {/* Free Delivery Above */}
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase text-slate-400 block tracking-wider">Free Delivery Minimum (₹)</label>
+                  <div className="flex items-center gap-4">
+                    <input 
+                      type="number" 
+                      value={selectedArea.free_delivery_above}
+                      onChange={(e) => handleUpdateNumericField('free_delivery_above', parseInt(e.target.value) || 0)}
+                      className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-slate-800 text-sm font-mono font-bold" 
+                    />
+                  </div>
+                </div>
+
+                {/* Minimum Checkout Amount */}
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase text-slate-400 block tracking-wider">Minimum Checkout Threshold (₹)</label>
+                  <div className="flex items-center gap-4">
+                    <input 
+                      type="number" 
+                      value={selectedArea.minimum_order_amount}
+                      onChange={(e) => handleUpdateNumericField('minimum_order_amount', parseInt(e.target.value) || 0)}
+                      className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-slate-800 text-sm font-mono font-bold" 
+                    />
+                  </div>
+                </div>
+
+                {/* Estimated Delivery Time */}
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase text-slate-400 block tracking-wider">Estimated Delivery Speed</label>
+                  <div className="flex items-center gap-4">
                     <input 
                       type="text" 
-                      value={formAreaName}
-                      onChange={(e) => setFormAreaName(e.target.value)}
-                      placeholder={language === 'en' ? "e.g., Maudaha Town East" : "जैसे, मौदहा पूर्व"}
-                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden dark:text-white"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                      {language === 'en' ? 'Pincode *' : 'पिनकोड *'}
-                    </label>
-                    <input 
-                      type="text" 
-                      maxLength={6}
-                      value={formPincode}
-                      onChange={(e) => setFormPincode(e.target.value)}
-                      placeholder="210424"
-                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden dark:text-white font-mono"
+                      value={selectedArea.estimated_delivery_time}
+                      onChange={(e) => handleUpdateStringField('estimated_delivery_time', e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-slate-800 text-sm font-bold" 
                     />
                   </div>
                 </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                    {language === 'en' ? 'Village / Localities Covered' : 'कवर किए गए गांव / इलाके'}
-                  </label>
-                  <input 
-                    type="text" 
-                    value={formVillageLocality}
-                    onChange={(e) => setFormVillageLocality(e.target.value)}
-                    placeholder={language === 'en' ? "List main neighborhoods, e.g. Devi Mandir Ward, Rahmanpur Road" : "मुख्य इलाकों को सूचीबद्ध करें"}
-                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden dark:text-white"
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                      {language === 'en' ? 'Delivery Charge (₹)' : 'वितरण शुल्क (₹)'}
-                    </label>
-                    <input 
-                      type="number" 
-                      min={0}
-                      value={formDeliveryCharge}
-                      onChange={(e) => setFormDeliveryCharge(Number(e.target.value))}
-                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden dark:text-white"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                      {language === 'en' ? 'Min Order (₹)' : 'न्यूनतम ऑर्डर (₹)'}
-                    </label>
-                    <input 
-                      type="number" 
-                      min={0}
-                      value={formMinimumOrder}
-                      onChange={(e) => setFormMinimumOrder(Number(e.target.value))}
-                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden dark:text-white"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                      {language === 'en' ? 'Free Delivery Above (₹)' : 'इस राशि से ऊपर मुफ्त वितरण (₹)'}
-                    </label>
-                    <input 
-                      type="number" 
-                      min={0}
-                      value={formFreeDeliveryAbove}
-                      onChange={(e) => setFormFreeDeliveryAbove(Number(e.target.value))}
-                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden dark:text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                      {language === 'en' ? 'Est. Time' : 'अनुमानित समय'}
-                    </label>
-                    <input 
-                      type="text" 
-                      value={formEstDeliveryTime}
-                      onChange={(e) => setFormEstDeliveryTime(e.target.value)}
-                      placeholder="15-25 mins"
-                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden dark:text-white"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                      {language === 'en' ? 'Max Radius (KM)' : 'अधिकतम त्रिज्या (KM)'}
-                    </label>
-                    <input 
-                      type="number" 
-                      min={1}
-                      max={50}
-                      value={formMaxDistance}
-                      onChange={(e) => setFormMaxDistance(Number(e.target.value))}
-                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden dark:text-white"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                      {language === 'en' ? 'Status' : 'स्थिति'}
-                    </label>
-                    <select 
-                      value={formStatus}
-                      onChange={(e) => setFormStatus(e.target.value as 'Active' | 'Inactive')}
-                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden dark:text-white"
-                    >
-                      <option value="Active">{language === 'en' ? 'Active' : 'सक्रिय'}</option>
-                      <option value="Inactive">{language === 'en' ? 'Inactive' : 'अक्रिय'}</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">City</label>
-                    <input type="text" disabled value={formCity} className="w-full bg-slate-100 dark:bg-slate-900 text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">State</label>
-                    <input type="text" disabled value={formState} className="w-full bg-slate-100 dark:bg-slate-900 text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs" />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-900">
-                  <button 
-                    type="button" 
-                    onClick={() => { setIsEditing(false); setIsAdding(false); }}
-                    className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 rounded-xl cursor-pointer"
-                  >
-                    {language === 'en' ? 'Cancel' : 'रद्द करें'}
-                  </button>
-                  <button 
-                    type="submit" 
-                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl cursor-pointer shadow-xs shadow-emerald-600/10"
-                  >
-                    <Save className="h-3.5 w-3.5" />
-                    <span>{language === 'en' ? 'Save Service Area' : 'सेवा क्षेत्र सहेजें'}</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          ) : activeSubTab === 'logs' ? (
-            
-            /* --- Audit Logs Sub-tab --- */
-            <div className="bg-white dark:bg-slate-950 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Activity className="h-4 w-4 text-emerald-600" />
-                  {language === 'en' ? 'Service Area Administrative Audit Logs' : 'सेवा क्षेत्र प्रशासनिक ऑडिट लॉग'}
-                </h3>
-                <span className="text-[10px] font-mono text-slate-400">
-                  {auditLogs.length} events logged
-                </span>
               </div>
+            </div>
+          )}
 
-              <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2">
-                {auditLogs.map((log) => (
-                  <div key={log.id} className="relative pl-6 border-l border-slate-100 dark:border-slate-900 pb-4 last:pb-0">
-                    <div className="absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-slate-950 bg-emerald-500 shadow-xs" />
-                    <div className="flex items-center justify-between text-[10px]">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-slate-700 dark:text-slate-200">{log.changed_by}</span>
-                        <span className={`px-1.5 py-0.2 rounded font-black text-[9px] ${
-                          log.action === 'Create' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40' :
-                          log.action === 'Disable' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/40' :
-                          log.action === 'Delete' ? 'bg-slate-100 text-slate-700 dark:bg-slate-950/40' :
-                          'bg-amber-100 text-amber-700 dark:bg-amber-950/40'
-                        }`}>
-                          {log.action}
+          {/* TAB: MAP BOUNDARY */}
+          {activeTab === 'boundary' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                
+                {/* SVG Visual Polygon Grid Mockup */}
+                <div className="md:col-span-7 bg-slate-900 rounded-3xl p-4 border border-slate-800 relative min-h-[280px] flex items-center justify-center overflow-hidden">
+                  <div className="absolute top-2 left-2 px-2 py-0.5 bg-slate-950/80 border border-slate-800 text-slate-400 rounded text-[9px] font-mono tracking-wider">
+                    Interactive Grid & Geo-fence
+                  </div>
+                  
+                  {/* Grid Lines */}
+                  <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:24px_24px] opacity-40"></div>
+                  
+                  {/* Render SVG Polygon */}
+                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    {/* Highlighted Boundary Area */}
+                    <polygon 
+                      points={
+                        (selectedArea.polygon_coordinates || []).map((_, i) => {
+                          // Simple mock positioning
+                          const x = 20 + (i % 3) * 25 + Math.sin(i) * 5;
+                          const y = 20 + Math.floor(i / 2) * 35 + Math.cos(i) * 5;
+                          return `${x},${y}`;
+                        }).join(' ')
+                      } 
+                      className="fill-amber-500/15 stroke-amber-500 stroke-[1.5px]" 
+                      strokeDasharray="2"
+                    />
+                    
+                    {/* Render Coordinates Dots */}
+                    {(selectedArea.polygon_coordinates || []).map((_, i) => {
+                      const x = 20 + (i % 3) * 25 + Math.sin(i) * 5;
+                      const y = 20 + Math.floor(i / 2) * 35 + Math.cos(i) * 5;
+                      return (
+                        <circle 
+                          key={i} 
+                          cx={x} 
+                          cy={y} 
+                          r="3" 
+                          className="fill-amber-400 stroke-slate-900 stroke-[1px] cursor-pointer hover:r-4 transition-all" 
+                        />
+                      );
+                    })}
+                  </svg>
+                  
+                  <div className="relative z-10 text-center space-y-2 pointer-events-none">
+                    <Map className="h-10 w-10 text-amber-500/80 mx-auto animate-bounce" />
+                    <p className="text-xs text-slate-300 font-bold uppercase tracking-widest">GeoJSON Polygon Locked</p>
+                    <p className="text-[10px] text-slate-500 max-w-xs mx-auto leading-relaxed">
+                      Coordinates create a hardware-level virtual fence restricting buyers & merchants outside bounds.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Coordinates Editor */}
+                <div className="md:col-span-5 space-y-4">
+                  <h3 className="font-bold text-slate-900 text-sm">Polygon Coordinates List</h3>
+                  
+                  <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                    {(selectedArea.polygon_coordinates || []).map((coord, i) => (
+                      <div key={i} className="flex justify-between items-center bg-slate-50 border border-slate-100 p-2 rounded-xl text-xs font-mono font-medium">
+                        <span className="text-slate-600">P{i+1}: {coord.lat.toFixed(4)}, {coord.lng.toFixed(4)}</span>
+                        <button 
+                          onClick={() => handleRemoveCoordinate(i)}
+                          className="p-1 hover:bg-slate-200 rounded text-rose-500"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add coordinate tool */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Latitude" 
+                      value={newLat}
+                      onChange={(e) => setNewLat(e.target.value)}
+                      className="bg-slate-50 border p-2 rounded-xl text-xs font-mono font-bold"
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="Longitude" 
+                      value={newLng}
+                      onChange={(e) => setNewLng(e.target.value)}
+                      className="bg-slate-50 border p-2 rounded-xl text-xs font-mono font-bold"
+                    />
+                  </div>
+                  <button 
+                    onClick={handleAddCoordinate}
+                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
+                  >
+                    <Plus className="h-4 w-4" /> Add Border Landmark Point
+                  </button>
+
+                  {/* Real-time Geofence Boundary Check Simulator */}
+                  <div className="pt-4 border-t border-slate-100 space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/60 mt-4">
+                    <div className="flex items-center gap-1.5">
+                      <span className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600">🎯</span>
+                      <div>
+                        <h4 className="font-extrabold text-xs text-slate-800">Geofence Boundary Validator</h4>
+                        <p className="text-[10px] text-slate-400 font-bold leading-normal">Verify if arbitrary GPS coordinates fall inside the active boundary polygon.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase">Test Latitude</label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. 25.6815" 
+                          value={testLat}
+                          onChange={(e) => {
+                            setTestLat(e.target.value);
+                            setTestResult(null);
+                          }}
+                          className="w-full bg-white border p-2 rounded-xl text-xs font-mono font-extrabold focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase">Test Longitude</label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. 80.1132" 
+                          value={testLng}
+                          onChange={(e) => {
+                            setTestLng(e.target.value);
+                            setTestResult(null);
+                          }}
+                          className="w-full bg-white border p-2 rounded-xl text-xs font-mono font-extrabold focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={handleTestCoordinate}
+                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      Check Geofence Status
+                    </button>
+
+                    {testResult !== null && (
+                      <div className={`p-3 rounded-xl border text-xs font-bold text-center flex flex-col items-center justify-center gap-1 animate-in fade-in duration-300 ${
+                        testResult === 'inside'
+                          ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                          : 'bg-rose-50 border-rose-100 text-rose-700'
+                      }`}>
+                        <span>{testResult === 'inside' ? '✅ INSIDE BOUNDARY' : '❌ OUTSIDE BOUNDARY'}</span>
+                        <span className="text-[10px] font-medium opacity-80">
+                          ({selectedArea.area_name} Operational Region)
                         </span>
                       </div>
-                      <span className="text-slate-400 font-mono">{new Date(log.timestamp).toLocaleString()}</span>
-                    </div>
-                    <div className="mt-1">
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{log.area_name}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{log.details}</p>
-                    </div>
+                    )}
                   </div>
-                ))}
+                </div>
+
               </div>
             </div>
+          )}
 
-          ) : (
-            
-            /* --- Main Service Area List Tab --- */
-            <div className="space-y-4">
-              
-              {/* Filters Panel */}
-              <div className="bg-white dark:bg-slate-950 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-wrap gap-3 items-center justify-between shadow-xs">
-                <div className="flex flex-wrap gap-2.5 items-center">
-                  <input 
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={language === 'en' ? "Search by name or pincode..." : "नाम या पिनकोड से खोजें..."}
-                    className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden dark:text-white w-48 font-bold"
-                  />
-
-                  <select 
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as any)}
-                    className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-300 font-bold"
-                  >
-                    <option value="All">{language === 'en' ? 'All Status' : 'सभी स्थिति'}</option>
-                    <option value="Active">{language === 'en' ? 'Active' : 'सक्रिय'}</option>
-                    <option value="Inactive">{language === 'en' ? 'Inactive' : 'अक्रिय'}</option>
-                  </select>
-
-                  <select 
-                    value={orderCountFilter}
-                    onChange={(e) => setOrderCountFilter(e.target.value as any)}
-                    className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-300 font-bold"
-                  >
-                    <option value="All">{language === 'en' ? 'Orders Volume' : 'ऑर्डर मात्रा'}</option>
-                    <option value="High">&gt; 500 orders</option>
-                    <option value="Low">&lt; 500 orders</option>
-                  </select>
-
-                  <select 
-                    value={revenueFilter}
-                    onChange={(e) => setRevenueFilter(e.target.value as any)}
-                    className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-600 dark:text-slate-300 font-bold"
-                  >
-                    <option value="All">{language === 'en' ? 'Revenue Tiers' : 'राजस्व स्तर'}</option>
-                    <option value="High">₹1,50,000 +</option>
-                    <option value="Medium">₹50,000 - ₹1,50,000</option>
-                    <option value="Low">&lt; ₹50,000</option>
-                  </select>
+          {/* TAB: USERS */}
+          {activeTab === 'users' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h3 className="font-bold text-slate-900 text-sm">Users Registered in {selectedArea.area_name}</h3>
+              {areaUsers.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl border text-slate-400 text-xs font-medium">
+                  No customers registered in this specific area yet.
                 </div>
-
-                <div className="flex gap-2">
-                  <button 
-                    onClick={exportToCSV}
-                    className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs font-black transition cursor-pointer"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    <span>{language === 'en' ? 'CSV Export' : 'CSV निर्यात'}</span>
-                  </button>
-
-                  <button 
-                    onClick={openAddForm}
-                    className="flex items-center gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl px-3.5 py-1.5 text-xs font-black transition shadow-xs cursor-pointer shadow-emerald-600/15"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>{language === 'en' ? 'Add Area' : 'क्षेत्र जोड़ें'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Bulk Actions Panel */}
-              {selectedRowIds.length > 0 && (
-                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-2xl p-3 flex items-center justify-between text-xs animate-fade-in">
-                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold">
-                    <Info className="h-4 w-4 shrink-0" />
-                    <span>Selected {selectedRowIds.length} service area(s)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <select 
-                      value={bulkAction}
-                      onChange={(e) => setBulkAction(e.target.value)}
-                      className="bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 rounded-lg px-2.5 py-1 text-xs text-slate-800 dark:text-slate-200 font-bold"
-                    >
-                      <option value="">{language === 'en' ? 'Choose Action...' : 'कार्रवाई चुनें...'}</option>
-                      <option value="enable">🟢 {language === 'en' ? 'Enable Areas' : 'क्षेत्र सक्षम करें'}</option>
-                      <option value="disable">🔴 {language === 'en' ? 'Disable Areas' : 'क्षेत्र अक्षम करें'}</option>
-                      <option value="delete">🗑️ {language === 'en' ? 'Delete Areas' : 'क्षेत्र हटाएं'}</option>
-                    </select>
-                    <button 
-                      onClick={handleApplyBulkAction}
-                      className="bg-amber-600 text-white hover:bg-amber-700 px-3 py-1 rounded-lg font-black text-xs transition cursor-pointer"
-                    >
-                      {language === 'en' ? 'Apply' : 'लागू करें'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Table List */}
-              <div className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                  <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-900 text-[10px] text-slate-400 font-black uppercase tracking-wider">
-                        <th className="py-3.5 px-4 w-10">
-                          <input 
-                            type="checkbox"
-                            checked={selectedRowIds.length === filteredAreas.length && filteredAreas.length > 0}
-                            onChange={handleSelectAllRows}
-                            className="rounded border-slate-300 dark:border-slate-800 text-emerald-600 focus:ring-emerald-500"
-                          />
-                        </th>
-                        <th className="py-3.5 px-3">{language === 'en' ? 'Area Name' : 'क्षेत्र का नाम'}</th>
-                        <th className="py-3.5 px-3">Pincode</th>
-                        <th className="py-3.5 px-3 text-center">Status</th>
-                        <th className="py-3.5 px-3 text-right">Min Order</th>
-                        <th className="py-3.5 px-3 text-right">Delivery Charge</th>
-                        <th className="py-3.5 px-3">Est. Time</th>
-                        <th className="py-3.5 px-3 text-right">Total Orders</th>
-                        <th className="py-3.5 px-4 text-center">Actions</th>
+                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="p-3">User Name</th>
+                        <th className="p-3">Phone</th>
+                        <th className="p-3">Location Details</th>
+                        <th className="p-3">System Role</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-900 text-xs">
-                      {filteredAreas.length === 0 ? (
-                        <tr>
-                          <td colSpan={9} className="py-8 text-center text-slate-400 font-bold">
-                            {language === 'en' ? 'No service areas match current filter query.' : 'कोई भी सेवा क्षेत्र वर्तमान फिल्टर से मेल नहीं खाता।'}
+                    <tbody>
+                      {areaUsers.map(user => (
+                        <tr key={user.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                          <td className="p-3 font-bold text-slate-800">{user.name}</td>
+                          <td className="p-3 font-mono text-slate-600">{user.phone}</td>
+                          <td className="p-3 text-slate-500">{user.location}</td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold capitalize">
+                              {user.role}
+                            </span>
                           </td>
                         </tr>
-                      ) : (
-                        filteredAreas.map((area) => {
-                          const isSelected = selectedRowIds.includes(area.id);
-                          const isActiveSelection = area.id === selectedAreaId;
-                          
-                          return (
-                            <tr 
-                              key={area.id} 
-                              className={`hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition ${
-                                isSelected ? 'bg-emerald-50/20 dark:bg-emerald-950/10' : ''
-                              } ${isActiveSelection ? 'border-l-4 border-l-emerald-500 bg-slate-50/30' : ''}`}
-                            >
-                              <td className="py-3 px-4">
-                                <input 
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => handleSelectRow(area.id)}
-                                  className="rounded border-slate-300 dark:border-slate-800 text-emerald-600 focus:ring-emerald-500"
-                                />
-                              </td>
-                              <td className="py-3 px-3">
-                                <div>
-                                  <button 
-                                    onClick={() => setSelectedAreaId(area.id)}
-                                    className="font-black text-slate-800 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400 text-left block focus:outline-hidden"
-                                  >
-                                    {area.area_name}
-                                  </button>
-                                  <span className="text-[10px] text-slate-400 font-mono mt-0.5 block truncate max-w-[150px]">
-                                    {area.village_locality || "Maudaha central boundary"}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="py-3 px-3 font-mono font-bold text-slate-500">{area.pincode}</td>
-                              <td className="py-3 px-3 text-center">
-                                <button 
-                                  onClick={() => handleToggleStatus(area.id, area.status)}
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide uppercase transition cursor-pointer ${
-                                    area.status === 'Active' 
-                                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 hover:bg-rose-100 hover:text-rose-800 dark:hover:bg-rose-950/30' 
-                                      : 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400 hover:bg-emerald-100 hover:text-emerald-800 dark:hover:bg-emerald-950/30'
-                                  }`}
-                                >
-                                  {area.status === 'Active' 
-                                    ? (language === 'en' ? 'Active' : 'सक्रिय') 
-                                    : (language === 'en' ? 'Inactive' : 'अक्रिय')
-                                  }
-                                </button>
-                              </td>
-                              <td className="py-3 px-3 text-right font-mono text-slate-600 dark:text-slate-300 font-bold">₹{area.minimum_order_amount}</td>
-                              <td className="py-3 px-3 text-right font-mono font-black text-emerald-600">₹{area.delivery_charge}</td>
-                              <td className="py-3 px-3 text-slate-500 font-semibold">{area.estimated_delivery_time}</td>
-                              <td className="py-3 px-3 text-right font-mono text-slate-500">{area.total_orders}</td>
-                              <td className="py-3 px-4">
-                                <div className="flex items-center justify-center gap-2">
-                                  <button 
-                                    onClick={() => setSelectedAreaId(area.id)}
-                                    title="View Boundary on Map"
-                                    className="p-1 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-900 cursor-pointer transition"
-                                  >
-                                    <MapIcon className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button 
-                                    onClick={() => openEditForm(area)}
-                                    title="Edit configs"
-                                    className="p-1 rounded-md text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-900 cursor-pointer transition"
-                                  >
-                                    <Edit2 className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button 
-                                    onClick={() => handleDeleteArea(area.id)}
-                                    title="Delete Area"
-                                    className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-900 cursor-pointer transition"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
+                      ))}
                     </tbody>
                   </table>
                 </div>
-              </div>
+              )}
             </div>
           )}
-        </div>
 
-        {/* Right Column (Interactive Map controls and Radius calculations) */}
-        <div className={`space-y-6 ${activeSubTab === 'map' ? 'lg:col-span-8' : 'lg:col-span-4'}`}>
-          
-          {/* Active Area Summary Header if in listing sub-tab */}
-          {activeSubTab !== 'map' && selectedArea && (
-            <div className="bg-white dark:bg-slate-950 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-[9px] font-mono font-bold bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded text-slate-400">
-                    ID: {selectedArea.id}
-                  </span>
-                  <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 mt-1">
-                    {selectedArea.area_name}
-                  </h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5 font-bold">
-                    📍 {selectedArea.pincode} • {selectedArea.city}, {selectedArea.state}
-                  </p>
+          {/* TAB: SHOPS & SELLERS */}
+          {activeTab === 'shops' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h3 className="font-bold text-slate-900 text-sm">Shops & Service Partners</h3>
+              {areaStores.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl border text-slate-400 text-xs font-medium">
+                  No operational shops, restaurants, or boutiques in this area.
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                  selectedArea.status === 'Active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40' : 'bg-rose-100 text-rose-800 dark:bg-rose-950/40'
-                }`}>
-                  {selectedArea.status}
-                </span>
-              </div>
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="p-3">Store Name</th>
+                        <th className="p-3">Category Type</th>
+                        <th className="p-3">UPI ID</th>
+                        <th className="p-3">Rating</th>
+                        <th className="p-3">Min Order</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {areaStores.map((store: any) => (
+                        <tr key={store.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                          <td className="p-3 font-bold text-slate-800">{store.name}</td>
+                          <td className="p-3 text-slate-500 font-medium">{store.type}</td>
+                          <td className="p-3 font-mono text-slate-500">{store.upiId || 'N/A'}</td>
+                          <td className="p-3 font-bold text-amber-600">★ {store.rating || 'New'}</td>
+                          <td className="p-3 font-mono text-slate-800 font-bold">₹{store.minOrder || 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
 
-              {/* Quick Metrics */}
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-900">
-                <div className="bg-slate-50 dark:bg-slate-900 p-2.5 rounded-2xl">
-                  <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Revenue</span>
-                  <p className="text-sm font-mono font-black text-slate-800 dark:text-slate-200 mt-1">
-                    ₹{selectedArea.revenue.toLocaleString()}
-                  </p>
+          {/* TAB: PRODUCTS */}
+          {activeTab === 'products' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h3 className="font-bold text-slate-900 text-sm">Area Inventory / Catalog Items</h3>
+              {areaProducts.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl border text-slate-400 text-xs font-medium">
+                  No products published under shops belonging to this area.
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-900 p-2.5 rounded-2xl">
-                  <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Active Users</span>
-                  <p className="text-sm font-mono font-black text-slate-800 dark:text-slate-200 mt-1">
-                    {selectedArea.active_customers}
-                  </p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-900 p-2.5 rounded-2xl">
-                  <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Avg Delivery Time</span>
-                  <p className="text-sm font-mono font-bold text-emerald-600 mt-1">
-                    {selectedArea.average_delivery_time}
-                  </p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-900 p-2.5 rounded-2xl">
-                  <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Cancellation Rate</span>
-                  <p className={`text-sm font-mono font-black mt-1 ${
-                    selectedArea.cancellation_rate > 2.5 ? 'text-rose-500' : 'text-slate-600 dark:text-slate-300'
-                  }`}>
-                    {selectedArea.cancellation_rate}%
-                  </p>
-                </div>
-              </div>
-
-              {/* Area boundary visual indicator */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Boundary Boundary Points</span>
-                  <span className="text-[10px] font-mono text-emerald-600">{selectedArea.polygon_coordinates.length} coordinates</span>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-xl text-[9px] font-mono text-slate-400 max-h-16 overflow-y-auto space-y-0.5">
-                  {selectedArea.polygon_coordinates.map((coord, i) => (
-                    <div key={i} className="flex justify-between">
-                      <span>Point #{i + 1}</span>
-                      <span>({coord.lat.toFixed(4)}° N, {coord.lng.toFixed(4)}° E)</span>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
+                  {areaProducts.map(prod => (
+                    <div key={prod.id} className="flex gap-3 bg-slate-50 border border-slate-100 p-3 rounded-2xl">
+                      <img src={prod.image} alt={prod.name} className="h-12 w-12 rounded-xl object-cover bg-slate-200" />
+                      <div className="space-y-0.5 text-left flex-1 min-w-0">
+                        <h4 className="font-bold text-slate-800 text-xs truncate">{prod.name}</h4>
+                        <p className="text-[10px] text-slate-400 font-medium">Category: {prod.category}</p>
+                        <div className="flex justify-between items-baseline pt-1">
+                          <span className="text-xs font-black font-mono text-slate-900">₹{prod.sellingPrice || prod.price}</span>
+                          <span className="text-[10px] text-slate-500">Stock: {prod.stock}</span>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: ORDERS */}
+          {activeTab === 'orders' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h3 className="font-bold text-slate-900 text-sm">Active & Completed Sales Orders</h3>
+              {areaOrders.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl border text-slate-400 text-xs font-medium">
+                  No orders placed in this service area yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="p-3">Order ID</th>
+                        <th className="p-3">Store Name</th>
+                        <th className="p-3">Grand Total</th>
+                        <th className="p-3">Payment</th>
+                        <th className="p-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {areaOrders.map(order => (
+                        <tr key={order.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                          <td className="p-3 font-mono font-bold text-slate-700">{order.id}</td>
+                          <td className="p-3 font-bold text-slate-800">{order.storeName}</td>
+                          <td className="p-3 font-mono font-bold text-slate-900">₹{order.total}</td>
+                          <td className="p-3">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">
+                              {order.paymentMethod}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded font-black capitalize text-[9px] uppercase tracking-wider ${
+                              order.deliveryStatus === 'arrived' 
+                                ? 'bg-emerald-50 text-emerald-700' 
+                                : order.deliveryStatus === 'cancelled'
+                                ? 'bg-rose-50 text-rose-700'
+                                : 'bg-amber-50 text-amber-800'
+                            }`}>
+                              {order.deliveryStatus}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: RIDERS / DELIVERY BOYS */}
+          {activeTab === 'riders' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h3 className="font-bold text-slate-900 text-sm">Assigned Delivery Riders</h3>
+              {areaRiders.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl border text-slate-400 text-xs font-medium">
+                  No active delivery boys or riders mapped to this service area.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {areaRiders.map(rider => (
+                    <div key={rider.id} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex justify-between items-center">
+                      <div className="space-y-0.5 text-left">
+                        <span className="text-[9px] font-mono bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Active Agent</span>
+                        <h4 className="font-bold text-slate-800 text-sm mt-1">{rider.name}</h4>
+                        <p className="text-xs text-slate-400 font-bold font-mono">Ph: {rider.phone}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-amber-500 text-xs">★ 4.8 Rating</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: TIMING & SLOTS */}
+          {activeTab === 'timing' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="space-y-3">
+                <h3 className="font-bold text-slate-900 text-sm">Configure Timing & Delivery Slots</h3>
+                <p className="text-xs text-slate-400 font-medium">Customers can select these slots during checkout. Define precise intervals to control dispatch loads.</p>
               </div>
 
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => { setActiveSubTab('map'); }}
-                  className="flex-1 text-center bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 py-2 rounded-xl text-xs font-black transition cursor-pointer"
-                >
-                  Edit Polygon Boundary
-                </button>
-                <button 
-                  onClick={() => openEditForm(selectedArea)}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 p-2 rounded-xl cursor-pointer"
-                >
-                  <Edit2 className="h-4 w-4" />
-                </button>
+              {/* Delivery Types Checkboxes */}
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase text-slate-400 block tracking-wider">Enabled Delivery Channels</label>
+                <div className="flex flex-wrap gap-3">
+                  {['Instant', 'Scheduled', 'Free', 'Paid'].map(type => {
+                    const isEnabled = (selectedArea.delivery_types || []).includes(type);
+                    return (
+                      <button
+                        key={type}
+                        onClick={() => handleToggleDeliveryType(type)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
+                          isEnabled 
+                            ? 'bg-slate-900 border-slate-900 text-white shadow-sm' 
+                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        {type} Delivery
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Slots List */}
+              <div className="space-y-3 pt-4 border-t border-slate-100">
+                <label className="text-xs font-black uppercase text-slate-400 block tracking-wider">Checkout Time Slots</label>
+                
+                <div className="flex flex-wrap gap-2">
+                  {(selectedArea.delivery_slots || []).map((slot, i) => (
+                    <span key={i} className="px-3 py-1.5 bg-slate-100 border border-slate-200/60 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      {slot}
+                      <button 
+                        onClick={() => handleRemoveSlot(slot)}
+                        className="text-slate-400 hover:text-rose-500 font-bold transition"
+                      >
+                        &times;
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex gap-2 max-w-md pt-2">
+                  <input 
+                    type="text" 
+                    placeholder="e.g., Midnight Delivery (10:00 PM - 02:00 AM)" 
+                    value={newSlot}
+                    onChange={(e) => setNewSlot(e.target.value)}
+                    className="flex-1 bg-slate-50 border px-3 py-2 rounded-xl text-xs font-bold text-slate-800"
+                  />
+                  <button 
+                    onClick={handleAddSlot}
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition"
+                  >
+                    Add Slot
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Map-Based Area Selection & Live preview canvas */}
-          <div className="bg-white dark:bg-slate-950 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <MapIcon className="h-4 w-4 text-emerald-600" />
-                  {language === 'en' ? 'Interactive GIS Polygon Boundary Editor' : 'जीआईएस सीमा विन्यास मानचित्र'}
-                </h3>
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  {language === 'en' 
-                    ? 'Drag control handles to resize geofence. Shift-Click to append new coordinates.' 
-                    : 'निर्देशांक बदलने के लिए नियंत्रण हैंडल खींचें। नया पॉइंट जोड़ने के लिए Shift-Click करें।'}
-                </p>
+          {/* TAB: COUPONS */}
+          {activeTab === 'coupons' && (
+            <div className="space-y-6 animate-in fade-in duration-200 text-left">
+              <div className="space-y-1">
+                <h3 className="font-bold text-slate-900 text-sm">Service Area Promo Codes & Coupons</h3>
+                <p className="text-xs text-slate-400 font-medium">Create exclusive coupons that can only be redeemed within {selectedArea.area_name}.</p>
               </div>
-              
-              {selectedArea && (
+
+              {/* New Coupon Creation */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-slate-400">Coupon Code</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. MONSOON20" 
+                    value={newCouponCode}
+                    onChange={(e) => setNewCouponCode(e.target.value)}
+                    className="w-full bg-white border px-3 py-1.5 rounded-xl text-xs font-mono font-bold"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-slate-400">Discount Value (₹)</label>
+                  <input 
+                    type="number" 
+                    value={newCouponDiscount}
+                    onChange={(e) => setNewCouponDiscount(parseInt(e.target.value) || 0)}
+                    className="w-full bg-white border px-3 py-1.5 rounded-xl text-xs font-mono font-bold"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-slate-400">Min Order Requirement</label>
+                  <input 
+                    type="number" 
+                    value={newCouponMinOrder}
+                    onChange={(e) => setNewCouponMinOrder(parseInt(e.target.value) || 0)}
+                    className="w-full bg-white border px-3 py-1.5 rounded-xl text-xs font-mono font-bold"
+                  />
+                </div>
                 <button 
-                  onClick={resetAreaPolygon}
-                  title="Reset Polygon bounds to default circle radius"
-                  className="p-1 rounded-full text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-900 cursor-pointer"
+                  onClick={handleAddCoupon}
+                  className="py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
                 >
-                  <Undo className="h-4 w-4" />
+                  <Plus className="h-4 w-4" /> Add Code
                 </button>
+              </div>
+
+              {/* Coupons List Table */}
+              {areaCoupons.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50/50 rounded-2xl border text-slate-400 text-xs font-medium">
+                  No custom active coupons configured for this service area.
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="p-3">Coupon Code</th>
+                        <th className="p-3">Instant Discount</th>
+                        <th className="p-3">Min Order Needed</th>
+                        <th className="p-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {areaCoupons.map((coupon) => (
+                        <tr key={coupon.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                          <td className="p-3 font-mono font-bold text-indigo-600">{coupon.code}</td>
+                          <td className="p-3 font-bold text-slate-800">₹{coupon.discount} Off</td>
+                          <td className="p-3 text-slate-600">₹{coupon.minOrder}</td>
+                          <td className="p-3">
+                            <button 
+                              onClick={() => handleRemoveCoupon(coupon.id)}
+                              className="p-1 hover:bg-slate-100 rounded text-rose-500"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
+          )}
 
-            {/* SVG Interactive Map Canvas */}
-            <div className="relative bg-slate-900 dark:bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden shadow-inner h-[380px] w-full select-none">
-              
-              {/* GIS Grid Coordinates */}
-              <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:25px_25px] opacity-10" />
-
-              {/* Map UI overlays */}
-              <div className="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-slate-800 text-[10px] font-mono text-slate-300 space-y-0.5 pointer-events-none">
-                <div className="text-emerald-400 font-extrabold">{language === 'en' ? 'MAP FOCUS: MAUDAHA, UP' : 'नक्शा: मौदहा, उत्तर प्रदेश'}</div>
-                <div>Lat: {MAP_CENTER.lat.toFixed(4)}° N | Lng: {MAP_CENTER.lng.toFixed(4)}° E</div>
-                <div>Scale: 1 KM ~ 0.009°</div>
-              </div>
-
-              {/* Map Compass */}
-              <div className="absolute top-3 right-3 bg-slate-950/80 p-2 rounded-full border border-slate-800 pointer-events-none">
-                <div className="w-5 h-5 rounded-full border border-slate-600 flex items-center justify-center font-mono font-bold text-[8px] text-slate-400">
-                  N
+          {/* TAB: SUPPORT TICKETS */}
+          {activeTab === 'tickets' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h3 className="font-bold text-slate-900 text-sm">Open & Resolved Support Tickets</h3>
+              {areaTickets.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl border text-slate-400 text-xs font-medium">
+                  No support tickets logged from this area.
                 </div>
-              </div>
-
-              {/* Active Area selector inside Map block */}
-              <div className="absolute bottom-3 left-3 right-3 bg-slate-950/80 backdrop-blur-md p-2 rounded-xl border border-slate-800 flex items-center justify-between text-[10px]">
-                <div className="text-slate-300 font-bold">
-                  {selectedArea ? `${selectedArea.area_name} (${selectedArea.status})` : 'No area selected'}
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="p-3">Ticket ID</th>
+                        <th className="p-3">Customer Name</th>
+                        <th className="p-3">Subject Matter</th>
+                        <th className="p-3">Category</th>
+                        <th className="p-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {areaTickets.map(ticket => (
+                        <tr key={ticket.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                          <td className="p-3 font-mono text-slate-500">{ticket.id}</td>
+                          <td className="p-3 font-bold text-slate-800">{ticket.userName}</td>
+                          <td className="p-3 text-slate-600 font-medium">{ticket.subject}</td>
+                          <td className="p-3 capitalize text-slate-500">{ticket.category}</td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                              ticket.status === 'resolved' 
+                                ? 'bg-emerald-50 text-emerald-700' 
+                                : 'bg-amber-50 text-amber-800'
+                            }`}>
+                              {ticket.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <select 
-                  value={selectedAreaId}
-                  onChange={(e) => setSelectedAreaId(e.target.value)}
-                  className="bg-slate-900 border border-slate-800 text-[9px] text-emerald-400 px-2 py-1 rounded focus:outline-hidden"
-                >
-                  {areas.map(a => (
-                    <option key={a.id} value={a.id}>{a.area_name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Interactive Vector SVG */}
-              <svg 
-                ref={mapContainerRef}
-                className="w-full h-full cursor-crosshair"
-                onMouseMove={handleMapMouseMove}
-                onMouseUp={handleMapMouseUp}
-                onMouseLeave={handleMapMouseUp}
-                onClick={handleMapClick}
-              >
-                {/* 1. Draw national highway NH-34 and other bypass roads */}
-                <path d="M 50,0 Q 180,180 250,250 T 450,500" fill="none" stroke="#334155" strokeWidth="2.5" strokeDasharray="3 3" />
-                <path d="M 0,220 L 500,280" fill="none" stroke="#1e293b" strokeWidth="2" />
-                <path d="M 250,0 L 250,500" fill="none" stroke="#1e293b" strokeWidth="1.5" strokeDasharray="5 15" />
-
-                {/* 2. Draw Hamirpur Railway Line passing through Maudaha Station */}
-                <path d="M 0,100 L 500,400" fill="none" stroke="#475569" strokeWidth="4" strokeDasharray="6 6" />
-
-                {/* 3. Draw Circular radius of delivery operations from center */}
-                {radiusKm && (
-                  <circle 
-                    cx={250} 
-                    cy={250} 
-                    r={radiusKm * 8.5} 
-                    fill="rgba(16, 185, 129, 0.04)" 
-                    stroke="rgba(16, 185, 129, 0.25)" 
-                    strokeWidth="1.5" 
-                    strokeDasharray="4 4" 
-                  />
-                )}
-
-                {/* 4. Draw Polygons for all Service Areas */}
-                {areas.map((area) => {
-                  const isActive = area.id === selectedAreaId;
-                  const isAreaActiveStatus = area.status === 'Active';
-                  const pointsStr = area.polygon_coordinates
-                    .map(c => `${lngToX(c.lng)},${latToY(c.lat)}`)
-                    .join(" ");
-
-                  return (
-                    <polygon
-                      key={area.id}
-                      points={pointsStr}
-                      fill={isActive 
-                        ? (isAreaActiveStatus ? "rgba(16, 185, 129, 0.16)" : "rgba(239, 68, 68, 0.1)") 
-                        : "rgba(148, 163, 184, 0.05)"
-                      }
-                      stroke={isActive 
-                        ? (isAreaActiveStatus ? "#10b981" : "#ef4444") 
-                        : "#475569"
-                      }
-                      strokeWidth={isActive ? "2.5" : "1"}
-                      className="transition"
-                    />
-                  );
-                })}
-
-                {/* 5. Draw local sites/villages as markers */}
-                {LOCAL_SITES.map((site, i) => {
-                  const px = lngToX(site.lng);
-                  const py = latToY(site.lat);
-                  const distFromCenter = getDistanceKm(MAP_CENTER.lat, MAP_CENTER.lng, site.lat, site.lng);
-                  const isCoveredByRadius = distFromCenter <= radiusKm;
-
-                  return (
-                    <g key={i}>
-                      {/* Village point outer highlight */}
-                      <circle 
-                        cx={px} 
-                        cy={py} 
-                        r={isCoveredByRadius ? "7" : "3"} 
-                        fill={isCoveredByRadius ? "rgba(16, 185, 129, 0.2)" : "transparent"} 
-                        className="animate-pulse"
-                      />
-                      {/* Village main circle point */}
-                      <circle 
-                        cx={px} 
-                        cy={py} 
-                        r="3.5" 
-                        fill={isCoveredByRadius ? "#10b981" : "#ef4444"} 
-                        stroke="#0f172a" 
-                        strokeWidth="1" 
-                      />
-                      {/* Village name text */}
-                      <text 
-                        x={px + 6} 
-                        y={py + 3} 
-                        fill={isCoveredByRadius ? "#cbd5e1" : "#64748b"} 
-                        fontSize="8.5" 
-                        fontFamily="monospace"
-                        fontWeight={isCoveredByRadius ? "bold" : "normal"}
-                        className="pointer-events-none select-none"
-                      >
-                        {language === 'en' ? site.name : site.nameHi}
-                      </text>
-                    </g>
-                  );
-                })}
-
-                {/* 6. Active draggable vertex nodes overlay (only for active selected area) */}
-                {selectedArea && selectedArea.polygon_coordinates.map((coord, i) => {
-                  const px = lngToX(coord.lng);
-                  const py = latToY(coord.lat);
-
-                  return (
-                    <g key={i}>
-                      <circle 
-                        cx={px} 
-                        cy={py} 
-                        r="12" 
-                        fill="transparent" 
-                        className="cursor-move"
-                        onMouseDown={() => handleMapMouseDown(i)}
-                      />
-                      <circle 
-                        cx={px} 
-                        cy={py} 
-                        r="6" 
-                        fill="#10b981" 
-                        stroke="#ffffff" 
-                        strokeWidth="1.5" 
-                        className="pointer-events-none shadow-xs"
-                      />
-                      <text 
-                        x={px - 3} 
-                        y={py + 10} 
-                        fill="#34d399" 
-                        fontSize="7" 
-                        fontWeight="black" 
-                        fontFamily="monospace"
-                        className="pointer-events-none select-none"
-                      >
-                        {i + 1}
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
+              )}
             </div>
-
-            {/* Delivery Radius Control & COVERAGE ESTIMATES */}
-            <div className="space-y-4 border-t border-slate-100 dark:border-slate-900 pt-4">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Sliders className="h-4 w-4 text-emerald-600" />
-                  {language === 'en' ? 'Operations Delivery Radius Control' : 'संचालन वितरण त्रिज्या नियंत्रण'}
-                </span>
-                <span className="text-xs font-mono font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
-                  {radiusKm} KM
-                </span>
-              </div>
-
-              {/* Slider Input */}
-              <div className="space-y-2">
-                <input 
-                  type="range" 
-                  min={1} 
-                  max={50} 
-                  step={0.5}
-                  value={radiusKm}
-                  onChange={(e) => setRadiusKm(Number(e.target.value))}
-                  className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-600"
-                />
-                <div className="flex justify-between text-[10px] font-mono text-slate-400">
-                  <span>1 KM</span>
-                  <span>10 KM</span>
-                  <span>25 KM</span>
-                  <span>50 KM</span>
-                </div>
-              </div>
-
-              {/* Coverage Live Estimates */}
-              <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                    <Users className="h-3 w-3 text-emerald-500" />
-                    <span>Population Covered</span>
-                  </div>
-                  <p className="text-base font-mono font-black text-slate-800 dark:text-slate-200">
-                    {totalPopulationCovered.toLocaleString()} people
-                  </p>
-                  <span className="text-[9px] text-slate-400 block">Based on Maudaha Census</span>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3 text-emerald-500" />
-                    <span>Est. Addressable Customers</span>
-                  </div>
-                  <p className="text-base font-mono font-black text-emerald-600">
-                    {estimatedCustomers.toLocaleString()} households
-                  </p>
-                  <span className="text-[9px] text-slate-400 block">18% penetration forecast</span>
-                </div>
-              </div>
-
-              {/* List of covered villages */}
-              <div className="space-y-2">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                  Covered Villages/Localities ({coveredSites.length} total)
-                </span>
-                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-                  {coveredSites.map((site, idx) => (
-                    <span 
-                      key={idx}
-                      className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900 px-2 py-0.5 rounded-lg text-[10px] font-semibold"
-                    >
-                      {language === 'en' ? site.name : site.nameHi}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* 3. Future Expansion Map Indicators */}
-          <div className="bg-white dark:bg-slate-950 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <Globe className="h-4 w-4 text-emerald-600" />
-              {language === 'en' ? 'Future Enterprise Expansion Roadmap' : 'भविष्य की उद्यम विस्तार योजना'}
-            </h3>
-            <p className="text-[10px] text-slate-400">
-              The service boundaries architecture is built for multi-location scale:
-            </p>
-
-            <div className="grid grid-cols-2 gap-3 text-[10px]">
-              <div className="p-2 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 flex gap-2">
-                <Globe className="h-4 w-4 text-indigo-500 shrink-0" />
-                <div>
-                  <span className="font-extrabold block text-slate-700 dark:text-slate-300">Multi-City Scale</span>
-                  <span className="text-[9px] text-slate-400">Add Hamirpur, Bharuwa Sumerpur</span>
-                </div>
-              </div>
-
-              <div className="p-2 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 flex gap-2">
-                <Warehouse className="h-4 w-4 text-emerald-500 shrink-0" />
-                <div>
-                  <span className="font-extrabold block text-slate-700 dark:text-slate-300">Multi-Warehouse</span>
-                  <span className="text-[9px] text-slate-400">Zone-wise dispatch centers</span>
-                </div>
-              </div>
-
-              <div className="p-2 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 flex gap-2">
-                <Clock className="h-4 w-4 text-amber-500 shrink-0" />
-                <div>
-                  <span className="font-extrabold block text-slate-700 dark:text-slate-300">Time-Slot Delivery</span>
-                  <span className="text-[9px] text-slate-400">Schedule slots per zip-code</span>
-                </div>
-              </div>
-
-              <div className="p-2 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 flex gap-2">
-                <Layers className="h-4 w-4 text-rose-500 shrink-0" />
-                <div>
-                  <span className="font-extrabold block text-slate-700 dark:text-slate-300">Zone Pricing</span>
-                  <span className="text-[9px] text-slate-400">Surcharge for highway villages</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
 
         </div>
 
       </div>
 
-      {/* 4. Safety Controls Confirmation Dialog */}
-      {showConfirmModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-rose-600">
-              <div className="h-10 w-10 bg-rose-50 dark:bg-rose-950/20 rounded-xl flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6" />
-              </div>
-              <h3 className="text-sm font-black uppercase tracking-wider">
-                {modalType === 'disable' ? 'Disable Boundary warning' : 'Delete Boundary request'}
-              </h3>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-xs text-slate-600 dark:text-slate-300 font-bold leading-relaxed">
-                {modalWarning}
-              </p>
-
-              {pendingOrdersCount > 0 && (
-                <div className="bg-rose-50 dark:bg-rose-950/20 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/40 text-[11px] text-rose-800 dark:text-rose-300 space-y-1">
-                  <span className="font-extrabold block">BLOCKING PROTECTION ACTIVE:</span>
-                  <span>Pending active orders are currently routing through this area. Deleting is strictly blocked. Disabling will halt further orders while active deliveries are finalized.</span>
+      {/* --- ADD MODAL --- */}
+      <AnimatePresence>
+        {showAddModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 shadow-xl w-full max-w-lg border text-left space-y-6"
+            >
+              <div className="flex justify-between items-center pb-4 border-b">
+                <div className="space-y-0.5">
+                  <h3 className="text-lg font-bold text-slate-900">Provision New Service Area</h3>
+                  <p className="text-xs text-slate-400 font-medium">All database schemas are auto-partitioned mapping this new ID.</p>
                 </div>
-              )}
-            </div>
+                <button 
+                  onClick={() => setShowAddModal(false)}
+                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-900">
-              <button 
-                onClick={() => { setShowConfirmModal(false); setTargetAreaId(null); }}
-                className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 bg-slate-100 dark:bg-slate-900 rounded-xl cursor-pointer"
-              >
-                {language === 'en' ? 'Keep Unchanged' : 'अपरिवर्तित रखें'}
-              </button>
-              
-              <button 
-                onClick={confirmSafetyAction}
-                disabled={modalType === 'delete' && pendingOrdersCount > 0}
-                className={`px-4 py-2 text-xs font-black text-white rounded-xl cursor-pointer shadow-xs ${
-                  modalType === 'delete' && pendingOrdersCount > 0 
-                    ? 'bg-slate-300 cursor-not-allowed' 
-                    : 'bg-rose-600 hover:bg-rose-700'
-                }`}
-              >
-                {modalType === 'disable' 
-                  ? (language === 'en' ? 'Force Disable Area' : 'बलपूर्वक अक्षम करें')
-                  : (language === 'en' ? 'Confirm Permanent Delete' : 'स्थायी विलोपन की पुष्टि करें')
-                }
-              </button>
-            </div>
+              <form onSubmit={handleCreateArea} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">Area Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Maudaha West" 
+                      required
+                      value={newArea.area_name}
+                      onChange={(e) => setNewArea({...newArea, area_name: e.target.value})}
+                      className="w-full bg-slate-50 border p-2.5 rounded-xl text-sm font-bold text-slate-800"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">Pincode</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 210507" 
+                      required
+                      value={newArea.pincode}
+                      onChange={(e) => setNewArea({...newArea, pincode: e.target.value})}
+                      className="w-full bg-slate-50 border p-2.5 rounded-xl text-sm font-mono font-bold text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">City</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={newArea.city}
+                      onChange={(e) => setNewArea({...newArea, city: e.target.value})}
+                      className="w-full bg-slate-50 border p-2.5 rounded-xl text-sm font-bold text-slate-800"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">State</label>
+                    <input 
+                      type="text" 
+                      value={newArea.state}
+                      onChange={(e) => setNewArea({...newArea, state: e.target.value})}
+                      className="w-full bg-slate-50 border p-2.5 rounded-xl text-sm font-bold text-slate-800 animate-pulse"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">Delivery (₹)</label>
+                    <input 
+                      type="number" 
+                      value={newArea.delivery_charge}
+                      onChange={(e) => setNewArea({...newArea, delivery_charge: parseInt(e.target.value) || 0})}
+                      className="w-full bg-slate-50 border p-2 rounded-xl text-sm font-mono font-bold text-slate-800"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">Free Above (₹)</label>
+                    <input 
+                      type="number" 
+                      value={newArea.free_delivery_above}
+                      onChange={(e) => setNewArea({...newArea, free_delivery_above: parseInt(e.target.value) || 0})}
+                      className="w-full bg-slate-50 border p-2 rounded-xl text-sm font-mono font-bold text-slate-800"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">Min Order (₹)</label>
+                    <input 
+                      type="number" 
+                      value={newArea.minimum_order_amount}
+                      onChange={(e) => setNewArea({...newArea, minimum_order_amount: parseInt(e.target.value) || 0})}
+                      className="w-full bg-slate-50 border p-2 rounded-xl text-sm font-mono font-bold text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">Speed (Mins)</label>
+                    <input 
+                      type="text" 
+                      value={newArea.estimated_delivery_time}
+                      onChange={(e) => setNewArea({...newArea, estimated_delivery_time: e.target.value})}
+                      className="w-full bg-slate-50 border p-2.5 rounded-xl text-sm font-bold text-slate-800"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-600">Max Radius (km)</label>
+                    <input 
+                      type="number" 
+                      value={newArea.max_distance_km}
+                      onChange={(e) => setNewArea({...newArea, max_distance_km: parseInt(e.target.value) || 1})}
+                      className="w-full bg-slate-50 border p-2.5 rounded-xl text-sm font-mono font-bold text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t flex justify-end gap-2">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowAddModal(false)}
+                    className="px-4 py-2 bg-slate-50 hover:bg-slate-100 border text-slate-600 rounded-xl text-xs font-bold transition"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="px-6 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl text-xs font-black transition shadow-lg shadow-amber-500/15"
+                  >
+                    Save Service Area
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
     </div>
   );

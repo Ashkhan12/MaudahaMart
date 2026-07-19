@@ -139,6 +139,30 @@
       "upiId": "string",
       "status": "string",
       "date": "string"
+    },
+    "serviceAreas": {
+      "id": "string",
+      "area_name": "string",
+      "pincode": "string",
+      "city": "string",
+      "state": "string",
+      "delivery_charge": "number",
+      "free_delivery_above": "number",
+      "minimum_order_amount": "number",
+      "estimated_delivery_time": "string",
+      "max_distance_km": "number",
+      "polygon_coordinates": "map[]",
+      "status": "string",
+      "delivery_slots": "string[]",
+      "delivery_types": "string[]",
+      "created_at": "string",
+      "updated_at": "string",
+      "total_orders": "number",
+      "monthly_orders": "number",
+      "active_customers": "number",
+      "revenue": "number",
+      "average_delivery_time": "string",
+      "cancellation_rate": "number"
     }
   }
 }

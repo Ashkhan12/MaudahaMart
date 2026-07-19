@@ -10,6 +10,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { INITIAL_PRODUCTS, INITIAL_STORES } from './src/data';
 import Razorpay from "razorpay";
 import { requireAuth, AuthRequest } from './src/middleware/auth.ts';
+import { regionSegregationMiddleware } from './src/middleware/regionSegregation.ts';
 import { upsertUser, getUser, saveOrder, getUserOrders, getAllOrders, saveSupportTicket, getUserSupportTickets, getAllSupportTickets, getOrderById } from './src/db/queries.ts';
 
 dotenv.config();
@@ -19,6 +20,7 @@ const PORT = 3000;
 
 // Set up middleware
 app.use(express.json());
+app.use('/api', regionSegregationMiddleware);
 
 // Initialize Gemini API Client
 const apiKey = process.env.GEMINI_API_KEY;
@@ -273,7 +275,7 @@ Language requested: ${language === 'hi' ? 'Hindi' : 'English'}`;
 // 1.1 Database User Upsert API
 app.post('/api/db/users', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { name, phone, email, location, locationHi, role } = req.body;
+    const { name, phone, email, location, locationHi, role, serviceAreaId } = req.body;
     const uid = req.user?.uid;
     if (!uid) {
       return res.status(400).json({ error: 'UID is required.' });
@@ -286,6 +288,7 @@ app.post('/api/db/users', requireAuth, async (req: AuthRequest, res) => {
       location,
       locationHi,
       role,
+      serviceAreaId: serviceAreaId || (req as any).serviceAreaId,
     });
     res.json(user);
   } catch (error: any) {
@@ -310,7 +313,7 @@ app.get('/api/db/users/me', requireAuth, async (req: AuthRequest, res) => {
 // 1.3 Database Orders Upsert API
 app.post('/api/db/orders', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { id, storeId, storeName, total, discount, paymentMethod, paymentStatus, deliveryStatus, date, items } = req.body;
+    const { id, storeId, storeName, total, discount, paymentMethod, paymentStatus, deliveryStatus, date, items, serviceAreaId } = req.body;
     const uid = req.user?.uid;
     if (!uid) {
       return res.status(400).json({ error: 'UID is required.' });
@@ -327,6 +330,7 @@ app.post('/api/db/orders', requireAuth, async (req: AuthRequest, res) => {
       deliveryStatus,
       date,
       items,
+      serviceAreaId: serviceAreaId || (req as any).serviceAreaId,
     });
     res.json(order);
   } catch (error: any) {
@@ -748,6 +752,107 @@ Return a friendly explanation of why these match their needs, and provide a gene
     console.error('Error in /api/ai-recommendations:', error);
     res.status(500).json({ error: error.message || 'An error occurred during recommendations generation.' });
   }
+});
+
+// --- Admin Service Area Management Mocks ---
+let mockAreas = [
+  { id: '1', name: 'Noida Sector 62', status: 'Active', radius: '5km', polygon_coordinates: [] },
+  { id: '2', name: 'South Delhi', status: 'Closed', radius: '8km', polygon_coordinates: [] },
+  { id: '3', name: 'Indirapuram', status: 'Active', radius: '4km', polygon_coordinates: [] },
+];
+
+app.get('/api/admin/service-areas', (req, res) => {
+  res.json(mockAreas);
+});
+
+app.post('/api/admin/service-areas', (req, res) => {
+  const { name, status, radius } = req.body;
+  const newArea = {
+    id: String(mockAreas.length + 1),
+    name: name || 'New Area',
+    status: status || 'Active',
+    radius: radius || '5km',
+    polygon_coordinates: []
+  };
+  mockAreas.push(newArea);
+  res.status(201).json(newArea);
+});
+
+app.patch('/api/admin/service-areas/:id/status', (req, res) => {
+  const area = mockAreas.find(a => a.id === req.params.id);
+  if (area) {
+    area.status = area.status === 'Active' ? 'Closed' : 'Active';
+    res.json(area);
+  } else {
+    res.status(404).json({ error: 'Not found' });
+  }
+});
+
+app.put('/api/admin/service-areas/:id', (req, res) => {
+  const area = mockAreas.find(a => a.id === req.params.id);
+  if (area) {
+    Object.assign(area, req.body);
+    res.json(area);
+  } else {
+    res.status(404).json({ error: 'Not found' });
+  }
+});
+
+app.delete('/api/admin/service-areas/:id', (req, res) => {
+  const initialLength = mockAreas.length;
+  mockAreas = mockAreas.filter(a => a.id !== req.params.id);
+  if (mockAreas.length < initialLength) {
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: 'Not found' });
+  }
+});
+
+app.get('/api/admin/service-areas/:id/users', (req, res) => {
+  res.json([
+    { id: 'u1', name: 'Amit Kumar', location: 'Noida' },
+    { id: 'u2', name: 'Rahul Sharma', location: 'Noida' }
+  ]);
+});
+
+app.get('/api/admin/service-areas/:id/vendors', (req, res) => {
+  res.json([
+    { id: 'v1', name: 'Sharma Sweets', type: 'Restaurant' },
+    { id: 'v2', name: 'Grocers Hub', type: 'Shop' }
+  ]);
+});
+
+app.get('/api/admin/service-areas/:id/products', (req, res) => {
+  res.json({ total: 1240, message: "Items Available" });
+});
+
+app.get('/api/admin/service-areas/:id/orders', (req, res) => {
+  res.json({ totalActive: 48, message: "Active Orders Right Now" });
+});
+
+app.put('/api/admin/service-areas/:id/delivery-settings', (req, res) => {
+  res.json({ success: true, message: 'Delivery settings updated' });
+});
+
+app.get('/api/admin/service-areas/:id/delivery-partners', (req, res) => {
+  res.json({ online: 12, message: "Boys Online" });
+});
+
+app.get('/api/admin/service-areas/:id/coupons', (req, res) => {
+  res.json([
+    { code: 'NOIDANEW50' },
+    { code: 'WELCOME100' }
+  ]);
+});
+
+app.post('/api/admin/service-areas/:id/coupons', (req, res) => {
+  res.status(201).json({ success: true, message: 'Coupon created' });
+});
+
+app.get('/api/admin/service-areas/:id/support-tickets', (req, res) => {
+  res.json([
+    { id: 'TK-902', subject: 'Delivery delay issue', status: 'open' }
+  ]);
 });
 
 // 8. Admin AI Trend Analysis & Demand Forecast API

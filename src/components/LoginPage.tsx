@@ -3,25 +3,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Phone, Lock, User, ArrowRight, Sparkles, CheckCircle, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
-import { RegisteredUser, Language } from '../types';
+import { RegisteredUser, Language, UserRole } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { auth } from '../firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 
 interface LoginPageProps {
   language: Language;
-  onLoginSuccess: (user: RegisteredUser, role: 'customer' | 'merchant' | 'admin' | 'rider' | 'manager') => void;
+  onLoginSuccess: (user: RegisteredUser, role: UserRole) => void;
   existingUsers: RegisteredUser[];
   onAddNewUser: (newUser: RegisteredUser) => void;
 }
 
 export default function LoginPage({ language, onLoginSuccess, existingUsers = [], onAddNewUser }: LoginPageProps) {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   
   // Form fields
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [location, setLocation] = useState('Station Road, Maudaha');
@@ -30,14 +30,27 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
   // OTP simulation states for Phone Login
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
-  const [simulatedOtp, setSimulatedOtp] = useState('');
   const [timer, setTimer] = useState(0);
   const [otpError, setOtpError] = useState<'invalid' | 'expired' | 'missing' | null>(null);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
   // Status & loading
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Setup Recaptcha
+  useEffect(() => {
+    if (!(window as any).recaptchaVerifier) {
+      try {
+        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible'
+        });
+      } catch (e) {
+        console.error("Recaptcha error:", e);
+      }
+    }
+  }, []);
 
   // Timer Effect
   React.useEffect(() => {
@@ -57,7 +70,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
   // Translations
   const t = {
     en: {
-      title: 'Maudaha Mart Auth Portal',
+      title: 'Maudaha Mart',
       subtitle: 'Premium grocery delivery across Maudaha & all over India',
       login: 'Login',
       signup: 'Sign Up',
@@ -99,7 +112,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
       terms: 'By continuing, you agree to our Maudaha Mart Terms of Service and secure transaction guidelines.'
     },
     hi: {
-      title: 'मौदहा मार्ट लॉगिन पोर्टल',
+      title: 'मौदहा मार्ट',
       subtitle: 'मौदहा और पूरे भारत के लिए प्रीमियम किराना डिलीवरी',
       login: 'लॉगिन करें',
       signup: 'साइन अप करें',
@@ -147,251 +160,124 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
   const validatePhone = (val: string) => /^[6-9]\d{9}$/.test(val.replace(/\D/g, ''));
 
   // Main Submit handler
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
 
+    if (!phone || !password || (authMode === 'signup' && !name)) {
+      setError(t.errorEmpty);
+      return;
+    }
+
+    const cleanedPhone = phone.replace(/\D/g, '');
+    if (!validatePhone(cleanedPhone)) {
+      setError(t.errorInvalidPhone);
+      return;
+    }
+
+    const formattedPhone = `+91${cleanedPhone.slice(-10)}`;
+
     if (authMode === 'login') {
       // --- LOGIN LOGIC ---
-      if (loginMethod === 'email') {
-        if (!email || !password) {
-          setError(t.errorEmpty);
+      setLoading(true);
+      setTimeout(() => {
+        let matchedUser = (existingUsers || []).find(
+          u => u.phone && u.phone.replace(/\D/g, '').endsWith(cleanedPhone.slice(-10))
+        );
+
+        if (!matchedUser) {
+          setLoading(false);
+          setError(t.errorUserNotFound + " " + (language === 'en' ? "Please switch to Sign Up." : "कृपया साइन अप पर जाएं।"));
           return;
         }
-        if (!validateEmail(email)) {
-          setError(t.errorInvalidEmail);
+
+        // Simulating password check for mock
+        setLoading(false);
+        setSuccessMsg(t.loginSuccess);
+        setTimeout(() => {
+          onLoginSuccess(matchedUser, matchedUser.role);
+        }, 1000);
+      }, 1200);
+      
+    } else {
+      // --- SIGNUP LOGIC (Requires OTP) ---
+      if (!otpSent) {
+        setLoading(true);
+        try {
+          if (!(window as any).recaptchaVerifier) {
+            (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+          }
+          const confirmation = await signInWithPhoneNumber(auth, formattedPhone, (window as any).recaptchaVerifier);
+          setConfirmationResult(confirmation);
+          setOtpSent(true);
+          setTimer(60);
+          setSuccessMsg(language === 'en' ? 'OTP sent successfully!' : 'ओटीपी सफलतापूर्वक भेजा गया!');
+        } catch (err: any) {
+          console.error("Firebase Phone Auth Error", err);
+          setError(language === 'en' ? 'Failed to send OTP. Check phone number format or try again later.' : 'ओटीपी भेजने में विफल।');
+          if ((window as any).recaptchaVerifier) {
+            try {
+              (window as any).recaptchaVerifier.clear();
+            } catch (e) {}
+            (window as any).recaptchaVerifier = null;
+          }
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // Verify OTP
+        if (!otpCode || otpCode.length < 6) {
+          setError(language === 'en' ? 'Please enter a complete 6-digit OTP.' : 'कृपया पूरा ६-अंकों का ओटीपी दर्ज करें।');
+          setOtpError('invalid');
           return;
         }
 
         setLoading(true);
-        setTimeout(() => {
-          // Check if user exists by email (or fallback to checking name matches)
-          const matchedUser = (existingUsers || []).find(
-            u => u.email?.toLowerCase() === email.toLowerCase() || 
-            ((u.name || '').toLowerCase().replace(/\s/g, '') === email.toLowerCase().split('@')[0])
+        try {
+          const result = await confirmationResult!.confirm(otpCode);
+          const user = result.user;
+
+          let matchedUser = (existingUsers || []).find(
+            u => u.phone && u.phone.replace(/\D/g, '').endsWith(cleanedPhone.slice(-10))
           );
 
           if (!matchedUser) {
-            // For convenience, if it is a new email, let's auto-create or ask to sign up
-            setLoading(false);
-            setError(t.errorUserNotFound + " " + (language === 'en' ? "Please switch to Sign Up." : "कृपया साइन अप पर जाएं।"));
-            return;
+            const newUser: RegisteredUser = {
+              id: user.uid,
+              name: name || 'Resident (' + cleanedPhone.slice(-4) + ')',
+              phone: formattedPhone,
+              location: location || 'Station Road, Maudaha',
+              locationHi: location || 'स्टेशन रोड, मौदहा',
+              role: 'customer',
+              searchHistory: [],
+              activities: [
+                {
+                  id: 'act-' + Date.now(),
+                  timestamp: new Date().toLocaleDateString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                  action: 'Signed up via SMS Phone OTP authentication',
+                  actionHi: 'एसएमएस फोन ओटीपी प्रमाणीकरण के माध्यम से साइन अप किया'
+                }
+              ]
+            };
+            onAddNewUser(newUser);
+            matchedUser = newUser;
           }
 
           setLoading(false);
-          setSuccessMsg(t.loginSuccess);
+          setSuccessMsg(t.signupSuccess);
           setTimeout(() => {
-            onLoginSuccess(matchedUser, matchedUser.role);
+            onLoginSuccess(matchedUser!, matchedUser!.role);
           }, 1000);
-        }, 1200);
-
-      } else {
-        // Phone login logic
-        if (!phone) {
-          setError(t.errorEmpty);
-          return;
-        }
-        const cleanedPhone = phone.replace(/\D/g, '');
-        if (!validatePhone(cleanedPhone)) {
-          setError(t.errorInvalidPhone);
-          return;
-        }
-
-        if (!otpSent) {
-          // Send OTP via backend
-          setLoading(true);
-          fetch('/api/auth/send-otp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              phone: cleanedPhone
-            })
-          })
-          .then(res => res.json())
-          .then(data => {
-            setLoading(false);
-            if (data.error) {
-              setError(data.error);
-            } else {
-              setSimulatedOtp(data.otp);
-              setOtpSent(true);
-              setTimer(30); // 30s cooldown
-              setSuccessMsg(language === 'en' ? 'OTP sent successfully!' : 'ओटीपी सफलतापूर्वक भेजा गया!');
-            }
-          })
-          .catch(err => {
-            setLoading(false);
-            setError(language === 'en' ? 'Failed to connect to SMS gateway.' : 'एसएमएस गेटवे से कनेक्ट होने में विफल।');
-            console.error(err);
-          });
-        } else {
-          // Verify OTP code via backend
-          if (!otpCode) {
-            setError(t.errorEmpty);
-            setOtpError('missing');
-            return;
-          }
-          if (otpCode.length < 6) {
-            setError(language === 'en' ? 'Please enter a complete 6-digit OTP.' : 'कृपया पूरा ६-अंकों का ओटीपी दर्ज करें।');
-            setOtpError('invalid');
-            return;
-          }
-          setLoading(true);
-          setOtpError(null);
-          fetch('/api/auth/verify-otp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: cleanedPhone, otp: otpCode })
-          })
-          .then(res => res.json())
-          .then(data => {
-            if (data.error) {
-              setLoading(false);
-              setError(data.error);
-              if (data.error.toLowerCase().includes('expir')) {
-                setOtpError('expired');
-              } else if (data.error.toLowerCase().includes('incorrect') || data.error.toLowerCase().includes('invalid') || data.error.toLowerCase().includes('wrong')) {
-                setOtpError('invalid');
-              } else if (data.error.toLowerCase().includes('no otp') || data.error.toLowerCase().includes('request')) {
-                setOtpError('missing');
-              } else {
-                setOtpError('invalid');
-              }
-            } else {
-              setOtpError(null);
-              // Proceed with logging in
-              // Find user by phone
-              let matchedUser = (existingUsers || []).find(
-                u => u.phone && u.phone.replace(/\D/g, '').endsWith(cleanedPhone.slice(-10))
-              );
-
-              if (!matchedUser) {
-                // If phone user is not found, let's auto-register them as a customer
-                const newUser: RegisteredUser = {
-                  id: 'user-' + Date.now(),
-                  name: 'Resident (' + cleanedPhone.slice(-4) + ')',
-                  phone: '+91 ' + cleanedPhone.slice(-10),
-                  location: 'Station Road, Maudaha',
-                  locationHi: 'स्टेशन रोड, मौदहा',
-                  role: 'customer',
-                  searchHistory: [],
-                  activities: [
-                    {
-                      id: 'act-' + Date.now(),
-                      timestamp: new Date().toLocaleDateString('en-US', { hour: '2-digit', minute: '2-digit' }),
-                      action: 'Signed up via SMS Phone OTP authentication',
-                      actionHi: 'एसएमएस फोन ओटीपी प्रमाणीकरण के माध्यम से साइन अप किया'
-                    }
-                  ]
-                };
-                onAddNewUser(newUser);
-                matchedUser = newUser;
-              }
-
-              setLoading(false);
-              setSuccessMsg(t.loginSuccess);
-              setTimeout(() => {
-                onLoginSuccess(matchedUser!, matchedUser!.role);
-              }, 1000);
-            }
-          })
-          .catch(err => {
-            setLoading(false);
-            setError(language === 'en' ? 'Failed to connect to verification server.' : 'सत्यापन सर्वर से कनेक्ट होने में विफल।');
-            console.error(err);
-          });
+        } catch (err: any) {
+          console.error("OTP verification error:", err);
+          setOtpError('invalid');
+          setError(language === 'en' ? 'Invalid verification code.' : 'अमान्य सत्यापन कोड।');
+          setLoading(false);
         }
       }
-
-    } else {
-      // --- SIGN UP LOGIC ---
-      if (!name || !password || (loginMethod === 'email' ? !email : !phone)) {
-        setError(t.errorEmpty);
-        return;
-      }
-      if (password.length < 6) {
-        setError(t.errorPasswordShort);
-        return;
-      }
-      if (loginMethod === 'email' && !validateEmail(email)) {
-        setError(t.errorInvalidEmail);
-        return;
-      }
-      const cleanedPhone = phone.replace(/\D/g, '');
-      if (loginMethod === 'phone' && !validatePhone(cleanedPhone)) {
-        setError(t.errorInvalidPhone);
-        return;
-      }
-
-      setLoading(true);
-      setTimeout(() => {
-        // Create new registered user
-        const newUserId = 'user-' + Date.now();
-        const newUser: RegisteredUser = {
-          id: newUserId,
-          name: name,
-          phone: loginMethod === 'phone' ? `+91 ${cleanedPhone.slice(-10)}` : '+91 90000 00000',
-          email: loginMethod === 'email' ? email : undefined,
-          location: location,
-          locationHi: location,
-          role: 'customer', // Signups defaults to Customer
-          searchHistory: [],
-          activities: [
-            {
-              id: 'act-' + Date.now(),
-              timestamp: new Date().toLocaleDateString('en-US', { hour: '2-digit', minute: '2-digit' }),
-              action: `Created new Maudaha Mart account`,
-              actionHi: `नया मौदहा मार्ट खाता बनाया`
-            }
-          ]
-        };
-
-        onAddNewUser(newUser);
-        setLoading(false);
-        setSuccessMsg(t.signupSuccess);
-        setTimeout(() => {
-          onLoginSuccess(newUser, 'customer');
-        }, 1200);
-      }, 1500);
     }
   };
-
-  // Google Sign-In Simulation
-  const handleGoogleSignIn = () => {
-    setLoading(true);
-    setError('');
-    setTimeout(() => {
-      // Pick a random local user profile style or make a fully unique customer account
-      const randomGoogleUser: RegisteredUser = {
-        id: 'user-google-' + Date.now(),
-        name: 'Google User (' + (language === 'en' ? 'Maudaha Resident' : 'मौदहा निवासी') + ')',
-        email: 'user.' + Math.floor(Math.random() * 1000) + '@gmail.com',
-        phone: '+91 98765 43210',
-        location: 'Galla Mandi Ward, Maudaha',
-        locationHi: 'गल्ला मंडी वार्ड, मौदहा',
-        role: 'customer',
-        searchHistory: ['ghee', 'atta', 'fresh apples'],
-        activities: [
-          {
-            id: 'act-' + Date.now(),
-            timestamp: new Date().toLocaleDateString('en-US', { hour: '2-digit', minute: '2-digit' }),
-            action: 'Logged in with secure Google Single Sign-On',
-            actionHi: 'सुरक्षित Google सिंगल साइन-ऑन के साथ लॉग इन किया'
-          }
-        ]
-      };
-
-      onAddNewUser(randomGoogleUser);
-      setLoading(false);
-      setSuccessMsg(t.loginSuccess);
-      setTimeout(() => {
-        onLoginSuccess(randomGoogleUser, 'customer');
-      }, 1000);
-    }, 1500);
-  };
-
-
 
   return (
     <div id="login_portal_wrapper" className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 font-sans transition-all duration-500 relative overflow-hidden">
@@ -496,56 +382,11 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
           </button>
         </div>
 
-        {/* Method Selector tabs (Animated sliding underline) */}
-        <div className="flex border-b border-slate-100/90 mb-6 relative z-10">
-          <button
-            type="button"
-            onClick={() => {
-              setLoginMethod('email');
-              setError('');
-              setOtpSent(false);
-              setOtpError(null);
-            }}
-            className="flex-1 pb-3 text-xs font-bold transition-colors cursor-pointer relative text-center"
-          >
-            <span className={loginMethod === 'email' ? 'text-emerald-700 font-extrabold' : 'text-slate-400 hover:text-slate-600'}>
-              {t.emailTab}
-            </span>
-            {loginMethod === 'email' && (
-              <motion.div
-                layoutId="loginMethodActive"
-                className="absolute bottom-0 left-0 right-0 h-[3px] bg-emerald-600 rounded-full"
-                transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-              />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setLoginMethod('phone');
-              setError('');
-              setOtpSent(false);
-              setOtpError(null);
-            }}
-            className="flex-1 pb-3 text-xs font-bold transition-colors cursor-pointer relative text-center"
-          >
-            <span className={loginMethod === 'phone' ? 'text-emerald-700 font-extrabold' : 'text-slate-400 hover:text-slate-600'}>
-              {t.phoneTab}
-            </span>
-            {loginMethod === 'phone' && (
-              <motion.div
-                layoutId="loginMethodActive"
-                className="absolute bottom-0 left-0 right-0 h-[3px] bg-emerald-600 rounded-full"
-                transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-              />
-            )}
-          </button>
-        </div>
-
         {/* Feedback Alerts Container */}
         <AnimatePresence mode="popLayout">
           {error && (
             <motion.div 
+              key="error-alert"
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -558,6 +399,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
 
           {successMsg && (
             <motion.div 
+              key="success-alert"
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -568,8 +410,9 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
             </motion.div>
           )}
 
-          {otpSent && successMsg !== t.loginSuccess && (
+          {otpSent && successMsg !== t.loginSuccess && successMsg !== t.signupSuccess && (
             <motion.div 
+              key="otp-sent-alert"
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -578,7 +421,6 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
               <Sparkles className="h-4.5 w-4.5 text-sky-500 shrink-0 mt-0.5 animate-spin" />
               <div>
                 <p className="font-bold">{t.otpSentMsg}</p>
-                <p className="text-sm font-black tracking-widest text-sky-900 mt-1">{simulatedOtp}</p>
               </div>
             </motion.div>
           )}
@@ -591,6 +433,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
           <AnimatePresence>
             {authMode === 'signup' && (
               <motion.div 
+                key="name-field"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
@@ -611,68 +454,47 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                     onChange={(e) => setName(e.target.value)}
                     placeholder={t.fullNamePlaceholder}
                     className="w-full pl-10 pr-4 py-3 bg-transparent text-xs font-semibold text-slate-800 outline-none placeholder-slate-400"
-                    disabled={loading}
+                    disabled={loading || otpSent}
                   />
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Email input field */}
-          {loginMethod === 'email' && (
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono block">
-                {t.emailLabel}
-              </label>
-              <div className={`relative rounded-2xl border transition-all duration-200 ${focusedField === 'email' ? 'border-emerald-500 ring-4 ring-emerald-500/10 bg-white' : 'border-slate-200 bg-slate-50/65'}`}>
-                <Mail className={`absolute left-3.5 top-3.5 h-4 w-4 transition-colors ${focusedField === 'email' ? 'text-emerald-500' : 'text-slate-400'}`} />
+          {/* Phone input field */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono flex items-center justify-between">
+              <span>{t.phoneLabel}</span>
+              <span className="text-emerald-600 text-[9px] font-black normal-case font-sans">
+                {language === 'en' ? 'Mandatory' : 'अनिवार्य'}
+              </span>
+            </label>
+            <div className="flex gap-2">
+              <span className="flex items-center px-3.5 bg-slate-100 border border-slate-200 text-xs font-black text-slate-600 rounded-2xl select-none">
+                +91
+              </span>
+              <div className={`relative flex-1 rounded-2xl border transition-all duration-200 ${focusedField === 'phone' ? 'border-emerald-500 ring-4 ring-emerald-500/10 bg-white' : 'border-slate-200 bg-slate-50/65'}`}>
+                <Phone className={`absolute left-3.5 top-3.5 h-4 w-4 transition-colors ${focusedField === 'phone' ? 'text-emerald-500' : 'text-slate-400'}`} />
                 <input
-                  type="email"
+                  type="tel"
                   required
-                  value={email}
-                  onFocus={() => setFocusedField('email')}
+                  value={phone}
+                  onFocus={() => setFocusedField('phone')}
                   onBlur={() => setFocusedField(null)}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t.emailPlaceholder}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder={t.phonePlaceholder}
                   className="w-full pl-10 pr-4 py-3 bg-transparent text-xs font-semibold text-slate-800 outline-none placeholder-slate-400"
-                  disabled={loading}
+                  disabled={loading || (authMode === 'signup' && otpSent)}
                 />
               </div>
             </div>
-          )}
-
-          {/* Phone input field */}
-          {loginMethod === 'phone' && (
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono block">
-                {t.phoneLabel}
-              </label>
-              <div className="flex gap-2">
-                <span className="flex items-center px-3.5 bg-slate-100 border border-slate-200 text-xs font-black text-slate-600 rounded-2xl select-none">
-                  +91
-                </span>
-                <div className={`relative flex-1 rounded-2xl border transition-all duration-200 ${focusedField === 'phone' ? 'border-emerald-500 ring-4 ring-emerald-500/10 bg-white' : 'border-slate-200 bg-slate-50/65'}`}>
-                  <Phone className={`absolute left-3.5 top-3.5 h-4 w-4 transition-colors ${focusedField === 'phone' ? 'text-emerald-500' : 'text-slate-400'}`} />
-                  <input
-                    type="tel"
-                    required
-                    value={phone}
-                    onFocus={() => setFocusedField('phone')}
-                    onBlur={() => setFocusedField(null)}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder={t.phonePlaceholder}
-                    className="w-full pl-10 pr-4 py-3 bg-transparent text-xs font-semibold text-slate-800 outline-none placeholder-slate-400"
-                    disabled={loading || otpSent}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
 
           {/* OTP Code input field (Conditional) */}
           <AnimatePresence>
-            {loginMethod === 'phone' && otpSent && (
+            {authMode === 'signup' && otpSent && (
               <motion.div 
+                key="otp-field"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
@@ -725,7 +547,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                     <span>
                       {language === 'en' 
                         ? 'OTP Expired: This code has expired. Please click "Resend OTP Code" below.' 
-                        : 'ओटीपी समाप्त: यह कोड समाप्त हो गया है। कृपया नीचे "ओटीपी कोड फिर से भेजें" पर क्लिक करें।'}
+                        : 'ओटीपी समाप्त: यह कोड समाप्त हो गया। कृपया नीचे "ओटीपी कोड फिर से भेजें" पर क्लिक करें।'}
                     </span>
                   </p>
                 )}
@@ -747,35 +569,31 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                   <button
                     type="button"
                     disabled={timer > 0 || loading}
-                    onClick={() => {
+                    onClick={async () => {
                       const cleanedPhone = phone.replace(/\D/g, '');
                       setLoading(true);
                       setError('');
                       setOtpError(null);
                       setSuccessMsg('');
-                      fetch('/api/auth/send-otp', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                          phone: cleanedPhone
-                        })
-                      })
-                      .then(res => res.json())
-                      .then(data => {
-                        setLoading(false);
-                        if (data.error) {
-                          setError(data.error);
-                        } else {
-                          setSimulatedOtp(data.otp);
-                          setTimer(30);
-                          setSuccessMsg(language === 'en' ? 'New OTP code sent!' : 'नया ओटीपी कोड भेजा गया!');
+                      try {
+                        const formattedPhone = `+91${cleanedPhone.slice(-10)}`;
+                        if (!(window as any).recaptchaVerifier) {
+                          (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
                         }
-                      })
-                      .catch(err => {
+                        const confirmation = await signInWithPhoneNumber(auth, formattedPhone, (window as any).recaptchaVerifier);
+                        setConfirmationResult(confirmation);
+                        setTimer(60);
+                        setSuccessMsg(language === 'en' ? 'New OTP code sent!' : 'नया ओटीपी कोड भेजा गया!');
+                      } catch (err: any) {
+                        console.error("Firebase Resend Error", err);
+                        setError(language === 'en' ? 'Failed to send OTP.' : 'ओटीपी भेजने में विफल।');
+                        if ((window as any).recaptchaVerifier) {
+                          try { (window as any).recaptchaVerifier.clear(); } catch(e) {}
+                          (window as any).recaptchaVerifier = null;
+                        }
+                      } finally {
                         setLoading(false);
-                        setError(language === 'en' ? 'Failed to connect to SMS gateway.' : 'एसएमएस गेटवे से कनेक्ट होने में विफल।');
-                        console.error(err);
-                      });
+                      }
                     }}
                     className={`text-[10px] font-black uppercase tracking-wider transition-all select-none ${timer > 0 ? 'text-slate-300 cursor-not-allowed' : 'text-emerald-600 hover:text-emerald-700 cursor-pointer hover:underline'}`}
                   >
@@ -786,33 +604,32 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
             )}
           </AnimatePresence>
 
-          {/* Password field (Only for Email tab or Sign Up phone tab) */}
-          {(loginMethod === 'email' || authMode === 'signup') && (
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono block">
-                {t.passwordLabel}
-              </label>
-              <div className={`relative rounded-2xl border transition-all duration-200 ${focusedField === 'password' ? 'border-emerald-500 ring-4 ring-emerald-500/10 bg-white' : 'border-slate-200 bg-slate-50/65'}`}>
-                <Lock className={`absolute left-3.5 top-3.5 h-4 w-4 transition-colors ${focusedField === 'password' ? 'text-emerald-500' : 'text-slate-400'}`} />
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onFocus={() => setFocusedField('password')}
-                  onBlur={() => setFocusedField(null)}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t.passwordPlaceholder}
-                  className="w-full pl-10 pr-4 py-3 bg-transparent text-xs font-semibold text-slate-800 outline-none placeholder-slate-400"
-                  disabled={loading}
-                />
-              </div>
+          {/* Password field */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono block">
+              {t.passwordLabel}
+            </label>
+            <div className={`relative rounded-2xl border transition-all duration-200 ${focusedField === 'password' ? 'border-emerald-500 ring-4 ring-emerald-500/10 bg-white' : 'border-slate-200 bg-slate-50/65'}`}>
+              <Lock className={`absolute left-3.5 top-3.5 h-4 w-4 transition-colors ${focusedField === 'password' ? 'text-emerald-500' : 'text-slate-400'}`} />
+              <input
+                type="password"
+                required
+                value={password}
+                onFocus={() => setFocusedField('password')}
+                onBlur={() => setFocusedField(null)}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={t.passwordPlaceholder}
+                className="w-full pl-10 pr-4 py-3 bg-transparent text-xs font-semibold text-slate-800 outline-none placeholder-slate-400"
+                disabled={loading}
+              />
             </div>
-          )}
+          </div>
 
           {/* Location field (Only on signup mode) */}
           <AnimatePresence>
             {authMode === 'signup' && (
               <motion.div 
+                key="location-field"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
@@ -830,46 +647,6 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                     placeholder={t.locationPlaceholder}
                     className="w-full px-4 py-3 bg-slate-50/65 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 focus:bg-white transition-all"
                   />
-                  <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    <span className="text-[9px] text-slate-400 font-bold flex items-center pr-1">
-                      {language === 'hi' ? 'त्वरित चयन:' : 'Quick Select:'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setLocation(language === 'hi' ? 'गल्ला मंडी वार्ड, मौदहा' : 'Galla Mandi Ward, Maudaha')}
-                      className="text-[9px] bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 px-2 py-0.5 rounded-full font-semibold transition"
-                    >
-                      📍 {language === 'hi' ? 'गल्ला मंडी' : 'Galla Mandi'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLocation(language === 'hi' ? 'रहमानिया वार्ड, मौदहा' : 'Rahmaniya Ward, Maudaha')}
-                      className="text-[9px] bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 px-2 py-0.5 rounded-full font-semibold transition"
-                    >
-                      📍 {language === 'hi' ? 'रहमानिया' : 'Rahmaniya'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLocation(language === 'hi' ? 'स्टेशन रोड, मौदहा' : 'Station Road, Maudaha')}
-                      className="text-[9px] bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 px-2 py-0.5 rounded-full font-semibold transition"
-                    >
-                      📍 {language === 'hi' ? 'स्टेशन रोड' : 'Station Road'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLocation(language === 'hi' ? 'नया बाजार, मौदहा' : 'Naya Bazar, Maudaha')}
-                      className="text-[9px] bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 px-2 py-0.5 rounded-full font-semibold transition"
-                    >
-                      📍 {language === 'hi' ? 'नया बाजार' : 'Naya Bazar'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLocation(language === 'hi' ? 'कनॉट प्लेस, नई दिल्ली' : 'Connaught Place, New Delhi')}
-                      className="text-[9px] bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-2 py-0.5 rounded-full font-semibold transition"
-                    >
-                      📍 {language === 'hi' ? 'नई दिल्ली (All India)' : 'New Delhi (All India)'}
-                    </button>
-                  </div>
                 </div>
               </motion.div>
             )}
@@ -890,55 +667,14 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
               </>
             ) : (
               <>
-                <span>{authMode === 'login' ? (loginMethod === 'phone' && !otpSent ? t.sendOtpBtn : t.verifyBtn) : t.signup}</span>
+                <span>{authMode === 'login' ? t.login : (!otpSent ? t.sendOtpBtn : t.verifyBtn)}</span>
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </>
             )}
           </motion.button>
+          
+          <div id="recaptcha-container"></div>
         </form>
-
-        {/* OR Spacer */}
-        <div className="relative my-6 select-none">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-100" />
-          </div>
-          <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest text-slate-400 font-mono bg-white/95 px-3 mx-auto max-w-fit">
-            {t.or}
-          </div>
-        </div>
-
-        {/* Google Authentication Button */}
-        <motion.button
-          whileHover={{ scale: 1.01, translateY: -0.5 }}
-          whileTap={{ scale: 0.98 }}
-          type="button"
-          onClick={handleGoogleSignIn}
-          disabled={loading}
-          className="w-full py-3 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-2xl text-xs font-black text-slate-700 hover:text-slate-900 transition flex items-center justify-center gap-3 cursor-pointer shadow-2xs font-mono"
-        >
-          {/* Multi-colored Google G Icon */}
-          <svg className="h-4.5 w-4.5" viewBox="0 0 24 24">
-            <path
-              fill="#EA4335"
-              d="M12 5.04c1.67 0 3.2.58 4.38 1.69l3.27-3.27C17.66 1.54 14.98 1 12 1 7.35 1 3.37 3.67 1.39 7.56l3.89 3.02C6.18 7.37 8.84 5.04 12 5.04z"
-            />
-            <path
-              fill="#4285F4"
-              d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.46c-.29 1.48-1.14 2.73-2.4 3.58l3.73 2.89c2.18-2.01 3.7-4.97 3.7-8.62z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.28 14.78c-.26-.78-.41-1.6-.41-2.46s.15-1.68.41-2.46L1.39 6.84C.5 8.65 0 10.74 0 12.92s.5 4.27 1.39 6.08l3.89-3.22z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 22.96c3.24 0 5.97-1.07 7.96-2.91l-3.73-2.89c-1.03.69-2.35 1.1-4.23 1.1-3.16 0-5.82-2.33-6.77-5.54l-3.89 3.02c1.98 3.89 5.96 6.56 10.66 6.56z"
-            />
-          </svg>
-          <span>{t.googleBtn}</span>
-        </motion.button>
-
-
 
         {/* Footer legal notes */}
         <p className="text-[9px] text-slate-400 font-mono text-center leading-normal mt-6 max-w-xs mx-auto">

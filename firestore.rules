@@ -105,6 +105,12 @@ service cloud.firestore {
       return data.get('id', '') is string;
     }
 
+    // 15. Service Areas Schema Validation (Using safe .get() to prevent field-not-found runtime crashes)
+    function isValidServiceArea(data) {
+      return data.get('id', '') is string
+        && data.get('area_name', '') is string;
+    }
+
 
     // ROUTE RULE DEFINITIONS
 
@@ -203,6 +209,13 @@ service cloud.firestore {
     match /merchantRequests/{requestId} {
       allow read: if true;
       allow create, update: if isValidId(requestId) && isValidMerchantRequest(request.resource.data);
+      allow delete: if true;
+    }
+
+    // 15. Service Areas Collection
+    match /serviceAreas/{areaId} {
+      allow read: if true;
+      allow create, update: if isValidId(areaId) && isValidServiceArea(request.resource.data);
       allow delete: if true;
     }
   }

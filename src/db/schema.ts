@@ -9,6 +9,7 @@ export const users = pgTable('users', {
   location: text('location'),
   locationHi: text('location_hi'),
   role: text('role').default('customer').notNull(),
+  serviceAreaId: text('service_area_id'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -24,6 +25,7 @@ export const orders = pgTable('orders', {
   deliveryStatus: text('delivery_status').default('pending').notNull(),
   date: text('date').notNull(),
   items: jsonb('items').notNull(), // JSON list of ordered items
+  serviceAreaId: text('service_area_id'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
