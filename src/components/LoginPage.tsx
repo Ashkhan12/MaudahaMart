@@ -18,7 +18,7 @@ interface LoginPageProps {
 }
 
 export default function LoginPage({ language, onLoginSuccess, existingUsers = [], onAddNewUser }: LoginPageProps) {
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'login_otp'>('login');
   
   // Form fields
   const [name, setName] = useState('');
@@ -165,7 +165,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
     setError('');
     setSuccessMsg('');
 
-    if (!phone || !password || (authMode === 'signup' && !name)) {
+    if (!phone || (authMode === 'login' && !password) || (authMode === 'signup' && !name)) {
       setError(t.errorEmpty);
       return;
     }
@@ -201,7 +201,17 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
       }, 1200);
       
     } else {
-      // --- SIGNUP LOGIC (Requires OTP) ---
+      // --- SIGNUP & LOGIN_OTP LOGIC (Requires OTP) ---
+      // Check if user exists first for login_otp
+      if (authMode === 'login_otp' && !otpSent) {
+          let matchedUser = (existingUsers || []).find(
+            u => u.phone && u.phone.replace(/\D/g, '').endsWith(cleanedPhone.slice(-10))
+          );
+          if (!matchedUser) {
+            setError(t.errorUserNotFound + " " + (language === 'en' ? "Please switch to Sign Up." : "कृपया साइन अप पर जाएं।"));
+            return;
+          }
+      }
       if (!otpSent) {
         setLoading(true);
         try {
@@ -242,7 +252,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
             u => u.phone && u.phone.replace(/\D/g, '').endsWith(cleanedPhone.slice(-10))
           );
 
-          if (!matchedUser) {
+          if (!matchedUser && authMode === 'signup') {
             const newUser: RegisteredUser = {
               id: user.uid,
               name: name || 'Resident (' + cleanedPhone.slice(-4) + ')',
@@ -265,7 +275,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
           }
 
           setLoading(false);
-          setSuccessMsg(t.signupSuccess);
+          setSuccessMsg(authMode === 'login_otp' ? t.loginSuccess : t.signupSuccess);
           setTimeout(() => {
             onLoginSuccess(matchedUser!, matchedUser!.role);
           }, 1000);
@@ -352,8 +362,8 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
             }}
             className="flex-1 py-2.5 rounded-xl text-xs font-extrabold transition-colors duration-200 cursor-pointer relative z-10 text-center"
           >
-            <span className={authMode === 'login' ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'}>{t.login}</span>
-            {authMode === 'login' && (
+            <span className={(authMode === 'login' || authMode === 'login_otp') ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'}>{t.login}</span>
+            {(authMode === 'login' || authMode === 'login_otp') && (
               <motion.span
                 layoutId="authModeActive"
                 className="absolute inset-0 bg-white rounded-xl shadow-sm z-[-1]"
@@ -484,7 +494,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder={t.phonePlaceholder}
                   className="w-full pl-10 pr-4 py-3 bg-transparent text-xs font-semibold text-slate-800 outline-none placeholder-slate-400"
-                  disabled={loading || (authMode === 'signup' && otpSent)}
+                  disabled={loading || ((authMode === 'signup' || authMode === 'login_otp') && otpSent)}
                 />
               </div>
             </div>
@@ -492,7 +502,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
 
           {/* OTP Code input field (Conditional) */}
           <AnimatePresence>
-            {authMode === 'signup' && otpSent && (
+            {(authMode === 'signup' || authMode === 'login_otp') && otpSent && (
               <motion.div 
                 key="otp-field"
                 initial={{ opacity: 0, height: 0 }}
@@ -605,7 +615,15 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
           </AnimatePresence>
 
           {/* Password field */}
-          <div className="space-y-1.5">
+          <AnimatePresence>
+            {authMode === 'login' && (
+              <motion.div 
+                key="password-field"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-1.5 overflow-hidden"
+              >
             <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono block">
               {t.passwordLabel}
             </label>
@@ -623,7 +641,9 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                 disabled={loading}
               />
             </div>
-          </div>
+          </motion.div>
+          )}
+          </AnimatePresence>
 
           {/* Location field (Only on signup mode) */}
           <AnimatePresence>
@@ -652,6 +672,25 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
             )}
           </AnimatePresence>
 
+          {/* Switch Login Method */}
+          {authMode !== 'signup' && !otpSent && (
+            <div className="flex justify-end px-1 mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode(authMode === 'login' ? 'login_otp' : 'login');
+                    setError('');
+                    setSuccessMsg('');
+                    setOtpSent(false);
+                  }}
+                  className="text-[10px] text-emerald-600 hover:text-emerald-700 font-extrabold transition-colors cursor-pointer"
+                >
+                  {authMode === 'login' 
+                    ? (language === 'en' ? 'Login with OTP instead' : 'ओटीपी के साथ लॉगिन करें') 
+                    : (language === 'en' ? 'Login with Password instead' : 'पासवर्ड के साथ लॉगिन करें')}
+                </button>
+            </div>
+          )}
           {/* Submit button */}
           <motion.button
             whileHover={{ scale: 1.01, translateY: -1 }}

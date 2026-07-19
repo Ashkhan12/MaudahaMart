@@ -541,110 +541,91 @@ export default function App() {
   }, []);
 
   // Sync states to Firestore when updated locally (excluding during initial DB loading)
-  useEffect(() => {
-    if (isDbLoading) return;
-    stores.forEach(store => {
-      syncDocToFirestore('stores', store.id, store);
-    });
-  }, [stores, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    restaurants.forEach(rest => {
-      syncDocToFirestore('restaurants', rest.id, rest);
-    });
-  }, [restaurants, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    boutiques.forEach(bt => {
-      syncDocToFirestore('boutiques', bt.id, bt);
-    });
-  }, [boutiques, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    products.forEach(product => {
-      syncDocToFirestore('products', product.id, product);
-    });
-  }, [products, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    reviews.forEach(review => {
-      syncDocToFirestore('reviews', review.id, review);
-    });
-  }, [reviews, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    orders.forEach(order => {
-      syncDocToFirestore('orders', order.id, order);
-    });
-  }, [orders, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    notifications.forEach(notif => {
-      syncDocToFirestore('notifications', notif.id, notif);
-    });
-  }, [notifications, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    users.forEach(user => {
-      syncDocToFirestore('users', user.id, user);
-    });
-  }, [users, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    supportTickets.forEach(ticket => {
-      syncDocToFirestore('supportTickets', ticket.id, ticket);
-    });
-  }, [supportTickets, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    syncDocToFirestore('settings', 'global', settings);
-  }, [settings, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    customPanels.forEach(panel => {
-      syncDocToFirestore('customPanels', panel.id, panel);
-    });
-  }, [customPanels, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    payoutRequests.forEach(req => {
-      syncDocToFirestore('payoutRequests', req.id, req);
-    });
-  }, [payoutRequests, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    serviceAreas.forEach(area => {
-      syncDocToFirestore('serviceAreas', area.id, area);
-    });
-  }, [serviceAreas, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    merchantRequests.forEach(req => {
-      syncDocToFirestore('merchantRequests', req.id, req);
-    });
-  }, [merchantRequests, isDbLoading]);
+  
 
-  useEffect(() => {
-    if (isDbLoading) return;
-    priceLogs.forEach(log => {
-      syncDocToFirestore('priceLogs', log.id, log);
-    });
-  }, [priceLogs, isDbLoading]);
+  
 
   // Drawer & Toggle States for global Profile, Wishlist & Cart
+  
+  // Unified diff-based Firestore sync to prevent quota exhaustion
+  const prevStates = useRef<any>({});
+  
+  useEffect(() => {
+    if (isDbLoading) return;
+    
+    const syncCollection = (name: string, currentArray: any[]) => {
+      if (!prevStates.current[name]) {
+        prevStates.current[name] = currentArray;
+        return;
+      }
+      
+      const prevArray = prevStates.current[name];
+      currentArray.forEach(item => {
+        const prevItem = prevArray.find((p: any) => p.id === item.id);
+        if (JSON.stringify(item) !== JSON.stringify(prevItem)) {
+           syncDocToFirestore(name, item.id, item);
+        }
+      });
+      prevStates.current[name] = currentArray;
+    };
+
+    syncCollection('stores', stores);
+    syncCollection('restaurants', restaurants);
+    syncCollection('boutiques', boutiques);
+    syncCollection('products', products);
+    syncCollection('reviews', reviews);
+    syncCollection('orders', orders);
+    syncCollection('notifications', notifications);
+    syncCollection('users', users);
+    syncCollection('supportTickets', supportTickets);
+    syncCollection('customPanels', customPanels);
+    syncCollection('payoutRequests', payoutRequests);
+    syncCollection('serviceAreas', serviceAreas);
+    syncCollection('merchantRequests', merchantRequests);
+    syncCollection('priceLogs', priceLogs);
+    
+    // Settings is a single object
+    if (!prevStates.current['settings']) {
+       prevStates.current['settings'] = settings;
+    } else {
+       if (JSON.stringify(settings) !== JSON.stringify(prevStates.current['settings'])) {
+          syncDocToFirestore('settings', 'global', settings);
+          prevStates.current['settings'] = settings;
+       }
+    }
+
+  }, [
+    isDbLoading, stores, restaurants, boutiques, products, reviews, orders, 
+    notifications, users, supportTickets, settings, customPanels, 
+    payoutRequests, serviceAreas, merchantRequests, priceLogs
+  ]);
+
   const [showProfileDrawer, setShowProfileDrawer] = useState<boolean>(false);
   const [showWishlistDrawer, setShowWishlistDrawer] = useState<boolean>(false);
   const [showSupportDrawer, setShowSupportDrawer] = useState<boolean>(false);
