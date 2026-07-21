@@ -311,7 +311,7 @@ export default function DeliveryAgentPortal({
         {/* Shift online toggle */}
         <div className="relative z-10 flex items-center gap-3 bg-emerald-900/40 p-2.5 rounded-2xl border border-emerald-800/50">
           <span className="text-xs font-bold text-emerald-200">{t.onlineStatus}</span>
-          <button
+          <button type="button"
             onClick={handleToggleOnline}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition active:scale-95 ${
               isOnline 
@@ -319,7 +319,7 @@ export default function DeliveryAgentPortal({
                 : 'bg-slate-700 text-slate-300'
             }`}
           >
-            <Power className="h-3.5 w-3.5" />
+            <Power className="h-3.5 w-3.5 cursor-pointer" />
             <span>{isOnline ? t.online : t.offline}</span>
           </button>
         </div>
@@ -337,7 +337,7 @@ export default function DeliveryAgentPortal({
               <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">Incentive Active</span>
             </div>
           </div>
-          <button
+          <button type="button"
             onClick={() => {
               if (riderWallet < 100) {
                 alert(language === 'en' ? 'You need a minimum balance of ₹100 to request payout.' : 'भुगतान के लिए न्यूनतम ₹100 होना आवश्यक है।');
@@ -345,7 +345,7 @@ export default function DeliveryAgentPortal({
               }
               setShowPayoutModal(true);
             }}
-            className="w-full mt-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition uppercase tracking-wide"
+            className="w-full mt-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition uppercase tracking-wide cursor-pointer"
           >
             {t.cashOut}
           </button>
@@ -420,9 +420,9 @@ export default function DeliveryAgentPortal({
                     </span>
                   </div>
 
-                  <button
+                  <button type="button"
                     onClick={handleProgressStatus}
-                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition flex items-center gap-1 shadow-md shadow-slate-950/10 active:scale-95"
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition flex items-center gap-1 shadow-md shadow-slate-950/10 active:scale-95 cursor-pointer"
                   >
                     <span>
                       {activeJob.deliveryStatus === 'ready_for_delivery' && (language === 'en' ? 'Mark Out for Delivery' : 'रवाना (Out for Delivery)')}
@@ -617,7 +617,7 @@ export default function DeliveryAgentPortal({
                         🏠 {language === 'hi' ? 'स्टेशन रोड (घर)' : 'Station Road (Home)'}
                       </button>
                     </div>
-                    <p className="text-[10px] text-slate-400 italic">
+                    <p className="text-[10px] text-slate-400 italic cursor-pointer">
                       {language === 'hi' 
                         ? 'डिलीवरी बॉय की स्थिति हर 4 सेकंड में ग्राहक की ओर अपने आप बढ़ रही है!' 
                         : 'Delivery boy position is also automatically moving closer to customer every 4 seconds!'}
@@ -669,9 +669,9 @@ export default function DeliveryAgentPortal({
                       To: {language === 'hi' ? (job.customerLocationHi || job.customerLocation || 'स्टेशन रोड, मौदहा') : (job.customerLocation || 'Station Road, Maudaha')}
                     </p>
                   </div>
-                  <button
+                  <button type="button"
                     onClick={() => handleAcceptJob(job.id)}
-                    className="w-full py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
+                    className="w-full py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <span>{t.acceptOrder}</span>
                     <ChevronRight className="h-3.5 w-3.5" />
@@ -690,7 +690,7 @@ export default function DeliveryAgentPortal({
           <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-slate-100">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
               <h3 className="font-black text-slate-800 text-sm">{t.payoutHeader}</h3>
-              <button onClick={() => setShowPayoutModal(false)} className="p-1.5 hover:bg-slate-100 rounded-full transition text-slate-400">
+              <button type="button" onClick={() => setShowPayoutModal(false)} className="p-1.5 hover:bg-slate-100 rounded-full transition text-slate-400 cursor-pointer">
                 <ChevronRight className="h-4 w-4 rotate-180" />
               </button>
             </div>
@@ -719,7 +719,7 @@ export default function DeliveryAgentPortal({
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold uppercase transition shadow-md shadow-emerald-600/10"
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold uppercase transition shadow-md shadow-emerald-600/10 cursor-pointer"
               >
                 Request Instant Transfer
               </button>

@@ -257,7 +257,7 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
       {/* Sticky Header */}
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button 
+          <button type="button" 
             onClick={() => { 
               if (activeTab !== 'selection') {
                 setActiveTab('selection');
@@ -267,7 +267,7 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
                 onBack();
               }
             }} 
-            className="p-2 -ml-2 rounded-xl text-slate-400 hover:bg-slate-50 transition-colors"
+            className="p-2 -ml-2 rounded-xl text-slate-400 hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -381,13 +381,13 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
             
             {/* National vs International Toggle */}
             <div className="bg-slate-100 p-1.5 rounded-2xl flex max-w-xs mx-auto border border-slate-200">
-              <button
+              <button type="button"
                 onClick={() => setIsInternational(false)}
                 className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-200 ${!isInternational ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 {language === 'en' ? 'National (Domestic)' : 'राष्ट्रीय'}
               </button>
-              <button
+              <button type="button"
                 onClick={() => setIsInternational(true)}
                 className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-200 ${isInternational ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
@@ -396,7 +396,7 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
             </div>
 
             {/* Flight Search Form */}
-            <form onSubmit={handleSearchFlight} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
+            <form onSubmit={handleSearchFlight} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5 cursor-pointer">
               <div className="flex items-center justify-between">
                 <h3 className="font-extrabold text-slate-800 flex items-center gap-2 text-sm md:text-base">
                   <Plane className="h-5 w-5 text-blue-500" />
@@ -420,7 +420,7 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
               <button 
                 disabled={flightLoading} 
                 type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl py-3.5 flex justify-center items-center gap-2 shadow-lg shadow-blue-600/10 transition-colors"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl py-3.5 flex justify-center items-center gap-2 shadow-lg shadow-blue-600/10 transition-colors cursor-pointer"
               >
                 {flightLoading ? (
                   <span className="flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" /> Querying Amadeus API...</span>
@@ -435,13 +435,13 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
                   Popular Presets (Test Sandbox)
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => loadPresetFlight('AI-101')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors">
+                  <button type="button" onClick={() => loadPresetFlight('AI-101')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
                     ✈️ AI-101 (Intl Delhi-NY)
                   </button>
-                  <button type="button" onClick={() => loadPresetFlight('6E-2104')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors">
+                  <button type="button" onClick={() => loadPresetFlight('6E-2104')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
                     ✈️ 6E-2104 (Lucknow-Delhi)
                   </button>
-                  <button type="button" onClick={() => loadPresetFlight('EK-507')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors">
+                  <button type="button" onClick={() => loadPresetFlight('EK-507')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
                     ✈️ EK-577 (Mumbai-Dubai)
                   </button>
                 </div>
@@ -557,7 +557,7 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
               <button 
                 disabled={trainLoading} 
                 type="submit" 
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-extrabold rounded-2xl py-3.5 flex justify-center items-center gap-2 shadow-lg shadow-orange-600/10 transition-colors"
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-extrabold rounded-2xl py-3.5 flex justify-center items-center gap-2 shadow-lg shadow-orange-600/10 transition-colors cursor-pointer"
               >
                 {trainLoading ? (
                   <span className="flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" /> Querying RailRadar...</span>
@@ -572,13 +572,13 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
                   Popular Presets (Test Sandbox)
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => loadPresetTrain('22436')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors">
+                  <button type="button" onClick={() => loadPresetTrain('22436')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
                     🚆 22436 (Vande Bharat)
                   </button>
-                  <button type="button" onClick={() => loadPresetTrain('12424')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors">
+                  <button type="button" onClick={() => loadPresetTrain('12424')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
                     🚆 12424 (Rajdhani)
                   </button>
-                  <button type="button" onClick={() => loadPresetTrain('12182')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors">
+                  <button type="button" onClick={() => loadPresetTrain('12182')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
                     🚆 12182 (Dayodaya Exp)
                   </button>
                 </div>

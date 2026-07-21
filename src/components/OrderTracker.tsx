@@ -653,9 +653,9 @@ export default function OrderTracker({
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-50 px-4 py-4 shadow-xs">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <button
+          <button type="button"
             onClick={onClose}
-            className="flex items-center gap-1.5 text-slate-600 hover:text-emerald-600 transition font-medium"
+            className="flex items-center gap-1.5 text-slate-600 hover:text-emerald-600 transition font-medium cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>{t.backToBrowsing}</span>
@@ -939,7 +939,7 @@ export default function OrderTracker({
 
                 {/* Rating State / Feedback Text */}
                 {order.riderRating ? (
-                  <p className="text-[10px] text-emerald-700 font-black flex items-center gap-1 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100">
+                  <p className="text-[10px] text-emerald-700 font-black flex items-center gap-1 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100 cursor-pointer">
                     <span>✓</span>
                     <span>
                       {language === 'en' 
@@ -1046,7 +1046,7 @@ export default function OrderTracker({
                     setZoom(prev => Math.min(3, prev + 0.5));
                   }
                 }}
-                className="p-2 bg-white hover:bg-slate-100 border border-slate-200 hover:border-emerald-300 rounded-xl text-slate-700 hover:text-emerald-600 shadow-xs flex items-center justify-center gap-1 font-bold transition duration-200"
+                className="p-2 bg-white hover:bg-slate-100 border border-slate-200 hover:border-emerald-300 rounded-xl text-slate-700 hover:text-emerald-600 shadow-xs flex items-center justify-center gap-1 font-bold transition duration-200 cursor-pointer"
                 title={language === 'en' ? "Zoom In" : "ज़ूम इन"}
               >
                 <ZoomIn className="h-4 w-4" />
@@ -1060,7 +1060,7 @@ export default function OrderTracker({
                     setZoom(prev => Math.max(1, prev - 0.5));
                   }
                 }}
-                className="p-2 bg-white hover:bg-slate-100 border border-slate-200 hover:border-emerald-300 rounded-xl text-slate-700 hover:text-emerald-600 shadow-xs flex items-center justify-center gap-1 font-bold transition duration-200"
+                className="p-2 bg-white hover:bg-slate-100 border border-slate-200 hover:border-emerald-300 rounded-xl text-slate-700 hover:text-emerald-600 shadow-xs flex items-center justify-center gap-1 font-bold transition duration-200 cursor-pointer"
                 title={language === 'en' ? "Zoom Out" : "ज़ूम आउट"}
               >
                 <ZoomOut className="h-4 w-4" />
@@ -1076,7 +1076,7 @@ export default function OrderTracker({
                     setAutoCenter(false);
                   }
                 }}
-                className="p-2 bg-white hover:bg-slate-100 border border-slate-200 hover:border-amber-300 rounded-xl text-slate-700 hover:text-amber-600 shadow-xs flex items-center justify-center gap-1 text-[10px] font-bold transition duration-200"
+                className="p-2 bg-white hover:bg-slate-100 border border-slate-200 hover:border-amber-300 rounded-xl text-slate-700 hover:text-amber-600 shadow-xs flex items-center justify-center gap-1 text-[10px] font-bold transition duration-200 cursor-pointer"
                 title={language === 'en' ? "Reset Map" : "रीसेट"}
               >
                 <RotateCcw className="h-4 w-4" />
@@ -1143,7 +1143,7 @@ export default function OrderTracker({
           </div>
 
           {/* SVG Map Canvas */}
-          <div className="relative bg-slate-900 aspect-square md:aspect-auto md:h-[450px] rounded-xl overflow-hidden shadow-inner border border-slate-950 flex items-center justify-center">
+          <div className="relative bg-slate-900 aspect-square md:aspect-auto md:h-[450px] rounded-xl overflow-hidden shadow-inner border border-slate-950 flex items-center justify-center cursor-pointer">
             
             {/* Real Street Map (Leaflet) Container */}
             {mapMode === 'real' && (
@@ -1177,7 +1177,7 @@ export default function OrderTracker({
             
             {/* Clickable Landmark Info Tooltip Overlay */}
             {mapMode === 'cyber' && selectedLandmark && (
-              <div className="absolute top-3 left-3 right-3 bg-slate-900/95 border border-slate-700/80 p-3 rounded-xl shadow-xl z-10 flex items-start gap-2.5 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute top-3 left-3 right-3 bg-slate-900/95 border border-slate-700/80 p-3 rounded-xl shadow-xl z-10 flex items-start gap-2.5 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 cursor-pointer">
                 <div className="text-xl shrink-0 mt-0.5">
                   {selectedLandmark.type === 'store' ? '🏪' :
                    selectedLandmark.type === 'bakery' ? '🍬' :
@@ -1199,7 +1199,7 @@ export default function OrderTracker({
                 <button
                   type="button"
                   onClick={() => setSelectedLandmark(null)}
-                  className="text-slate-400 hover:text-white font-extrabold text-xs px-1.5 py-0.5 bg-slate-800 rounded hover:bg-slate-700 transition"
+                  className="text-slate-400 hover:text-white font-extrabold text-xs px-1.5 py-0.5 bg-slate-800 rounded hover:bg-slate-700 transition cursor-pointer"
                 >
                   ✕
                 </button>

@@ -121,7 +121,7 @@ export default function ManagerPortal({
 
       {/* Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-        <button
+        <button type="button"
           onClick={() => setActiveTab('shops')}
           className={`px-4 py-2 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${
             activeTab === 'shops' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50'
@@ -129,7 +129,7 @@ export default function ManagerPortal({
         >
           {t.shops} ({areaStores.length})
         </button>
-        <button
+        <button type="button"
           onClick={() => setActiveTab('sellers')}
           className={`px-4 py-2 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${
             activeTab === 'sellers' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50'
@@ -137,7 +137,7 @@ export default function ManagerPortal({
         >
           {t.sellers} ({areaSellers.length})
         </button>
-        <button
+        <button type="button"
           onClick={() => setActiveTab('customers')}
           className={`px-4 py-2 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${
             activeTab === 'customers' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50'
@@ -145,7 +145,7 @@ export default function ManagerPortal({
         >
           {t.customers} ({areaCustomers.length})
         </button>
-        <button
+        <button type="button"
           onClick={() => setActiveTab('tickets')}
           className={`px-4 py-2 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${
             activeTab === 'tickets' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50'
@@ -156,7 +156,7 @@ export default function ManagerPortal({
       </div>
 
       {/* Tab Content */}
-      <div className="space-y-6">
+      <div className="space-y-6 cursor-pointer">
         {activeTab === 'shops' && (
           <div className="space-y-4">
             <h3 className="text-lg font-bold text-slate-800">{t.shops}</h3>
@@ -236,7 +236,7 @@ export default function ManagerPortal({
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Plus className="h-4 w-4" />
                   <span>{t.create}</span>

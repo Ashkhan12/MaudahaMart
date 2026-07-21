@@ -91,12 +91,12 @@ export default function SupportPanel({
           </div>
 
           <div className="p-4 shrink-0 bg-white border-b border-slate-100">
-            <button
+            <button type="button"
               onClick={() => {
                 setShowCreateForm(true);
                 setSelectedTicketId(null);
               }}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-2xl text-xs font-extrabold transition duration-200 flex items-center justify-center gap-2 shadow-md shadow-emerald-600/15"
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-2xl text-xs font-extrabold transition duration-200 flex items-center justify-center gap-2 shadow-md shadow-emerald-600/15 cursor-pointer"
             >
               <MessageSquare className="h-4 w-4" />
               <span>{language === 'en' ? 'Raise Support Query' : 'नई सहायता क्वेरी दर्ज करें'}</span>
@@ -245,13 +245,13 @@ export default function SupportPanel({
                   <button
                     type="button"
                     onClick={() => setShowCreateForm(false)}
-                    className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition duration-200"
+                    className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition duration-200 cursor-pointer"
                   >
                     {language === 'en' ? 'Cancel' : 'रद्द करें'}
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition duration-200 flex items-center gap-1.5 shadow-md shadow-emerald-600/10"
+                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition duration-200 flex items-center gap-1.5 shadow-md shadow-emerald-600/10 cursor-pointer"
                   >
                     <Send className="h-3.5 w-3.5" />
                     <span>{language === 'en' ? 'Submit Ticket' : 'टिकट जमा करें'}</span>
@@ -340,7 +340,7 @@ export default function SupportPanel({
                     />
                     <button
                       type="submit"
-                      className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl transition flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/15"
+                      className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl transition flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/15 cursor-pointer"
                     >
                       <Send className="h-4 w-4" />
                     </button>

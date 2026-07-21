@@ -323,7 +323,7 @@ export default function UserOrderPanel({
 
         {/* Tab Controls */}
         <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 w-full md:w-auto">
-          <button
+          <button type="button"
             onClick={() => setActiveTab('active')}
             className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 ${
               activeTab === 'active'
@@ -331,7 +331,7 @@ export default function UserOrderPanel({
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            <Truck className="h-4 w-4" />
+            <Truck className="h-4 w-4 cursor-pointer" />
             <span>{text.activeTab}</span>
             {activeOrders.length > 0 && (
               <span className="h-5 w-5 bg-emerald-600 text-white rounded-full text-[10px] font-bold flex items-center justify-center animate-pulse">
@@ -339,7 +339,7 @@ export default function UserOrderPanel({
               </span>
             )}
           </button>
-          <button
+          <button type="button"
             onClick={() => setActiveTab('history')}
             className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 ${
               activeTab === 'history'
@@ -347,7 +347,7 @@ export default function UserOrderPanel({
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            <History className="h-4 w-4" />
+            <History className="h-4 w-4 cursor-pointer" />
             <span>{text.historyTab}</span>
           </button>
         </div>
@@ -447,28 +447,28 @@ export default function UserOrderPanel({
                   {/* Action buttons row */}
                   <div className="flex flex-col sm:flex-row justify-end items-center gap-3 pt-4 border-t border-slate-100">
                     {(order.deliveryStatus === 'pending' || order.deliveryStatus === 'processing') && (
-                      <button
+                      <button type="button"
                         onClick={() => {
                           if (window.confirm(language === 'en' ? 'Are you sure you want to cancel this order?' : 'क्या आप वाकई इस ऑर्डर को रद्द करना चाहते हैं?')) {
                             onCancelOrder(order.id);
                           }
                         }}
-                        className="w-full sm:w-auto px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                        className="w-full sm:w-auto px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <XCircle className="h-4 w-4" />
                         {language === 'en' ? 'Cancel Order' : 'ऑर्डर रद्द करें'}
                       </button>
                     )}
-                    <button
+                    <button type="button"
                       onClick={onNavigateToSupport}
-                      className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                      className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <HelpCircle className="h-4 w-4" />
                       {text.supportBtn}
                     </button>
-                    <button
+                    <button type="button"
                       onClick={() => onTrackOrder(order.id)}
-                      className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition-all active:scale-[0.98] shadow-md shadow-emerald-600/15 flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition-all active:scale-[0.98] shadow-md shadow-emerald-600/15 flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <ExternalLink className="h-4 w-4" />
                       <span>{text.trackLive}</span>
@@ -541,7 +541,7 @@ export default function UserOrderPanel({
                             e.stopPropagation();
                             handleReorderAction(order);
                           }}
-                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black transition-all flex items-center gap-1 shadow-xs shadow-emerald-600/10 active:scale-95"
+                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black transition-all flex items-center gap-1 shadow-xs shadow-emerald-600/10 active:scale-95 cursor-pointer"
                           title={language === 'en' ? 'Reorder all items' : 'पुनः ऑर्डर करें'}
                         >
                           🔄 {language === 'en' ? 'Reorder' : 'पुनः ऑर्डर'}
@@ -656,7 +656,7 @@ export default function UserOrderPanel({
                           
                           {/* Confirmation/Label state */}
                           {order.riderRating ? (
-                            <p className="text-[10px] text-emerald-700 font-black flex items-center gap-1 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100">
+                            <p className="text-[10px] text-emerald-700 font-black flex items-center gap-1 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100 cursor-pointer">
                               <span>✓</span>
                               <span>
                                 {language === 'en' 
@@ -693,7 +693,7 @@ export default function UserOrderPanel({
                           e.stopPropagation();
                           handleReorderAction(order);
                         }}
-                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 uppercase tracking-wider font-semibold shadow-md shadow-emerald-600/15 active:scale-[0.99]"
+                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 uppercase tracking-wider font-semibold shadow-md shadow-emerald-600/15 active:scale-[0.99] cursor-pointer"
                       >
                         🔄 {language === 'en' ? 'Reorder All Items Back to Cart' : 'सभी सामग्री कार्ट में पुनः ऑर्डर करें'}
                       </button>
@@ -701,9 +701,9 @@ export default function UserOrderPanel({
                       {/* Footer help connection */}
                       <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold pt-1">
                         <span className="font-mono">Method: {order.paymentMethod === 'UPI' ? text.upi : text.cod}</span>
-                        <button
+                        <button type="button"
                           onClick={onNavigateToSupport}
-                          className="text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                          className="text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <HelpCircle className="h-3 w-3" />
                           {text.supportBtn}

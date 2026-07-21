@@ -13,14 +13,28 @@ import {
   Sparkles,
   Search
 } from 'lucide-react';
-import { Language } from '../types';
+import { Language, Product, Store, RegisteredUser } from '../types';
+import AIAttentionSection from './AIAttentionSection';
 
 interface CustomerHomeProps {
   language: Language;
   onNavigateTab: (tab: 'browse' | 'restaurants' | 'clothing' | 'services' | 'travel') => void;
+  products?: Product[];
+  stores?: Store[];
+  activeUser?: RegisteredUser | null;
+  onAddToCart?: (storeId: string, product: Product) => void;
+  onSelectStore?: (storeId: string) => void;
 }
 
-export default function CustomerHome({ language, onNavigateTab }: CustomerHomeProps) {
+export default function CustomerHome({
+  language,
+  onNavigateTab,
+  products = [],
+  stores = [],
+  activeUser = null,
+  onAddToCart,
+  onSelectStore
+}: CustomerHomeProps) {
   // Get greeting based on time of day
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -101,6 +115,25 @@ export default function CustomerHome({ language, onNavigateTab }: CustomerHomePr
         </div>
       </div>
 
+      {/* TensorFlow AI Attention Section */}
+      {products.length > 0 && (
+        <AIAttentionSection
+          products={products}
+          stores={stores}
+          activeUser={activeUser}
+          language={language}
+          onAddToCart={(product) => {
+            if (onAddToCart) onAddToCart(product.storeId, product);
+          }}
+          onOpenStore={(storeId) => {
+            if (onSelectStore) {
+              onSelectStore(storeId);
+              onNavigateTab('browse');
+            }
+          }}
+        />
+      )}
+
       {/* Main Services Selection Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-1">
@@ -131,7 +164,6 @@ export default function CustomerHome({ language, onNavigateTab }: CustomerHomePr
         </div>
       </div>
 
-      {/* Dynamic Promotion card */}
     </div>
   );
 }

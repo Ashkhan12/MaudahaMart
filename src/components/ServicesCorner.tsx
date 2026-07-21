@@ -9,6 +9,7 @@ interface ServicesCornerProps {
   onUpdateUsers: (updater: RegisteredUser[] | ((prev: RegisteredUser[]) => RegisteredUser[])) => void;
   language: Language;
   onAddActivity: (userId: string, actionEn: string, actionHi: string) => void;
+  selectedServiceAreaId?: string;
 }
 
 export default function ServicesCorner({
@@ -16,7 +17,8 @@ export default function ServicesCorner({
   activeUserId,
   onAddActivity,
   users,
-  onUpdateUsers
+  onUpdateUsers,
+  selectedServiceAreaId = 'area-maudaha'
 }: ServicesCornerProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [services, setServices] = useState<LocalService[]>(INITIAL_SERVICES);
@@ -47,9 +49,14 @@ export default function ServicesCorner({
     { id: 'mechanic', name: 'Mechanic', nameHi: 'मैकेनिक (बाइक/कार)', icon: Wrench, color: 'text-purple-500 bg-purple-50 border-purple-200' }
   ];
 
+  const visibleServices = services.filter(s => {
+    const areaId = s.serviceAreaId || 'area-maudaha';
+    return areaId === selectedServiceAreaId;
+  });
+
   const filteredServices = selectedCategory
-    ? services.filter(s => s.category === selectedCategory)
-    : services;
+    ? visibleServices.filter(s => s.category === selectedCategory)
+    : visibleServices;
 
   const handleOpenBooking = (service: LocalService) => {
     setBookingService(service);
@@ -131,7 +138,7 @@ export default function ServicesCorner({
 
           {/* Mode Switcher */}
           <div className="flex items-center gap-2 mt-5">
-            <button
+            <button type="button"
               onClick={() => setViewMode('explore')}
               className={`px-4 py-1.5 rounded-xl text-xs font-black transition ${
                 viewMode === 'explore'
@@ -141,7 +148,7 @@ export default function ServicesCorner({
             >
               🔍 {language === 'en' ? 'Find Services' : 'सेवाएं खोजें'}
             </button>
-            <button
+            <button type="button"
               onClick={() => setViewMode('bookings')}
               className={`px-4 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 ${
                 viewMode === 'bookings'
@@ -151,7 +158,7 @@ export default function ServicesCorner({
             >
               📂 {language === 'en' ? 'My Bookings' : 'मेरी बुकिंग'}
               {bookings.filter(b => b.status === 'pending').length > 0 && (
-                <span className="bg-amber-400 text-slate-900 text-[9px] font-black h-4 w-4 rounded-full flex items-center justify-center">
+                <span className="bg-amber-400 text-slate-900 text-[9px] font-black h-4 w-4 rounded-full flex items-center justify-center cursor-pointer">
                   {bookings.filter(b => b.status === 'pending').length}
                 </span>
               )}
@@ -164,7 +171,7 @@ export default function ServicesCorner({
         <div className="space-y-6">
           {/* Categories Horizontal Scroller */}
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
-            <button
+            <button type="button"
               onClick={() => setSelectedCategory(null)}
               className={`px-4 py-2 rounded-xl text-xs font-black transition shrink-0 border ${
                 selectedCategory === null
@@ -177,7 +184,7 @@ export default function ServicesCorner({
             {categories.map((cat) => {
               const IconComponent = cat.icon;
               return (
-                <button
+                <button type="button"
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
                   className={`px-4 py-2 rounded-xl text-xs font-black transition shrink-0 border flex items-center gap-2 ${
@@ -186,7 +193,7 @@ export default function ServicesCorner({
                       : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   }`}
                 >
-                  <IconComponent className="h-3.5 w-3.5 shrink-0" />
+                  <IconComponent className="h-3.5 w-3.5 shrink-0 cursor-pointer" />
                   <span>{language === 'en' ? cat.name : cat.nameHi}</span>
                 </button>
               );
@@ -254,10 +261,10 @@ export default function ServicesCorner({
                     >
                       <Phone className="h-3.5 w-3.5" />
                     </a>
-                    <button
+                    <button type="button"
                       onClick={() => handleOpenBooking(ser)}
                       disabled={!ser.available}
-                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 text-white text-xs font-black rounded-xl transition flex items-center justify-center gap-1"
+                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 text-white text-xs font-black rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <span>📅</span>
                       <span>{language === 'en' ? 'Book Appointment' : 'अपॉइंटमेंट बुक करें'}</span>
@@ -286,9 +293,9 @@ export default function ServicesCorner({
               <p className="text-xs font-bold text-slate-400">
                 {language === 'en' ? 'You have no active service bookings.' : 'आपकी कोई सक्रिय सेवा बुकिंग नहीं है।'}
               </p>
-              <button
+              <button type="button"
                 onClick={() => setViewMode('explore')}
-                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition"
+                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition cursor-pointer"
               >
                 {language === 'en' ? 'Browse Services' : 'सेवाएं देखें'}
               </button>
@@ -351,9 +358,9 @@ export default function ServicesCorner({
 
                     {isPending && (
                       <div className="flex justify-end pt-2 border-t border-slate-50">
-                        <button
+                        <button type="button"
                           onClick={() => handleCancelBooking(booking.id)}
-                          className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl border border-rose-200 transition"
+                          className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl border border-rose-200 transition cursor-pointer"
                         >
                           {language === 'en' ? 'Cancel Request' : 'अनुरोध रद्द करें'}
                         </button>
@@ -380,9 +387,9 @@ export default function ServicesCorner({
                   {bookingService.name}
                 </p>
               </div>
-              <button
+              <button type="button"
                 onClick={() => setBookingService(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -458,7 +465,7 @@ export default function ServicesCorner({
 
               <button
                 type="submit"
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-black rounded-xl transition uppercase tracking-wider font-mono"
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-black rounded-xl transition uppercase tracking-wider font-mono cursor-pointer"
               >
                 {language === 'en' ? 'Confirm Booking' : 'बुकिंग की पुष्टि करें'}
               </button>
@@ -488,12 +495,12 @@ export default function ServicesCorner({
                   : 'आपके सेवा विशेषज्ञ को सूचित कर दिया गया है। वे समन्वय के लिए आपके पंजीकृत नंबर पर कॉल करेंगे।'}
               </p>
             </div>
-            <button
+            <button type="button"
               onClick={() => {
                 setShowSuccessOverlay(false);
                 setViewMode('bookings');
               }}
-              className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black rounded-xl transition"
+              className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black rounded-xl transition cursor-pointer"
             >
               {language === 'en' ? 'View Bookings' : 'बुकिंग देखें'}
             </button>

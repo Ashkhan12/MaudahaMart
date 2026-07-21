@@ -102,7 +102,7 @@ export default function AndroidAppHub({ language, onClose }: AndroidAppHubProps)
                 <p className="text-xs text-emerald-100 mt-0.5 font-medium">{t.subtitle}</p>
               </div>
             </div>
-            <button
+            <button type="button"
               onClick={onClose}
               className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2.5 rounded-xl border border-white/10 transition cursor-pointer"
               aria-label="Close"
@@ -114,7 +114,7 @@ export default function AndroidAppHub({ language, onClose }: AndroidAppHubProps)
 
         {/* Dynamic Navigation Tabs inside Android Hub */}
         <div className="flex border-b border-slate-100 bg-slate-50/50 p-2 gap-2 shrink-0">
-          <button
+          <button type="button"
             onClick={() => setActiveTab('instant')}
             className={`flex-1 py-2 text-center text-xs font-black rounded-xl border transition ${
               activeTab === 'instant'
@@ -124,7 +124,7 @@ export default function AndroidAppHub({ language, onClose }: AndroidAppHubProps)
           >
             🚀 {t.instantInstall}
           </button>
-          <button
+          <button type="button"
             onClick={() => setActiveTab('capacitor')}
             className={`flex-1 py-2 text-center text-xs font-black rounded-xl border transition ${
               activeTab === 'capacitor'
@@ -137,7 +137,7 @@ export default function AndroidAppHub({ language, onClose }: AndroidAppHubProps)
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 cursor-pointer">
           {activeTab === 'instant' && (
             <>
               {/* Launcher/App Preview Card */}
@@ -177,7 +177,7 @@ export default function AndroidAppHub({ language, onClose }: AndroidAppHubProps)
                         <span>{t.installedText}</span>
                       </div>
                     ) : (
-                      <button
+                      <button type="button"
                         onClick={handleInstallClick}
                         className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs px-5 py-2.5 rounded-xl border border-emerald-400/20 shadow-md shadow-emerald-500/20 active:scale-95 transition cursor-pointer"
                       >
@@ -316,7 +316,7 @@ export default function AndroidAppHub({ language, onClose }: AndroidAppHubProps)
 
         {/* Action Buttons Footer */}
         <div className="px-6 py-3 border-t border-slate-100 bg-white flex justify-end gap-3 shrink-0">
-          <button
+          <button type="button"
             onClick={onClose}
             className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 font-bold text-xs rounded-xl transition active:scale-95 cursor-pointer"
           >

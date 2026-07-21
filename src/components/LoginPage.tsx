@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Mail, Phone, Lock, User, ArrowRight, Sparkles, CheckCircle, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
-import { RegisteredUser, Language, UserRole } from '../types';
+import { RegisteredUser, Language, UserRole, ServiceArea } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
@@ -15,9 +15,10 @@ interface LoginPageProps {
   onLoginSuccess: (user: RegisteredUser, role: UserRole) => void;
   existingUsers: RegisteredUser[];
   onAddNewUser: (newUser: RegisteredUser) => void;
+  serviceAreas?: ServiceArea[];
 }
 
-export default function LoginPage({ language, onLoginSuccess, existingUsers = [], onAddNewUser }: LoginPageProps) {
+export default function LoginPage({ language, onLoginSuccess, existingUsers = [], onAddNewUser, serviceAreas = [] }: LoginPageProps) {
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'login_otp'>('login');
   
   // Form fields
@@ -25,6 +26,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [location, setLocation] = useState('Station Road, Maudaha');
+  const [selectedAreaId, setSelectedAreaId] = useState('area-maudaha');
   const [focusedField, setFocusedField] = useState<string | null>(null);
   
   // OTP simulation states for Phone Login
@@ -260,6 +262,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
               location: location || 'Station Road, Maudaha',
               locationHi: location || 'स्टेशन रोड, मौदहा',
               role: 'customer',
+              serviceAreaId: selectedAreaId || 'area-maudaha',
               searchHistory: [],
               activities: [
                 {
@@ -622,7 +625,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="space-y-1.5 overflow-hidden"
+                className="space-y-1.5 overflow-hidden cursor-pointer"
               >
             <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono block">
               {t.passwordLabel}
@@ -667,6 +670,37 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                     placeholder={t.locationPlaceholder}
                     className="w-full px-4 py-3 bg-slate-50/65 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 focus:bg-white transition-all"
                   />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Service Area Dropdown (Only on signup mode) */}
+          <AnimatePresence>
+            {authMode === 'signup' && serviceAreas && serviceAreas.length > 0 && (
+              <motion.div 
+                key="service-area-field"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-1.5 overflow-hidden"
+              >
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono block">
+                  {language === 'en' ? 'Select Your Service Area / Zone' : 'अपने सेवा क्षेत्र / क्षेत्र का चयन करें'}
+                </label>
+                <div className="space-y-2">
+                  <select
+                    value={selectedAreaId}
+                    onChange={(e) => setSelectedAreaId(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50/65 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 focus:bg-white transition-all cursor-pointer font-sans"
+                  >
+                    {serviceAreas.map((area) => (
+                      <option key={area.id} value={area.id}>
+                        {area.area_name} ({area.city}) - {area.pincode}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </motion.div>
             )}

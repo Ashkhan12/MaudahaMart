@@ -163,6 +163,7 @@ export type UserRole =
 export interface RegisteredUser {
   id: string;
   name: string;
+  nameHi?: string;
   phone: string;
   email?: string;
   location: string;
@@ -170,6 +171,8 @@ export interface RegisteredUser {
   role: UserRole;
   assignedArea?: string;
   serviceAreaId?: string;
+  coins?: number;
+  loyaltyCoins?: number;
   activities: UserActivity[];
   searchHistory: string[];
   watchlist?: string[];
@@ -505,6 +508,7 @@ export interface LocalService {
   baseCharge: number;
   available: boolean;
   banner: string;
+  serviceAreaId?: string;
 }
 
 export interface LocalServiceBooking {

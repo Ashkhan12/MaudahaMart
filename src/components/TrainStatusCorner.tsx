@@ -115,7 +115,7 @@ export default function TrainStatusCorner({
 
       {/* Tabs */}
       <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-6">
-        <button
+        <button type="button"
           onClick={() => {
             setActiveTab('between');
             setBetweenResult(null);
@@ -126,7 +126,7 @@ export default function TrainStatusCorner({
         >
           {language === 'en' ? 'Trains Between Stations' : 'स्टेशनों के बीच ट्रेनें'}
         </button>
-        <button
+        <button type="button"
           onClick={() => {
             setActiveTab('live');
             setLiveResult(null);
@@ -140,7 +140,7 @@ export default function TrainStatusCorner({
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 cursor-pointer">
         {activeTab === 'between' && (
           <form onSubmit={handleSearchBetween} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -197,7 +197,7 @@ export default function TrainStatusCorner({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full md:w-auto mt-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"
+              className="w-full md:w-auto mt-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Search className="h-4 w-4" />
               <span>{isLoading ? (language === 'en' ? 'Searching...' : 'खोजा जा रहा है...') : (language === 'en' ? 'Search Trains' : 'ट्रेनें खोजें')}</span>
@@ -227,7 +227,7 @@ export default function TrainStatusCorner({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Search className="h-4 w-4" />
               <span>{isLoading ? (language === 'en' ? 'Checking...' : 'जांचा जा रहा है...') : (language === 'en' ? 'Check Live Status' : 'लाइव स्थिति जांचें')}</span>

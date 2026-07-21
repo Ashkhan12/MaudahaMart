@@ -12,6 +12,7 @@ import DeliveryZoneMap from './DeliveryZoneMap';
 import SmartSearchBar from './SmartSearchBar';
 import MapLocationPicker from './MapLocationPicker';
 import { isCoordinateInServiceArea } from './ServiceAreaManagement';
+import AIAttentionSection from './AIAttentionSection';
 
 export const SHOP_CATEGORIES = [
   { id: 'Super Mart', name: 'Super Mart', nameHi: 'सुपर मार्ट', icon: '🛒' },
@@ -333,7 +334,7 @@ export default function CustomerPortal({
       const response = await fetch('/api/ai-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, language })
+        body: JSON.stringify({ query, language, allProducts: products })
       });
 
       if (!response.ok) {
@@ -364,7 +365,7 @@ export default function CustomerPortal({
           const response = await fetch('/api/ai-search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: trimmed, language })
+            body: JSON.stringify({ query: trimmed, language, allProducts: products })
           });
 
           if (!response.ok) {
@@ -426,8 +427,16 @@ export default function CustomerPortal({
       };
 
       rec.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
         setIsListening(false);
+        if (event.error === 'not-allowed') {
+          alert(
+            language === 'en'
+              ? 'Microphone permission was denied. Please allow microphone access in your browser or open the app in a new tab.'
+              : 'माइक्रोफोन अनुमति अस्वीकृत है। कृपया ब्राउज़र सेटिंग्स में माइक्रोफोन एक्सेस दें या नए टैब में खोलें।'
+          );
+        } else {
+          console.warn('Speech recognition error:', event.error);
+        }
       };
 
       rec.onend = () => {
@@ -435,8 +444,13 @@ export default function CustomerPortal({
         setActiveRecognitionInstance(null);
       };
 
-      rec.start();
-      setActiveRecognitionInstance(rec);
+      try {
+        rec.start();
+        setActiveRecognitionInstance(rec);
+      } catch (err) {
+        console.warn('Speech recognition start failed:', err);
+        setIsListening(false);
+      }
     } catch (err) {
       console.error('Failed to start speech recognition:', err);
       setIsListening(false);
@@ -717,7 +731,7 @@ export default function CustomerPortal({
                           <button
                             type="button"
                             onClick={handleClearSearchHistory}
-                            className="text-[9px] text-rose-500 hover:text-rose-600 font-extrabold hover:underline"
+                            className="text-[9px] text-rose-500 hover:text-rose-600 font-extrabold hover:underline cursor-pointer"
                           >
                             {language === 'en' ? 'Clear All' : 'सभी मिटाएं'}
                           </button>
@@ -734,7 +748,7 @@ export default function CustomerPortal({
                                   setSearchQuery(historyQuery);
                                   onAddSearch(activeUserId, historyQuery);
                                 }}
-                                className="focus:outline-none flex items-center gap-1"
+                                className="focus:outline-none flex items-center gap-1 cursor-pointer"
                               >
                                 ⏱️ {historyQuery}
                               </button>
@@ -744,7 +758,7 @@ export default function CustomerPortal({
                                   e.stopPropagation();
                                   handleDeleteSearchHistoryItem(historyQuery);
                                 }}
-                                className="p-0.5 hover:bg-slate-200 hover:text-rose-600 rounded-md transition text-[10px] font-bold"
+                                className="p-0.5 hover:bg-slate-200 hover:text-rose-600 rounded-md transition text-[10px] font-bold cursor-pointer"
                                 title="Remove"
                               >
                                 ✕
@@ -770,7 +784,7 @@ export default function CustomerPortal({
                                 setSearchQuery(kw[language]);
                                 onAddSearch(activeUserId, kw[language]);
                               }}
-                              className="px-2.5 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-xs font-bold text-slate-600 transition border border-slate-200/40"
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-xs font-bold text-slate-600 transition border border-slate-200/40 cursor-pointer"
                             >
                               🔍 {kw[language]}
                             </button>
@@ -794,7 +808,7 @@ export default function CustomerPortal({
                                 setSearchQuery(historyQuery);
                                 onAddSearch(activeUserId, historyQuery);
                               }}
-                              className="px-2.5 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-xs font-bold text-emerald-600 transition border border-emerald-200/40"
+                              className="px-2.5 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-xs font-bold text-emerald-600 transition border border-emerald-200/40 cursor-pointer"
                             >
                               ⏱️ {historyQuery}
                             </button>
@@ -930,7 +944,7 @@ export default function CustomerPortal({
                 <button
                   type="button"
                   onClick={() => setAiSearchResponse(null)}
-                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition"
+                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -992,6 +1006,19 @@ export default function CustomerPortal({
 
 
 
+            {/* TensorFlow Attention Mechanism Section */}
+            {!selectedStoreId && (
+              <AIAttentionSection
+                products={products}
+                stores={stores}
+                activeUser={activeUser}
+                language={language}
+                onAddToCart={(product) => onAddToCart(product.storeId, product)}
+                onOpenStore={(storeId) => onSelectStore(storeId)}
+                searchQuery={searchQuery}
+              />
+            )}
+
             {/* Popular Stores Grid */}
             <div className="space-y-4">
               <h2 className="text-xl font-extrabold font-display text-slate-800 tracking-tight">
@@ -1000,7 +1027,7 @@ export default function CustomerPortal({
 
               {/* Shop Categories Horizontal Filter Bar */}
               <div className="flex gap-2 overflow-x-auto pb-3 pr-1 scrollbar-thin">
-                <button
+                <button type="button"
                   onClick={() => setSelectedStoreCategory(null)}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
                     selectedStoreCategory === null
@@ -1012,7 +1039,7 @@ export default function CustomerPortal({
                   <span>{language === 'en' ? 'All Shops' : 'सभी दुकानें'}</span>
                 </button>
                 {SHOP_CATEGORIES.map((cat) => (
-                  <button
+                  <button type="button"
                     key={cat.id}
                     onClick={() => setSelectedStoreCategory(cat.id)}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
@@ -1028,7 +1055,7 @@ export default function CustomerPortal({
               </div>
 
               {filteredStores.length === 0 ? (
-                <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 text-xs font-black text-slate-400">
+                <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 text-xs font-black text-slate-400 cursor-pointer">
                   {language === 'en' ? 'No local Maudaha stores match your search.' : 'आपकी खोज से मेल खाने वाली कोई स्थानीय मौदहा दुकान नहीं मिली।'}
                 </div>
               ) : (
@@ -1101,12 +1128,12 @@ export default function CustomerPortal({
             {/* Store Breadcrumb Banner */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
               <div className="space-y-2 relative z-10">
-                <button
+                <button type="button"
                   onClick={() => {
                     onSelectStore(null);
                     setSelectedCategory(null);
                   }}
-                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition"
+                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition cursor-pointer"
                 >
                   ← {t.backToBrowsing}
                 </button>
@@ -1130,9 +1157,9 @@ export default function CustomerPortal({
                 
                 {/* Floating shopping cart visual */}
                 {activeStoreCart.length > 0 && (
-                  <button
+                  <button type="button"
                     onClick={() => setShowCartDrawer(true)}
-                    className="lg:hidden fixed bottom-6 right-6 z-40 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-bold text-sm flex items-center gap-2 transition shadow-lg shadow-emerald-600/30 animate-bounce"
+                    className="lg:hidden fixed bottom-6 right-6 z-40 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-bold text-sm flex items-center gap-2 transition shadow-lg shadow-emerald-600/30 animate-bounce cursor-pointer"
                   >
                     <ShoppingCart className="h-5 w-5" />
                     <span>{t.viewCart} ({activeStoreCart.length})</span>
@@ -1175,7 +1202,7 @@ export default function CustomerPortal({
                       }`}
                       title={language === 'en' ? 'Search by voice' : 'आवाज से खोजें'}
                     >
-                      {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                      {isListening ? <MicOff className="h-4 w-4 cursor-pointer" /> : <Mic className="h-4 w-4" />}
                     </button>
                     {searchQuery && (
                       <button
@@ -1184,7 +1211,7 @@ export default function CustomerPortal({
                           setSearchQuery('');
                           setIsStoreSearchFocused(false);
                         }}
-                        className="absolute right-11 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all"
+                        className="absolute right-11 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all cursor-pointer"
                         title={language === 'en' ? 'Clear search' : 'खोज साफ करें'}
                       >
                         <X className="h-4 w-4" />
@@ -1224,7 +1251,7 @@ export default function CustomerPortal({
                               <button
                                 type="button"
                                 onClick={handleClearSearchHistory}
-                                className="text-[9px] text-rose-500 hover:text-rose-600 font-extrabold hover:underline"
+                                className="text-[9px] text-rose-500 hover:text-rose-600 font-extrabold hover:underline cursor-pointer"
                               >
                                 {language === 'en' ? 'Clear All' : 'सभी मिटाएं'}
                               </button>
@@ -1241,7 +1268,7 @@ export default function CustomerPortal({
                                       setSearchQuery(historyQuery);
                                       onAddSearch(activeUserId, historyQuery);
                                     }}
-                                    className="focus:outline-none flex items-center gap-1"
+                                    className="focus:outline-none flex items-center gap-1 cursor-pointer"
                                   >
                                     ⏱️ {historyQuery}
                                   </button>
@@ -1251,7 +1278,7 @@ export default function CustomerPortal({
                                       e.stopPropagation();
                                       handleDeleteSearchHistoryItem(historyQuery);
                                     }}
-                                    className="p-0.5 hover:bg-slate-200 hover:text-rose-600 rounded-md transition text-[10px] font-bold"
+                                    className="p-0.5 hover:bg-slate-200 hover:text-rose-600 rounded-md transition text-[10px] font-bold cursor-pointer"
                                     title="Remove"
                                   >
                                     ✕
@@ -1277,7 +1304,7 @@ export default function CustomerPortal({
                                     setSearchQuery(historyQuery);
                                     onAddSearch(activeUserId, historyQuery);
                                   }}
-                                  className="px-2.5 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-xs font-bold text-emerald-600 transition border border-emerald-200/40"
+                                  className="px-2.5 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-xs font-bold text-emerald-600 transition border border-emerald-200/40 cursor-pointer"
                                 >
                                   ⏱️ {historyQuery}
                                 </button>
@@ -1372,7 +1399,7 @@ export default function CustomerPortal({
                   </div>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 uppercase shrink-0 font-mono tracking-wider"
+                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 uppercase shrink-0 font-mono tracking-wider cursor-pointer"
                   >
                     <span>🔍</span>
                     <span>{language === 'en' ? 'Audit Search' : 'खोजें'}</span>
@@ -1381,7 +1408,7 @@ export default function CustomerPortal({
 
                 {/* Category Horizontal list */}
                 <div className="flex gap-2 overflow-x-auto pb-2 pr-1 scrollbar-thin">
-                  <button
+                  <button type="button"
                     onClick={() => {
                       setSelectedCategory(null);
                       setShowWatchlistOnly(false);
@@ -1395,7 +1422,7 @@ export default function CustomerPortal({
                     {language === 'en' ? 'All Items' : 'सभी सामग्री'}
                   </button>
 
-                  <button
+                  <button type="button"
                     onClick={() => {
                       setShowWatchlistOnly(!showWatchlistOnly);
                       setSelectedCategory(null);
@@ -1409,14 +1436,14 @@ export default function CustomerPortal({
                     <span>⭐</span>
                     <span>{language === 'en' ? 'Watchlist' : 'वॉचलिस्ट'}</span>
                     {watchlist.length > 0 && (
-                      <span className="bg-amber-100 text-amber-800 text-[10px] font-black rounded-full px-1.5 py-0.2">
+                      <span className="bg-amber-100 text-amber-800 text-[10px] font-black rounded-full px-1.5 py-0.2 cursor-pointer">
                         {products.filter(p => p.storeId === selectedStoreId && watchlist.includes(p.id)).length}
                       </span>
                     )}
                   </button>
 
                   {(activeStore?.categories || []).map((cat, idx) => (
-                    <button
+                    <button type="button"
                       key={`${cat}-${idx}`}
                       onClick={() => {
                         setSelectedCategory(cat);
@@ -1436,7 +1463,7 @@ export default function CustomerPortal({
                 {/* Products Grid */}
 
                 {filteredProducts.length === 0 ? (
-                  <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 text-slate-400 text-sm">
+                  <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 text-slate-400 text-sm cursor-pointer">
                     {language === 'en' ? 'No products available in this category currently.' : 'इस श्रेणी में फिलहाल कोई सामग्री उपलब्ध नहीं है।'}
                   </div>
                 ) : (
@@ -1480,7 +1507,7 @@ export default function CustomerPortal({
                                 <Star className={`h-3.5 w-3.5 ${watchlist.includes(p.id) ? 'fill-current text-slate-900' : 'text-slate-400'}`} />
                               </button>
                               {isOutOfStock && (
-                                <div className="absolute inset-0 bg-white/85 backdrop-blur-[1px] flex items-center justify-center">
+                                <div className="absolute inset-0 bg-white/85 backdrop-blur-[1px] flex items-center justify-center cursor-pointer">
                                   <span className="bg-red-100 text-red-700 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
                                     {t.outOfStock}
                                   </span>
@@ -1538,32 +1565,32 @@ export default function CustomerPortal({
 
                             {/* Add / Qty selectors */}
                             {isOutOfStock ? (
-                              <button
+                              <button type="button"
                                 disabled
-                                className="px-3 py-1.5 bg-slate-100 text-slate-400 rounded-lg text-xs font-bold"
+                                className="px-3 py-1.5 bg-slate-100 text-slate-400 rounded-lg text-xs font-bold cursor-pointer"
                               >
                                 {t.outOfStock}
                               </button>
                             ) : cartItem ? (
                               <div className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-lg px-2.5 py-1">
-                                <button
+                                <button type="button"
                                   onClick={() => onRemoveFromCart(selectedStoreId!, p.id)}
-                                  className="text-emerald-700 hover:bg-emerald-100 p-0.5 rounded-xs"
+                                  className="text-emerald-700 hover:bg-emerald-100 p-0.5 rounded-xs cursor-pointer"
                                 >
                                   <Minus className="h-3 w-3" />
                                 </button>
                                 <span className="font-mono font-bold text-xs">{cartItem.quantity}</span>
-                                <button
+                                <button type="button"
                                   onClick={() => onAddToCart(selectedStoreId!, p)}
-                                  className="text-emerald-700 hover:bg-emerald-100 p-0.5 rounded-xs"
+                                  className="text-emerald-700 hover:bg-emerald-100 p-0.5 rounded-xs cursor-pointer"
                                 >
                                   <Plus className="h-3 w-3" />
                                 </button>
                               </div>
                             ) : (
-                              <button
+                              <button type="button"
                                 onClick={() => onAddToCart(selectedStoreId!, p)}
-                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 active:scale-[0.96]"
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 active:scale-[0.96] cursor-pointer"
                               >
                                 <Plus className="h-3.5 w-3.5" />
                                 {t.addToCart}
@@ -1587,14 +1614,14 @@ export default function CustomerPortal({
                   </h3>
                   <div className="flex items-center gap-4">
                     {activeStoreCart.length > 0 && (
-                      <button
+                      <button type="button"
                         onClick={() => onClearCart(selectedStoreId!)}
-                        className="text-[10px] text-red-500 font-bold hover:underline"
+                        className="text-[10px] text-red-500 font-bold hover:underline cursor-pointer"
                       >
                         {language === 'en' ? 'Clear' : 'साफ करें'}
                       </button>
                     )}
-                    <button onClick={() => setShowCartDrawer(false)} className="lg:hidden text-slate-400 hover:text-slate-700">
+                    <button type="button" onClick={() => setShowCartDrawer(false)} className="lg:hidden text-slate-400 hover:text-slate-700 cursor-pointer">
                       <X className="h-5 w-5" />
                     </button>
                   </div>
@@ -1621,16 +1648,16 @@ export default function CustomerPortal({
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <button
+                            <button type="button"
                               onClick={() => onRemoveFromCart(selectedStoreId!, item.product.id)}
-                              className="text-slate-400 hover:text-emerald-600 p-0.5"
+                              className="text-slate-400 hover:text-emerald-600 p-0.5 cursor-pointer"
                             >
                               <Minus className="h-3.5 w-3.5" />
                             </button>
                             <span className="font-mono font-bold text-slate-800">{item.quantity}</span>
-                            <button
+                            <button type="button"
                               onClick={() => onAddToCart(selectedStoreId!, item.product)}
-                              className="text-slate-400 hover:text-emerald-600 p-0.5"
+                              className="text-slate-400 hover:text-emerald-600 p-0.5 cursor-pointer"
                             >
                               <Plus className="h-3.5 w-3.5" />
                             </button>
@@ -1712,7 +1739,7 @@ export default function CustomerPortal({
                                       : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                                   }`}
                                 >
-                                  <span className="font-mono uppercase">{n.code}</span>
+                                  <span className="font-mono uppercase cursor-pointer">{n.code}</span>
                                   <span className="text-slate-300 font-normal">|</span>
                                   <span className={isThisApplied ? 'text-emerald-700' : 'text-slate-500'}>₹{n.discountAmount} Off</span>
                                 </button>
@@ -1839,13 +1866,13 @@ export default function CustomerPortal({
                       </div>
 
                       {/* Display Coins Earnings */}
-                      <p className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                      <p className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 cursor-pointer">
                         ✨ {t.coinsEarnedMsg.replace('{coins}', Math.floor(subtotal / 20).toString())}
                       </p>
 
-                      <button
+                      <button type="button"
                         onClick={handleCheckoutBtn}
-                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition shadow-md shadow-emerald-600/10 active:scale-[0.98]"
+                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition shadow-md shadow-emerald-600/10 active:scale-[0.98] cursor-pointer"
                       >
                         <span>{t.placeOrder}</span>
                         <ArrowRight className="h-4 w-4" />
@@ -1867,9 +1894,9 @@ export default function CustomerPortal({
       {showUpiCheckout && (
         <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl relative border border-slate-100">
-            <button
+            <button type="button"
               onClick={() => setShowUpiCheckout(false)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 font-extrabold font-mono text-base transition-colors duration-150 z-50"
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 font-extrabold font-mono text-base transition-colors duration-150 z-50 cursor-pointer"
             >
               ✕
             </button>
@@ -1881,14 +1908,15 @@ export default function CustomerPortal({
               <div className="p-5">
                 <UPIPayment
                   amount={grandTotal}
-                  sellerAmount={Math.round(activeStoreCart.reduce((sum, item) => sum + (item.product.msp ?? (item.product.price * 0.9)) * item.quantity, 0))}
-                  adminAmount={Math.max(0, grandTotal - Math.round(activeStoreCart.reduce((sum, item) => sum + (item.product.msp ?? (item.product.price * 0.9)) * item.quantity, 0)))}
+                  sellerAmount={Math.round(activeStoreCart.reduce((sum, item) => sum + (item.product.msp ?? (item.product.sellingPrice ?? item.product.price)) * item.quantity, 0))}
+                  adminAmount={Math.max(0, grandTotal - Math.round(activeStoreCart.reduce((sum, item) => sum + (item.product.msp ?? (item.product.sellingPrice ?? item.product.price)) * item.quantity, 0)))}
                   sellerUpiId={stores.find(s => s.id === selectedStoreId)?.upiId || 'merchant@ybl'}
                   adminUpiId="dingdang7081@okhdfcbank"
                   onPaymentSuccess={(confirmedUpiId) => {
                     executeCheckout(confirmedUpiId);
                   }}
                   language={language}
+                  hideSplitDetails={true}
                 />
               </div>
             </div>

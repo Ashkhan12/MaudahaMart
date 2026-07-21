@@ -159,9 +159,9 @@ export default function MapLocationPicker({
               {language === 'en' ? 'Pin your exact address on Maudaha Map' : 'मौदहा के नक्शे पर अपना सटीक पता पिन करें'}
             </p>
           </div>
-          <button 
+          <button type="button" 
             onClick={onClose}
-            className="h-8 w-8 rounded-full bg-slate-200/50 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition"
+            className="h-8 w-8 rounded-full bg-slate-200/50 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -179,9 +179,9 @@ export default function MapLocationPicker({
               className="w-full bg-slate-50 border border-slate-200 pl-9 pr-8 py-2 rounded-2xl text-xs focus:outline-none focus:border-emerald-500 focus:bg-white font-bold text-slate-700"
             />
             {searchText && (
-              <button 
+              <button type="button" 
                 onClick={() => { setSearchText(''); setSearchSuggestions([]); }}
-                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -192,10 +192,10 @@ export default function MapLocationPicker({
           {searchSuggestions.length > 0 && (
             <div className="absolute left-3 right-3 top-[48px] bg-white border border-slate-200 rounded-2xl shadow-lg z-50 overflow-hidden divide-y divide-slate-50 max-h-[200px] overflow-y-auto">
               {searchSuggestions.map((site) => (
-                <button
+                <button type="button"
                   key={site.name}
                   onClick={() => selectSuggestion(site)}
-                  className="w-full text-left px-4 py-2.5 hover:bg-emerald-50/50 text-xs flex items-start gap-2 transition"
+                  className="w-full text-left px-4 py-2.5 hover:bg-emerald-50/50 text-xs flex items-start gap-2 transition cursor-pointer"
                 >
                   <MapPin className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
                   <div>
@@ -276,10 +276,10 @@ export default function MapLocationPicker({
                   const isThisSelected = Math.hypot(site.lat - selectedCoords.lat, site.lng - selectedCoords.lng) < 0.001;
 
                   return (
-                    <button
+                    <button type="button"
                       key={site.name}
                       onClick={() => setSelectedCoords({ lat: site.lat, lng: site.lng })}
-                      className="absolute group -translate-x-1/2 -translate-y-1/2 focus:outline-none transition-all"
+                      className="absolute group -translate-x-1/2 -translate-y-1/2 focus:outline-none transition-all cursor-pointer"
                       style={{ left: `${Math.max(30, Math.min(470, x))}px`, top: `${Math.max(40, Math.min(340, y))}px` }}
                     >
                       <div className="flex flex-col items-center">
@@ -315,7 +315,7 @@ export default function MapLocationPicker({
           )}
 
           {/* Floating 'Locate Me' Button */}
-          <button
+          <button type="button"
             onClick={handleLocateMe}
             disabled={isLocating}
             className="absolute bottom-4 right-4 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-300 text-white h-10 px-4 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-black transition z-10 cursor-pointer hover:scale-103"
@@ -347,18 +347,18 @@ export default function MapLocationPicker({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <button
+            <button type="button"
               onClick={onClose}
-              className="w-full py-2.5 rounded-2xl border border-slate-200 text-xs font-black text-slate-600 hover:bg-slate-100 transition"
+              className="w-full py-2.5 rounded-2xl border border-slate-200 text-xs font-black text-slate-600 hover:bg-slate-100 transition cursor-pointer"
             >
               {language === 'en' ? 'Cancel' : 'रद्द करें'}
             </button>
-            <button
+            <button type="button"
               onClick={() => {
                 onSelectLocation(resolvedAddress, selectedCoords.lat, selectedCoords.lng);
                 onClose();
               }}
-              className="w-full py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black shadow-md flex items-center justify-center gap-1.5 transition hover:scale-102"
+              className="w-full py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black shadow-md flex items-center justify-center gap-1.5 transition hover:scale-102 cursor-pointer"
             >
               <Check className="h-4 w-4 stroke-[3]" />
               {language === 'en' ? 'Confirm Location' : 'स्थान की पुष्टि करें'}

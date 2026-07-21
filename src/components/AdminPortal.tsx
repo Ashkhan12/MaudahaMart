@@ -53,7 +53,19 @@ interface AdminPortalProps {
 export default function AdminPortal(props: AdminPortalProps) {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 animate-in fade-in duration-300">
-      <ServiceAreaManager />
+      <ServiceAreaManager 
+        areas={props.serviceAreas} 
+        onUpdateAreas={props.onUpdateServiceAreas}
+        allUsers={props.users}
+        allStores={props.stores}
+        onUpdateStores={props.onUpdateStores}
+        allProducts={props.products}
+        onUpdateProducts={props.onUpdateProducts}
+        allOrders={props.orders}
+        allTickets={props.supportTickets}
+        onToggleTicketStatus={props.onToggleTicketStatus}
+        onUpdateUsers={props.onUpdateUsers}
+      />
     </div>
   );
 }

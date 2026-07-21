@@ -54,8 +54,16 @@ export default function SmartSearchBar({ language, products, onSearch, searchQue
       };
 
       recognitionRef.current.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
         setIsListening(false);
+        if (event.error === 'not-allowed') {
+          alert(
+            language === 'en'
+              ? 'Microphone permission was denied. Please check your browser microphone settings or open the app in a new tab.'
+              : 'माइक्रोफोन अनुमति अस्वीकृत है। कृपया ब्राउज़र माइक्रोफोन सेटिंग्स जांचें या ऐप को नए टैब में खोलें।'
+          );
+        } else {
+          console.warn("Speech recognition error:", event.error);
+        }
       };
 
       recognitionRef.current.onend = () => {
@@ -76,8 +84,16 @@ export default function SmartSearchBar({ language, products, onSearch, searchQue
       };
 
       voiceToTextRef.current.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
         setIsVoiceToTextListening(false);
+        if (event.error === 'not-allowed') {
+          alert(
+            language === 'en'
+              ? 'Microphone permission was denied. Please check your browser microphone settings or open the app in a new tab.'
+              : 'माइक्रोफोन अनुमति अस्वीकृत है। कृपया ब्राउज़र माइक्रोफोन सेटिंग्स जांचें या ऐप को नए टैब में खोलें।'
+          );
+        } else {
+          console.warn("Voice search error:", event.error);
+        }
       };
 
       voiceToTextRef.current.onend = () => {
@@ -214,7 +230,7 @@ export default function SmartSearchBar({ language, products, onSearch, searchQue
                 onSearch('');
                 if (onFocus) onFocus();
               }}
-              className="absolute right-14 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all z-20"
+              className="absolute right-14 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all z-20 cursor-pointer"
               title="Clear"
             >
               <X className="h-4 w-4" />
@@ -231,13 +247,13 @@ export default function SmartSearchBar({ language, products, onSearch, searchQue
             }`}
             title={language === 'en' ? 'Voice Typing' : 'बोल कर खोजें'}
           >
-            {isVoiceToTextListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+            {isVoiceToTextListening ? <MicOff className="h-5 w-5 cursor-pointer" /> : <Mic className="h-5 w-5" />}
           </button>
         </div>
 
         {/* AI Assistant Button */}
         <div className="pr-3 pl-2 py-2 border-l border-emerald-100 flex items-center">
-          <button
+          <button type="button"
             onClick={startListening}
             className={`relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm transition-all overflow-hidden ${
               isListening 
@@ -250,7 +266,7 @@ export default function SmartSearchBar({ language, products, onSearch, searchQue
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 opacity-20 pointer-events-none"
+                className="absolute inset-0 opacity-20 pointer-events-none cursor-pointer"
                 style={{
                   background: 'conic-gradient(from 0deg, transparent, white, transparent)'
                 }}
@@ -309,9 +325,9 @@ export default function SmartSearchBar({ language, products, onSearch, searchQue
               </p>
               
               <div className="mt-4 flex justify-end">
-                <button 
+                <button type="button" 
                   onClick={stopSpeaking}
-                  className="text-xs bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-full font-bold transition-colors text-slate-300"
+                  className="text-xs bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-full font-bold transition-colors text-slate-300 cursor-pointer"
                 >
                   {language === 'en' ? 'Close & Stop Audio' : 'बंद करें और ऑडियो रोकें'}
                 </button>

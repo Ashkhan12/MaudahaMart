@@ -580,7 +580,7 @@ export default function FlightBookingCorner({
                     </div>
                     <div className="text-right">
                       <span className="text-lg font-black text-slate-800 block">₹{flight.price}</span>
-                      <button
+                      <button type="button"
                         onClick={() => setSelectedFlight(flight)}
                         className="mt-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black rounded-xl transition cursor-pointer"
                       >
@@ -601,7 +601,7 @@ export default function FlightBookingCorner({
                   <h3 className="text-sm font-black text-slate-800">Configure Cabin Details</h3>
                   <p className="text-xs text-slate-400 font-bold mt-0.5">{selectedFlight.airline} • {selectedFlight.flightNumber}</p>
                 </div>
-                <button 
+                <button type="button" 
                   onClick={() => setSelectedFlight(null)} 
                   className="text-xs font-black text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
@@ -613,23 +613,23 @@ export default function FlightBookingCorner({
               <div className="space-y-2">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Cabin Class Upgrade</span>
                 <div className="grid grid-cols-2 gap-2">
-                  <button
+                  <button type="button"
                     onClick={() => { setBookingClass('Economy'); setSelectedSeat(null); }}
                     className={`py-2.5 px-3 text-xs font-black rounded-xl border transition cursor-pointer flex justify-between items-center ${
                       bookingClass === 'Economy' ? 'bg-emerald-50 border-emerald-500 text-emerald-800 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                   >
                     <span>Economy Class</span>
-                    <span className="text-[10px] bg-white border px-1.5 py-0.5 rounded text-slate-500">Standard</span>
+                    <span className="text-[10px] bg-white border px-1.5 py-0.5 rounded text-slate-500 cursor-pointer">Standard</span>
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => { setBookingClass('Business'); setSelectedSeat(null); }}
                     className={`py-2.5 px-3 text-xs font-black rounded-xl border transition cursor-pointer flex justify-between items-center ${
                       bookingClass === 'Business' ? 'bg-indigo-50 border-indigo-500 text-indigo-800 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                   >
                     <span>Business Class Upgrade</span>
-                    <span className="text-[10px] bg-amber-100 text-amber-800 font-mono font-black px-1.5 py-0.5 rounded">+₹{businessAddon}</span>
+                    <span className="text-[10px] bg-amber-100 text-amber-800 font-mono font-black px-1.5 py-0.5 rounded cursor-pointer">+₹{businessAddon}</span>
                   </button>
                 </div>
               </div>
@@ -659,7 +659,7 @@ export default function FlightBookingCorner({
                               const isOccupied = occupiedSeats.has(seat);
                               const isSelected = selectedSeat === seat;
                               return (
-                                <button
+                                <button type="button"
                                   key={seat}
                                   disabled={isOccupied}
                                   onClick={() => setSelectedSeat(seat)}
@@ -680,7 +680,7 @@ export default function FlightBookingCorner({
                           </div>
 
                           {/* Central Aisle */}
-                          <span className="text-[8px] font-mono text-slate-300 select-none">AISLE</span>
+                          <span className="text-[8px] font-mono text-slate-300 select-none cursor-pointer">AISLE</span>
 
                           {/* Right Seats */}
                           <div className="flex gap-1.5">
@@ -689,7 +689,7 @@ export default function FlightBookingCorner({
                               const isOccupied = occupiedSeats.has(seat);
                               const isSelected = selectedSeat === seat;
                               return (
-                                <button
+                                <button type="button"
                                   key={seat}
                                   disabled={isOccupied}
                                   onClick={() => setSelectedSeat(seat)}
@@ -712,7 +712,7 @@ export default function FlightBookingCorner({
                       ))}
                     </div>
 
-                    <div className="text-center pt-2 border-t border-slate-100 text-[8px] font-bold text-slate-400">
+                    <div className="text-center pt-2 border-t border-slate-100 text-[8px] font-bold text-slate-400 cursor-pointer">
                       CABIN EXIT ROW
                     </div>
                   </div>
@@ -742,7 +742,7 @@ export default function FlightBookingCorner({
                   <span className="text-xl font-black text-slate-800">₹{currentBasePrice}</span>
                   <span className="text-[10px] text-slate-400 block font-bold mt-0.5">Selected Seat: <span className="text-emerald-600">{selectedSeat || 'Select seat map above'}</span></span>
                 </div>
-                <button
+                <button type="button"
                   onClick={() => {
                     if (!selectedSeat) {
                       alert(language === 'en' ? 'Please select your desired seat first!' : 'कृपया पहले अपनी मनपसंद सीट चुनें!');
@@ -766,7 +766,7 @@ export default function FlightBookingCorner({
                   <Shield className="h-4 w-4" />
                   <span>{language === 'en' ? 'UPI Security Payment Gateway' : 'यूपीआई सुरक्षा भुगतान गेटवे'}</span>
                 </h3>
-                <button 
+                <button type="button" 
                   onClick={() => setShowPayment(false)} 
                   className="text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
@@ -830,7 +830,7 @@ export default function FlightBookingCorner({
                   />
                 </div>
 
-                <button
+                <button type="button"
                   onClick={() => {
                     if (!customerUpiId.trim() || !customerUpiId.includes('@')) {
                       alert(language === 'en' ? 'Please specify a valid UPI ID!' : 'कृपया एक वैध यूपीआई आईडी दर्ज करें!');

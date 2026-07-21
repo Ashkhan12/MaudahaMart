@@ -263,9 +263,9 @@ export default function UserProfileCorner({
               </span>
             </div>
           </div>
-          <button 
+          <button type="button" 
             onClick={onClose}
-            className="p-1.5 hover:bg-slate-200/60 rounded-lg text-slate-400 hover:text-slate-600 transition"
+            className="p-1.5 hover:bg-slate-200/60 rounded-lg text-slate-400 hover:text-slate-600 transition cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -313,7 +313,7 @@ export default function UserProfileCorner({
 
           {/* Quick Log Out option (Moved Higher Up) */}
           {onLogOut && (
-            <button
+            <button type="button"
               onClick={() => {
                 onLogOut();
               }}
@@ -331,17 +331,17 @@ export default function UserProfileCorner({
                 {language === 'en' ? 'Personal Details' : 'व्यक्तिगत विवरण'}
               </span>
               {!isEditing ? (
-                <button
+                <button type="button"
                   onClick={() => setIsEditing(true)}
-                  className="text-xs text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 hover:underline transition"
+                  className="text-xs text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 hover:underline transition cursor-pointer"
                 >
                   <Edit2 className="h-3 w-3" />
                   {language === 'en' ? 'Edit Info' : 'बदलें'}
                 </button>
               ) : (
-                <button
+                <button type="button"
                   onClick={() => setIsEditing(false)}
-                  className="text-xs text-slate-500 hover:text-slate-600 font-bold transition"
+                  className="text-xs text-slate-500 hover:text-slate-600 font-bold transition cursor-pointer"
                 >
                   {language === 'en' ? 'Cancel' : 'रद्द करें'}
                 </button>
@@ -489,7 +489,7 @@ export default function UserProfileCorner({
                       ? 'Ensure your business details are authentic and update your phone number before re-applying.'
                       : 'पुनः आवेदन करने से पहले सुनिश्चित करें कि आपकी दुकान की जानकारी वास्तविक है।'}
                   </p>
-                  <button
+                  <button type="button"
                     onClick={() => {
                       const updatedUsers = users.map(u => {
                         if (u.id === activeUserId) {
@@ -505,7 +505,7 @@ export default function UserProfileCorner({
                   </button>
                 </div>
               ) : !showMerchantRequestForm ? (
-                <button
+                <button type="button"
                   onClick={() => setShowMerchantRequestForm(true)}
                   className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-extrabold rounded-xl transition flex items-center justify-center gap-1 shadow-md shadow-emerald-600/10 cursor-pointer"
                 >
@@ -521,7 +521,7 @@ export default function UserProfileCorner({
                     <button
                       type="button"
                       onClick={() => setShowMerchantRequestForm(false)}
-                      className="text-[10px] text-slate-500 hover:text-slate-700 font-bold flex items-center gap-0.5"
+                      className="text-[10px] text-slate-500 hover:text-slate-700 font-bold flex items-center gap-0.5 cursor-pointer"
                     >
                       <ChevronLeft className="h-3.5 w-3.5" />
                       {language === 'en' ? 'Back' : 'पीछे'}
@@ -653,7 +653,7 @@ export default function UserProfileCorner({
                     }`}
                     title={language === 'en' ? 'Adaptive to live Maudaha weather!' : 'मौदहा के लाइव मौसम के अनुकूल!'}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 cursor-pointer">
                       <span className="text-xl animate-bounce shrink-0" style={{ animationDuration: '4s' }}>
                         {weather.icon}
                       </span>
@@ -694,7 +694,7 @@ export default function UserProfileCorner({
                         title={t.name}
                       >
                         <span 
-                          className="h-5 w-5 rounded-full border border-slate-200 block shadow-inner shrink-0" 
+                          className="h-5 w-5 rounded-full border border-slate-200 block shadow-inner shrink-0 cursor-pointer" 
                           style={{ backgroundColor: t.primary }} 
                         />
                         <span className="text-[9px] font-bold text-slate-500 truncate max-w-full block">
@@ -708,7 +708,7 @@ export default function UserProfileCorner({
             )}
 
             {/* Role/Portal Switcher */}
-            {onSwitchRole && role && activeUser.role === 'admin' && (
+            {onSwitchRole && role && (activeUser.role === 'admin' || role === 'admin' || activeUser.email?.toLowerCase() === 'biengwithash@gmail.com') && (
               <div className="space-y-2">
                 <span className="text-xs font-bold text-slate-600 block">
                   {language === 'en' ? 'Switch Active Portal' : 'सक्रिय पोर्टल बदलें'}

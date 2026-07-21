@@ -439,9 +439,9 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
           
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold tracking-tight">Service Areas</h2>
-            <button 
+            <button type="button" 
               onClick={() => setShowAddModal(true)}
-              className="p-2 bg-amber-500 text-slate-900 hover:bg-amber-400 rounded-xl transition duration-200 flex items-center justify-center shadow-lg shadow-amber-500/15"
+              className="p-2 bg-amber-500 text-slate-900 hover:bg-amber-400 rounded-xl transition duration-200 flex items-center justify-center shadow-lg shadow-amber-500/15 cursor-pointer"
             >
               <Plus className="h-5 w-5" />
             </button>
@@ -455,7 +455,7 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
           {serviceAreas.map(area => {
             const isSelected = area.id === selectedArea.id;
             return (
-              <button
+              <button type="button"
                 key={area.id}
                 onClick={() => setSelectedAreaId(area.id)}
                 className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 ${
@@ -464,7 +464,7 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
                     : 'bg-slate-50 border-slate-200/70 hover:bg-white hover:border-slate-300'
                 }`}
               >
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start cursor-pointer">
                   <div className="space-y-1">
                     <div className="flex items-center gap-1.5">
                       <MapPin className={`h-4 w-4 ${isSelected ? 'text-amber-500 animate-pulse' : 'text-slate-400'}`} />
@@ -586,7 +586,7 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
-              <button
+              <button type="button"
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as TabType)}
                 className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all duration-150 ${
@@ -595,7 +595,7 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
                     : 'text-slate-600 hover:bg-slate-200 hover:text-slate-800'
                 }`}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <Icon className="h-3.5 w-3.5 cursor-pointer" />
                 <span>{tab.label}</span>
                 {tab.badge !== undefined && (
                   <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black ${
@@ -620,9 +620,9 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
                   <h3 className="font-bold text-slate-900">Service Area Operational Status</h3>
                   <p className="text-xs text-slate-400 font-medium">Turn off to completely halt deliveries and order placement in this area.</p>
                 </div>
-                <button 
+                <button type="button" 
                   onClick={handleToggleStatus}
-                  className="focus:outline-none transition duration-200 active:scale-95"
+                  className="focus:outline-none transition duration-200 active:scale-95 cursor-pointer"
                 >
                   {selectedArea.status === 'Active' ? (
                     <ToggleRight className="h-14 w-14 text-emerald-500" />
@@ -756,9 +756,9 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
                     {(selectedArea.polygon_coordinates || []).map((coord, i) => (
                       <div key={i} className="flex justify-between items-center bg-slate-50 border border-slate-100 p-2 rounded-xl text-xs font-mono font-medium">
                         <span className="text-slate-600">P{i+1}: {coord.lat.toFixed(4)}, {coord.lng.toFixed(4)}</span>
-                        <button 
+                        <button type="button" 
                           onClick={() => handleRemoveCoordinate(i)}
-                          className="p-1 hover:bg-slate-200 rounded text-rose-500"
+                          className="p-1 hover:bg-slate-200 rounded text-rose-500 cursor-pointer"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -783,9 +783,9 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
                       className="bg-slate-50 border p-2 rounded-xl text-xs font-mono font-bold"
                     />
                   </div>
-                  <button 
+                  <button type="button" 
                     onClick={handleAddCoordinate}
-                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
+                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <Plus className="h-4 w-4" /> Add Border Landmark Point
                   </button>
@@ -829,7 +829,7 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
                       </div>
                     </div>
 
-                    <button 
+                    <button type="button" 
                       onClick={handleTestCoordinate}
                       className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                     >
@@ -1052,7 +1052,7 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
                   {['Instant', 'Scheduled', 'Free', 'Paid'].map(type => {
                     const isEnabled = (selectedArea.delivery_types || []).includes(type);
                     return (
-                      <button
+                      <button type="button"
                         key={type}
                         onClick={() => handleToggleDeliveryType(type)}
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
@@ -1069,16 +1069,16 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
               </div>
 
               {/* Slots List */}
-              <div className="space-y-3 pt-4 border-t border-slate-100">
+              <div className="space-y-3 pt-4 border-t border-slate-100 cursor-pointer">
                 <label className="text-xs font-black uppercase text-slate-400 block tracking-wider">Checkout Time Slots</label>
                 
                 <div className="flex flex-wrap gap-2">
                   {(selectedArea.delivery_slots || []).map((slot, i) => (
                     <span key={i} className="px-3 py-1.5 bg-slate-100 border border-slate-200/60 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1.5">
                       {slot}
-                      <button 
+                      <button type="button" 
                         onClick={() => handleRemoveSlot(slot)}
-                        className="text-slate-400 hover:text-rose-500 font-bold transition"
+                        className="text-slate-400 hover:text-rose-500 font-bold transition cursor-pointer"
                       >
                         &times;
                       </button>
@@ -1094,9 +1094,9 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
                     onChange={(e) => setNewSlot(e.target.value)}
                     className="flex-1 bg-slate-50 border px-3 py-2 rounded-xl text-xs font-bold text-slate-800"
                   />
-                  <button 
+                  <button type="button" 
                     onClick={handleAddSlot}
-                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition"
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition cursor-pointer"
                   >
                     Add Slot
                   </button>
@@ -1143,9 +1143,9 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
                     className="w-full bg-white border px-3 py-1.5 rounded-xl text-xs font-mono font-bold"
                   />
                 </div>
-                <button 
+                <button type="button" 
                   onClick={handleAddCoupon}
-                  className="py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow"
+                  className="py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow cursor-pointer"
                 >
                   <Plus className="h-4 w-4" /> Add Code
                 </button>
@@ -1174,9 +1174,9 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
                           <td className="p-3 font-bold text-slate-800">₹{coupon.discount} Off</td>
                           <td className="p-3 text-slate-600">₹{coupon.minOrder}</td>
                           <td className="p-3">
-                            <button 
+                            <button type="button" 
                               onClick={() => handleRemoveCoupon(coupon.id)}
-                              className="p-1 hover:bg-slate-100 rounded text-rose-500"
+                              className="p-1 hover:bg-slate-100 rounded text-rose-500 cursor-pointer"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -1254,9 +1254,9 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
                   <h3 className="text-lg font-bold text-slate-900">Provision New Service Area</h3>
                   <p className="text-xs text-slate-400 font-medium">All database schemas are auto-partitioned mapping this new ID.</p>
                 </div>
-                <button 
+                <button type="button" 
                   onClick={() => setShowAddModal(false)}
-                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition"
+                  className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition cursor-pointer"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1365,13 +1365,13 @@ export default function ServiceAreaManagement(props: ServiceAreaManagementProps)
                   <button 
                     type="button" 
                     onClick={() => setShowAddModal(false)}
-                    className="px-4 py-2 bg-slate-50 hover:bg-slate-100 border text-slate-600 rounded-xl text-xs font-bold transition"
+                    className="px-4 py-2 bg-slate-50 hover:bg-slate-100 border text-slate-600 rounded-xl text-xs font-bold transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit" 
-                    className="px-6 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl text-xs font-black transition shadow-lg shadow-amber-500/15"
+                    className="px-6 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl text-xs font-black transition shadow-lg shadow-amber-500/15 cursor-pointer"
                   >
                     Save Service Area
                   </button>

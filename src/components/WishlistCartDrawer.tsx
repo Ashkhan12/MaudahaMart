@@ -73,7 +73,7 @@ export default function WishlistCartDrawer({
         {/* Header Tabs */}
         <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
           <div className="flex gap-2 bg-slate-200/60 p-1 rounded-xl">
-            <button
+            <button type="button"
               onClick={() => setActiveTab('cart')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-black rounded-lg transition ${
                 activeTab === 'cart' 
@@ -81,7 +81,7 @@ export default function WishlistCartDrawer({
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <ShoppingBag className="h-3.5 w-3.5 text-emerald-600" />
+              <ShoppingBag className="h-3.5 w-3.5 text-emerald-600 cursor-pointer" />
               <span>{language === 'en' ? 'Cart' : 'कार्ट'}</span>
               {totalCartItemCount > 0 && (
                 <span className="text-[9px] bg-emerald-600 text-white font-black px-1.5 py-0.2 rounded-full">
@@ -89,7 +89,7 @@ export default function WishlistCartDrawer({
                 </span>
               )}
             </button>
-            <button
+            <button type="button"
               onClick={() => setActiveTab('wishlist')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-black rounded-lg transition ${
                 activeTab === 'wishlist' 
@@ -97,7 +97,7 @@ export default function WishlistCartDrawer({
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
+              <Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500 cursor-pointer" />
               <span>{language === 'en' ? 'Wishlist' : 'इच्छासूची'}</span>
               {watchlistProducts.length > 0 && (
                 <span className="text-[9px] bg-rose-500 text-white font-black px-1.5 py-0.2 rounded-full">
@@ -107,9 +107,9 @@ export default function WishlistCartDrawer({
             </button>
           </div>
 
-          <button 
+          <button type="button" 
             onClick={onClose}
-            className="p-1.5 hover:bg-slate-200/60 rounded-lg text-slate-400 hover:text-slate-600 transition"
+            className="p-1.5 hover:bg-slate-200/60 rounded-lg text-slate-400 hover:text-slate-600 transition cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -135,9 +135,9 @@ export default function WishlistCartDrawer({
                       : 'गल्ला मंडी, नया बाजार या अन्य पार्टनर स्टोर्स से सामान चुनें और ऑर्डर करने के लिए यहां जोड़ें।'}
                   </p>
                 </div>
-                <button
+                <button type="button"
                   onClick={onClose}
-                  className="px-5 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition"
+                  className="px-5 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition cursor-pointer"
                 >
                   {language === 'en' ? 'Start Shopping' : 'खरीदारी शुरू करें'}
                 </button>
@@ -163,9 +163,9 @@ export default function WishlistCartDrawer({
                             🏪 {language === 'hi' ? store?.nameHi : store?.name}
                           </span>
                         </div>
-                        <button
+                        <button type="button"
                           onClick={() => onClearCart(storeId)}
-                          className="p-1 hover:bg-rose-50 rounded text-rose-500 hover:text-rose-600 transition"
+                          className="p-1 hover:bg-rose-50 rounded text-rose-500 hover:text-rose-600 transition cursor-pointer"
                           title={language === 'en' ? 'Clear store cart' : 'कार्ट साफ़ करें'}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -201,18 +201,18 @@ export default function WishlistCartDrawer({
 
                             {/* Quantity buttons */}
                             <div className="flex items-center gap-2">
-                              <button
+                              <button type="button"
                                 onClick={() => onRemoveFromCart(storeId, it.product.id)}
-                                className="h-5 w-5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded flex items-center justify-center text-xs font-bold transition"
+                                className="h-5 w-5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded flex items-center justify-center text-xs font-bold transition cursor-pointer"
                               >
                                 <Minus className="h-3 w-3" />
                               </button>
                               <span className="font-mono text-xs font-black text-slate-700 min-w-3 text-center">
                                 {it.quantity}
                               </span>
-                              <button
+                              <button type="button"
                                 onClick={() => onAddToCart(storeId, it.product)}
-                                className="h-5 w-5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded flex items-center justify-center text-xs font-bold transition"
+                                className="h-5 w-5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded flex items-center justify-center text-xs font-bold transition cursor-pointer"
                               >
                                 <Plus className="h-3 w-3" />
                               </button>
@@ -275,9 +275,9 @@ export default function WishlistCartDrawer({
                                       <p className="font-mono text-[9px] text-emerald-600 font-bold">₹{p.price}</p>
                                     </div>
                                   </div>
-                                  <button
+                                  <button type="button"
                                     onClick={() => onAddToCart(storeId, p)}
-                                    className="w-full py-1 bg-slate-50 hover:bg-emerald-50 text-emerald-600 border border-slate-200 hover:border-emerald-200 rounded text-[9px] font-bold transition flex items-center justify-center gap-1"
+                                    className="w-full py-1 bg-slate-50 hover:bg-emerald-50 text-emerald-600 border border-slate-200 hover:border-emerald-200 rounded text-[9px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
                                   >
                                     <Plus className="h-2.5 w-2.5" />
                                     {language === 'en' ? 'Add' : 'जोड़ें'}
@@ -290,7 +290,7 @@ export default function WishlistCartDrawer({
                       })()}
 
                       {/* Action direct checkout button */}
-                      <button
+                      <button type="button"
                         onClick={() => {
                           onCheckoutDirectly(storeId);
                           onClose();
@@ -368,22 +368,22 @@ export default function WishlistCartDrawer({
 
                         {/* Action buttons */}
                         <div className="flex flex-col items-end gap-1.5">
-                          <button
+                          <button type="button"
                             onClick={() => onToggleWatchlist(p.id)}
-                            className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded transition"
+                            className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded transition cursor-pointer"
                             title={language === 'en' ? 'Remove from Wishlist' : 'इच्छासूची से हटाएँ'}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                           
-                          <button
+                          <button type="button"
                             onClick={() => {
                               onAddToCart(p.storeId, p);
                               alert(language === 'en' 
                                 ? `Added ${p.name} to cart!` 
                                 : `कार्ट में ${p.nameHi || p.name} जोड़ा गया!`);
                             }}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-lg transition"
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-lg transition cursor-pointer"
                           >
                             {language === 'en' ? '+ Add' : '+ जोड़ें'}
                           </button>

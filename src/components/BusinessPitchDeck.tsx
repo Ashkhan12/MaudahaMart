@@ -37,16 +37,16 @@ export default function BusinessPitchDeck({ onClose }: BusinessPitchDeckProps) {
           Business Pitch Deck & Workflow
         </h1>
         <div className="flex items-center gap-3">
-          <button 
+          <button type="button" 
             onClick={handleDownloadPdf}
-            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold transition"
+            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold transition cursor-pointer"
           >
             <Download className="h-4 w-4" />
             Download PDF
           </button>
-          <button 
+          <button type="button" 
             onClick={onClose}
-            className="text-slate-400 hover:text-white px-3 py-2"
+            className="text-slate-400 hover:text-white px-3 py-2 cursor-pointer"
           >
             Close
           </button>

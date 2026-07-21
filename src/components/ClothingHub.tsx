@@ -411,7 +411,7 @@ export default function ClothingHub({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <button type="button"
             onClick={() => setViewMode('stores')}
             className={`px-4 py-2 rounded-xl text-xs font-black transition ${
               viewMode === 'stores'
@@ -419,10 +419,10 @@ export default function ClothingHub({
                 : 'bg-white text-slate-600 border border-purple-100 hover:bg-purple-50'
             }`}
           >
-            <Grid className="inline h-3.5 w-3.5 mr-1" />
+            <Grid className="inline h-3.5 w-3.5 mr-1 cursor-pointer" />
             {t.viewStores}
           </button>
-          <button
+          <button type="button"
             onClick={() => setViewMode('history')}
             className={`px-4 py-2 rounded-xl text-xs font-black transition relative ${
               viewMode === 'history'
@@ -430,7 +430,7 @@ export default function ClothingHub({
                 : 'bg-white text-slate-600 border border-purple-100 hover:bg-purple-50'
             }`}
           >
-            <History className="inline h-3.5 w-3.5 mr-1" />
+            <History className="inline h-3.5 w-3.5 mr-1 cursor-pointer" />
             {t.orderHistory}
             {ordersState.length > 0 && (
               <span className="absolute -top-1.5 -right-1.5 bg-pink-500 text-white text-[9px] font-black h-4 w-4 rounded-full flex items-center justify-center border border-white animate-pulse">
@@ -455,13 +455,13 @@ export default function ClothingHub({
               // Boutique Details View
               <div>
                 {/* Back Button */}
-                <button
+                <button type="button"
                   onClick={() => {
                     setSelectedBoutiqueId(null);
                     setPromoCode('');
                     setAppliedDiscount(null);
                   }}
-                  className="mb-5 flex items-center gap-1.5 bg-white text-purple-700 hover:text-purple-900 border border-purple-100 font-bold px-3.5 py-2 rounded-xl text-xs shadow-sm hover:shadow transition"
+                  className="mb-5 flex items-center gap-1.5 bg-white text-purple-700 hover:text-purple-900 border border-purple-100 font-bold px-3.5 py-2 rounded-xl text-xs shadow-sm hover:shadow transition cursor-pointer"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   {t.backToHub}
@@ -537,7 +537,7 @@ export default function ClothingHub({
                     {/* Category Filter Chips */}
                     <div className="flex flex-wrap gap-2 mb-6">
                       {(['all', 'ethnic', 'western', 'kids', 'footwear', 'accessories'] as const).map(cat => (
-                        <button
+                        <button type="button"
                           key={cat}
                           onClick={() => setActiveCategory(cat)}
                           className={`px-3.5 py-1.5 rounded-full text-xs font-black transition ${
@@ -552,7 +552,7 @@ export default function ClothingHub({
                     </div>
 
                     {/* Clothing Item Card Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 cursor-pointer">
                       {currentBoutique.items
                         .filter(item => activeCategory === 'all' || item.category === activeCategory)
                         .map(item => {
@@ -617,7 +617,7 @@ export default function ClothingHub({
                                     </span>
                                     <div className="flex flex-wrap gap-1">
                                       {item.sizes.map(sz => (
-                                        <button
+                                        <button type="button"
                                           key={sz}
                                           onClick={() => setSelectedSizes({ ...selectedSizes, [item.id]: sz })}
                                           className={`h-7 px-2.5 text-xs font-black rounded-lg border transition ${
@@ -634,7 +634,7 @@ export default function ClothingHub({
 
                                   {/* Custom Stitching Option for Ethnic designs */}
                                   {item.hasStitchingOption && (
-                                    <div className="mt-3 bg-purple-50 border border-purple-100 rounded-lg p-2 flex items-start gap-2">
+                                    <div className="mt-3 bg-purple-50 border border-purple-100 rounded-lg p-2 flex items-start gap-2 cursor-pointer">
                                       <input 
                                         type="checkbox" 
                                         id={`stitch-${item.id}`}
@@ -666,9 +666,9 @@ export default function ClothingHub({
                                     <div />
                                   )}
                                   
-                                  <button
+                                  <button type="button"
                                     onClick={() => handleAddToCart(item)}
-                                    className="gradient-purple-pink text-white hover:opacity-90 font-black text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 shadow"
+                                    className="gradient-purple-pink text-white hover:opacity-90 font-black text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 shadow cursor-pointer"
                                   >
                                     <ShoppingBag className="h-3.5 w-3.5" />
                                     {t.addToBag}
@@ -706,7 +706,7 @@ export default function ClothingHub({
                                     type === 'jewellery' ? t.jewelleryShops :
                                     t.footwearShops;
                       return (
-                        <button
+                        <button type="button"
                           key={type}
                           onClick={() => setSelectedShopType(type)}
                           className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
@@ -723,7 +723,7 @@ export default function ClothingHub({
                 </div>
 
                 {/* Grid list of clothing stores */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 cursor-pointer">
                   {filteredBoutiques.map(boutique => (
                     <div
                       key={boutique.id}
@@ -798,9 +798,9 @@ export default function ClothingHub({
                 <p className="text-slate-500 text-sm font-medium">
                   {t.noOrders}
                 </p>
-                <button
+                <button type="button"
                   onClick={() => setViewMode('stores')}
-                  className="mt-4 px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs font-black rounded-xl transition"
+                  className="mt-4 px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs font-black rounded-xl transition cursor-pointer"
                 >
                   {t.viewStores}
                 </button>
@@ -839,9 +839,9 @@ export default function ClothingHub({
                           </span>
                         </div>
                         
-                        <button
+                        <button type="button"
                           onClick={() => handleReorder(order)}
-                          className="bg-white hover:bg-purple-50 text-purple-700 border border-purple-100 font-black text-[11px] px-3 py-1.5 rounded-lg transition"
+                          className="bg-white hover:bg-purple-50 text-purple-700 border border-purple-100 font-black text-[11px] px-3 py-1.5 rounded-lg transition cursor-pointer"
                         >
                           {t.reorder}
                         </button>
@@ -909,9 +909,9 @@ export default function ClothingHub({
       {/* Cart Drawer Icon floating at the bottom right */}
       {selectedBoutiqueId && activeBoutiqueCart.length > 0 && (
         <div className="fixed bottom-24 right-5 z-40">
-          <button
+          <button type="button"
             onClick={() => setIsCartOpen(true)}
-            className="h-14 px-5 rounded-2xl gradient-purple-pink text-white font-black flex items-center gap-2 shadow-2xl hover:scale-105 active:scale-95 transition"
+            className="h-14 px-5 rounded-2xl gradient-purple-pink text-white font-black flex items-center gap-2 shadow-2xl hover:scale-105 active:scale-95 transition cursor-pointer"
           >
             <ShoppingBag className="h-5 w-5" />
             <span>
@@ -955,9 +955,9 @@ export default function ClothingHub({
                     {activeBoutiqueCart.reduce((sum, item) => sum + item.quantity, 0)} items
                   </span>
                 </div>
-                <button
+                <button type="button"
                   onClick={() => setIsCartOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </button>
@@ -1014,18 +1014,18 @@ export default function ClothingHub({
 
                           {/* Quantity Selector */}
                           <div className="flex items-center gap-2 mt-2">
-                            <button
+                            <button type="button"
                               onClick={() => handleRemoveFromCart(idx)}
-                              className="h-6 w-6 rounded-md border border-slate-200 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition"
+                              className="h-6 w-6 rounded-md border border-slate-200 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition cursor-pointer"
                             >
                               <Minus className="h-3 w-3 text-slate-500" />
                             </button>
                             <span className="text-xs font-black text-slate-700">
                               {cartItem.quantity}
                             </span>
-                            <button
+                            <button type="button"
                               onClick={() => handleAddToCart(cartItem.item)}
-                              className="h-6 w-6 rounded-md border border-slate-200 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition"
+                              className="h-6 w-6 rounded-md border border-slate-200 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition cursor-pointer"
                             >
                               <Plus className="h-3 w-3 text-slate-500" />
                             </button>
@@ -1033,7 +1033,7 @@ export default function ClothingHub({
                         </div>
 
                         {/* Direct delete button */}
-                        <button
+                        <button type="button"
                           onClick={() => {
                             const currentCart = { ...cartState };
                             const items = [...(currentCart[selectedBoutiqueId!] || [])];
@@ -1045,7 +1045,7 @@ export default function ClothingHub({
                             }
                             updateUserData(currentCart, ordersState);
                           }}
-                          className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 transition"
+                          className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 transition cursor-pointer"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -1065,9 +1065,9 @@ export default function ClothingHub({
                           onChange={(e) => setPromoCode(e.target.value)}
                           className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none"
                         />
-                        <button
+                        <button type="button"
                           onClick={handleApplyPromo}
-                          className="gradient-purple-pink text-white text-xs font-black px-4 py-1.5 rounded-lg hover:opacity-90 transition"
+                          className="gradient-purple-pink text-white text-xs font-black px-4 py-1.5 rounded-lg hover:opacity-90 transition cursor-pointer"
                         >
                           {t.apply}
                         </button>
@@ -1091,7 +1091,7 @@ export default function ClothingHub({
                         {t.paymentMethod}
                       </span>
                       <div className={`grid ${settings.enableUpiPaymentFashion !== false ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
-                        <button
+                        <button type="button"
                           onClick={() => setPaymentMethod('COD')}
                           className={`p-2 rounded-lg border text-xs font-black transition text-center ${
                             paymentMethod === 'COD' || (settings.enableUpiPaymentFashion === false)
@@ -1102,7 +1102,7 @@ export default function ClothingHub({
                           💸 {t.cod}
                         </button>
                         {settings.enableUpiPaymentFashion !== false && (
-                          <button
+                          <button type="button"
                             onClick={() => setPaymentMethod('UPI')}
                             className={`p-2 rounded-lg border text-xs font-black transition text-center ${
                               paymentMethod === 'UPI'
@@ -1121,7 +1121,7 @@ export default function ClothingHub({
 
               {/* Drawer Receipt & Placing order */}
               {activeBoutiqueCart.length > 0 && currentBoutique && (
-                <div className="p-5 border-t border-purple-100 bg-slate-50/50 space-y-3">
+                <div className="p-5 border-t border-purple-100 bg-slate-50/50 space-y-3 cursor-pointer">
                   {/* Calculations breakdown */}
                   <div className="space-y-1.5 text-xs text-slate-500 font-bold">
                     <div className="flex justify-between">
@@ -1170,9 +1170,9 @@ export default function ClothingHub({
                         : `चेकआउट करने के लिए इस बुटीक से ₹${currentBoutique.minOrder - subtotal} का सामान और जोड़ें!`}
                     </div>
                   ) : (
-                    <button
+                    <button type="button"
                       onClick={handleCheckoutBtn}
-                      className="w-full h-11 rounded-xl gradient-purple-pink text-white font-black text-xs shadow-md shadow-purple-500/10 hover:opacity-95 transition"
+                      className="w-full h-11 rounded-xl gradient-purple-pink text-white font-black text-xs shadow-md shadow-purple-500/10 hover:opacity-95 transition cursor-pointer"
                     >
                       {t.placeOrder} (₹{grandTotal})
                     </button>
@@ -1189,9 +1189,9 @@ export default function ClothingHub({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowUpiCheckout(false)} />
           <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl relative border border-slate-100 z-50">
-            <button
+            <button type="button"
               onClick={() => setShowUpiCheckout(false)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 font-extrabold font-mono text-base transition-colors duration-150 z-50"
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 font-extrabold font-mono text-base transition-colors duration-150 z-50 cursor-pointer"
             >
               ✕
             </button>

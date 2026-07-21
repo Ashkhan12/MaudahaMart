@@ -1,29 +1,29 @@
 const fs = require('fs');
-let code = fs.readFileSync('src/components/LoginPage.tsx', 'utf8');
 
-code = code.replace(
-    /<span>\{authMode === 'login' \? t\.login : \(\!otpSent \? t\.sendOtpBtn : t\.verifyBtn\)\}<\/span>/g,
-    `<span>{authMode === 'login' ? t.login : (!otpSent ? t.sendOtpBtn : t.verifyBtn)}</span>`
-);
+function walkDir(dir) {
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+        const path = dir + '/' + file;
+        if (fs.statSync(path).isDirectory()) {
+            walkDir(path);
+        } else if (path.endsWith('.tsx') || path.endsWith('.ts')) {
+            let content = fs.readFileSync(path, 'utf8');
+            let originalContent = content;
+            
+            content = content.replace(/<button([\s\S]*?)className=(['"])(.*?)\2([\s\S]*?)>/g, (match, before, quote, className, after) => {
+                if (!className.includes('cursor-pointer') && !className.includes('cursor-not-allowed') && !className.includes('cursor-default')) {
+                    return '<button' + before + 'className=' + quote + className + ' cursor-pointer' + quote + after + '>';
+                }
+                return match;
+            });
+            
+            content = content.replace(/<button(?![^>]*type=)([^>]*)>/g, '<button type="button"$1>');
 
-// We can add the switcher above the submit button
-code = code.replace(
-    /          \{\/\* Submit button \*\/\}/g,
-    `          {/* Switch Login Method */}
-          {authMode !== 'signup' && !otpSent && (
-            <div className="flex justify-end px-1 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setAuthMode(authMode === 'login' ? 'login_otp' : 'login')}
-                  className="text-[10px] text-emerald-600 hover:text-emerald-700 font-extrabold transition-colors cursor-pointer"
-                >
-                  {authMode === 'login' 
-                    ? (language === 'en' ? 'Login with OTP instead' : 'ओटीपी के साथ लॉगिन करें') 
-                    : (language === 'en' ? 'Login with Password instead' : 'पासवर्ड के साथ लॉगिन करें')}
-                </button>
-            </div>
-          )}
-          {/* Submit button */}`
-);
-
-fs.writeFileSync('src/components/LoginPage.tsx', code);
+            if (content !== originalContent) {
+                fs.writeFileSync(path, content);
+                console.log('Fixed buttons in', path);
+            }
+        }
+    }
+}
+walkDir('src/components');

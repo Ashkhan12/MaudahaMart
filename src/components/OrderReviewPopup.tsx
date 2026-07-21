@@ -100,13 +100,13 @@ export default function OrderReviewPopup({ orders, language, onUpdateOrders, onA
           className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100"
         >
           <div className="bg-emerald-600 p-6 text-white text-center relative">
-            <button 
+            <button type="button" 
               onClick={() => {
                 const updatedOrders = orders.map(o => o.id === orderToReview.id ? { ...o, isReviewed: true } : o);
                 onUpdateOrders(updatedOrders);
                 setOrderToReview(null);
               }}
-              className="absolute top-4 right-4 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-1.5 rounded-full transition-colors"
+              className="absolute top-4 right-4 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-1.5 rounded-full transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -141,7 +141,7 @@ export default function OrderReviewPopup({ orders, language, onUpdateOrders, onA
                     key={`store-${star}`}
                     type="button"
                     onClick={() => setStoreRating(star)}
-                    className="focus:outline-none transition-transform hover:scale-110"
+                    className="focus:outline-none transition-transform hover:scale-110 cursor-pointer"
                   >
                     <Star
                       className={`w-8 h-8 ${
@@ -169,7 +169,7 @@ export default function OrderReviewPopup({ orders, language, onUpdateOrders, onA
                     key={`rider-${star}`}
                     type="button"
                     onClick={() => setRiderRating(star)}
-                    className="focus:outline-none transition-transform hover:scale-110"
+                    className="focus:outline-none transition-transform hover:scale-110 cursor-pointer"
                   >
                     <Star
                       className={`w-8 h-8 ${
@@ -199,7 +199,7 @@ export default function OrderReviewPopup({ orders, language, onUpdateOrders, onA
             <button
               type="submit"
               disabled={isSubmitting || storeRating === 0 || riderRating === 0}
-              className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-wider text-sm transition-all shadow-xl shadow-slate-900/20 hover:bg-emerald-600 hover:shadow-emerald-600/20 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none active:scale-[0.98] flex justify-center items-center gap-2"
+              className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-wider text-sm transition-all shadow-xl shadow-slate-900/20 hover:bg-emerald-600 hover:shadow-emerald-600/20 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer"
             >
               {isSubmitting ? (
                 <>

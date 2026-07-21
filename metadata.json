@@ -1,6 +1,8 @@
 {
   "name": "Maudaha Mart",
   "description": "Hyper-local grocery delivery, restaurant dining, and premium clothing & fashion boutique hub for Maudaha (UP) with dual English-Hindi localization, custom tailoring requests, UPI payments, and order tracking.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "microphone"
+  ],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -863,17 +863,17 @@ export default function MerchantDashboard({
                       {order.deliveryStatus !== 'arrived' && (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {order.deliveryStatus === 'pending' && (
-                            <button
+                            <button type="button"
                               onClick={() => updateOrderStatus(order.id, 'processing')}
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 active:scale-[0.98]"
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 active:scale-[0.98] cursor-pointer"
                             >
                               ✓ {language === 'hi' ? 'ऑर्डर स्वीकार करें' : 'Accept Order'}
                             </button>
                           )}
                           {order.deliveryStatus === 'processing' && (
-                            <button
+                            <button type="button"
                               onClick={() => updateOrderStatus(order.id, 'ready_for_pickup')}
-                              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 active:scale-[0.98]"
+                              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 active:scale-[0.98] cursor-pointer"
                             >
                               📦 {language === 'hi' ? 'तैयार चिह्नित करें' : 'Mark as Ready'}
                             </button>
@@ -900,9 +900,9 @@ export default function MerchantDashboard({
                 {t.inventoryTitle} ({storeProducts.length})
               </h2>
 
-              <button
+              <button type="button"
                 onClick={() => setShowAddForm(!showAddForm)}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1"
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="h-4 w-4" />
                 {language === 'en' ? 'Add Item' : 'सामग्री जोड़ें'}
@@ -1026,13 +1026,13 @@ export default function MerchantDashboard({
                   <button
                     type="button"
                     onClick={() => setShowAddForm(false)}
-                    className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition"
+                    className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition"
+                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition cursor-pointer"
                   >
                     {t.submit}
                   </button>
@@ -1098,7 +1098,7 @@ export default function MerchantDashboard({
 
                 {/* Bulk Inputs Row */}
                 {bulkMode === 'set' ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 cursor-pointer">
                     <div className="space-y-1">
                       <label className="block text-[10px] font-black text-slate-400 uppercase">
                         {language === 'en' ? 'Selling Price (₹)' : 'विक्रय मूल्य (₹)'}
@@ -1347,7 +1347,7 @@ export default function MerchantDashboard({
                               className="w-16 border border-slate-200 px-2 py-1 rounded text-sm bg-white"
                             />
                           ) : (
-                            <button
+                            <button type="button"
                               onClick={() => handleToggleStock(p)}
                               className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
                                 p.stock > 0
@@ -1357,7 +1357,7 @@ export default function MerchantDashboard({
                             >
                               {p.stock > 0 ? (
                                 <>
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 group-hover:bg-red-500" />
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 group-hover:bg-red-500 cursor-pointer" />
                                   <span className="group-hover:hidden">{p.stock} Units</span>
                                   <span className="hidden group-inline font-semibold">Toggle Out</span>
                                 </>
@@ -1373,16 +1373,16 @@ export default function MerchantDashboard({
 
                         <td className="py-3.5 px-4 text-right">
                           {isEditing ? (
-                            <button
+                            <button type="button"
                               onClick={() => saveProductEdits(p.id)}
-                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold"
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold cursor-pointer"
                             >
                               Save
                             </button>
                           ) : (
-                            <button
+                            <button type="button"
                               onClick={() => startEditing(p)}
-                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-emerald-600 transition"
+                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-emerald-600 transition cursor-pointer"
                             >
                               <Edit2 className="h-4 w-4" />
                             </button>
@@ -1496,6 +1496,7 @@ export default function MerchantDashboard({
           {(() => {
             const revenue = storeOrders.reduce((acc, o) => {
               if (o.deliveryStatus === 'cancelled') return acc;
+              if (o.paymentMethod === 'UPI') return acc; // Skip UPI orders since they are instantly transferred to UPI ID
               const orderMspTotal = o.items.reduce((itemAcc, item) => {
                 const itemMsp = item.product.msp ?? Math.round((item.product.sellingPrice ?? item.product.price ?? 0) * 0.85);
                 return itemAcc + (item.quantity * itemMsp);
@@ -1503,7 +1504,7 @@ export default function MerchantDashboard({
               return acc + orderMspTotal;
             }, 0);
             const approvedPayouts = payoutRequests
-              .filter(req => req.sellerId === merchantStoreId && req.status === 'approved')
+              .filter(req => req.sellerId === merchantStoreId && req.status === 'approved' && !req.id.startsWith('payout-auto-'))
               .reduce((acc, r) => acc + r.amount, 0);
             const balance = Math.max(0, revenue - approvedPayouts);
 
@@ -1560,7 +1561,9 @@ export default function MerchantDashboard({
                     {language === 'en' ? `Total MSP Earnings: ₹${revenue} | Approved Payouts: ₹${approvedPayouts}` : `कुल MSP कमाई: ₹${revenue} | स्वीकृत भुगतान: ₹${approvedPayouts}`}
                   </p>
                   <p className="text-[9px] text-amber-300 font-medium">
-                    {language === 'en' ? '⚠️ Earnings are computed from product MSPs, not retail customer pricing.' : '⚠️ कमाई की गणना सामग्री की MSP पर होती है, न कि ग्राहक मूल्य पर।'}
+                    {language === 'en' 
+                      ? '⚠️ Withdrawal Balance only accumulates from Cash on Delivery (COD) orders. UPI payments are instantly routed to your UPI ID on order placement.' 
+                      : '⚠️ निकासी योग्य शेष राशि केवल कैश ऑन डिलीवरी (COD) ऑर्डर्स से संचित होती है। यूपीआई भुगतान ऑर्डर प्लेसमेंट के समय आपके यूपीआई आईडी पर तुरंत स्थानांतरित कर दिए जाते हैं।'}
                   </p>
                 </div>
 
@@ -1582,7 +1585,7 @@ export default function MerchantDashboard({
                           <button
                             type="button"
                             onClick={() => setPayoutAmount(balance.toString())}
-                            className="absolute right-2 top-1.5 text-[9px] bg-emerald-100 text-emerald-800 hover:bg-emerald-200 px-1.5 py-0.5 rounded font-black uppercase"
+                            className="absolute right-2 top-1.5 text-[9px] bg-emerald-100 text-emerald-800 hover:bg-emerald-200 px-1.5 py-0.5 rounded font-black uppercase cursor-pointer"
                           >
                             MAX
                           </button>
@@ -1621,7 +1624,14 @@ export default function MerchantDashboard({
                         <div key={req.id} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-100 text-[11px]">
                           <div>
                             <span className="font-extrabold text-slate-700">₹{req.amount}</span>
-                            <span className="text-[10px] text-slate-400 font-mono block">{req.date} • {req.upiId}</span>
+                            <span className="text-[10px] text-slate-400 font-mono block">
+                              {req.date} • {req.upiId}
+                              {req.id.startsWith('payout-auto-') && (
+                                <span className="text-emerald-600 font-extrabold ml-1 uppercase text-[8px] tracking-wider block sm:inline mt-0.5 sm:mt-0">
+                                  (⚡ Auto-Paid via UPI)
+                                </span>
+                              )}
+                            </span>
                           </div>
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider font-mono ${
                             req.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
@@ -1701,7 +1711,7 @@ export default function MerchantDashboard({
 
               <button
                 type="submit"
-                className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-[0.98] cursor-pointer"
               >
                 <Send className="h-3.5 w-3.5 text-emerald-400" />
                 {t.sendNotification}

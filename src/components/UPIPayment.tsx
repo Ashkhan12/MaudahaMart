@@ -17,9 +17,10 @@ interface UPIPaymentProps {
   adminUpiId?: string;
   onPaymentSuccess: (upiId: string) => void;
   language: Language;
+  hideSplitDetails?: boolean;
 }
 
-export default function UPIPayment({ amount, sellerAmount = 0, adminAmount = 0, sellerUpiId, adminUpiId = 'dingdang7081@okhdfcbank', onPaymentSuccess, language }: UPIPaymentProps) {
+export default function UPIPayment({ amount, sellerAmount = 0, adminAmount = 0, sellerUpiId, adminUpiId = 'dingdang7081@okhdfcbank', onPaymentSuccess, language, hideSplitDetails = false }: UPIPaymentProps) {
   const [upiId, setUpiId] = useState('');
   const [method, setMethod] = useState<'qr' | 'id'>('qr');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -27,7 +28,7 @@ export default function UPIPayment({ amount, sellerAmount = 0, adminAmount = 0, 
   const [timeLeft, setTimeLeft] = useState(180); // 3 minutes for QR code
   const t = TRANSLATIONS[language];
 
-  const hasSplit = sellerAmount > 0 && adminAmount > 0;
+  const hasSplit = sellerAmount > 0 && adminAmount > 0 && !hideSplitDetails;
 
   useEffect(() => {
     if (method === 'qr' && timeLeft > 0 && !isSuccess) {
@@ -58,7 +59,7 @@ export default function UPIPayment({ amount, sellerAmount = 0, adminAmount = 0, 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: amount,
-          transfers: hasSplit ? [
+          transfers: (sellerAmount > 0 && adminAmount > 0) ? [
             { account: sellerUpiId, amount: sellerAmount, notes: { role: 'seller' } },
             { account: adminUpiId, amount: adminAmount, notes: { role: 'admin_commission' } }
           ] : [
@@ -73,7 +74,7 @@ export default function UPIPayment({ amount, sellerAmount = 0, adminAmount = 0, 
       setIsSuccess(true);
       
       setTimeout(() => {
-        if (hasSplit) {
+        if (sellerAmount > 0 && adminAmount > 0 && !hideSplitDetails) {
           onPaymentSuccess(`Razorpay Order ID: ${data.orderId} | Split: ₹${sellerAmount} ➔ ${sellerUpiId} | ₹${adminAmount} ➔ ${adminUpiId}`);
         } else {
           onPaymentSuccess(`Razorpay Order ID: ${data.orderId} | ${customerSource} ➔ ${sellerUpiId || adminUpiId}`);
@@ -236,7 +237,7 @@ export default function UPIPayment({ amount, sellerAmount = 0, adminAmount = 0, 
                     method === 'qr' ? 'bg-[#3395ff]/10 text-[#3395ff] font-bold' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  <QrCode className="h-4 w-4" />
+                  <QrCode className="h-4 w-4 cursor-pointer" />
                   {language === 'en' ? 'UPI QR' : 'UPI QR'}
                 </button>
                 <button
@@ -246,7 +247,7 @@ export default function UPIPayment({ amount, sellerAmount = 0, adminAmount = 0, 
                     method === 'id' ? 'bg-[#3395ff]/10 text-[#3395ff] font-bold' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  <Smartphone className="h-4 w-4" />
+                  <Smartphone className="h-4 w-4 cursor-pointer" />
                   {language === 'en' ? 'UPI ID' : 'UPI ID'}
                 </button>
               </div>
@@ -304,7 +305,7 @@ export default function UPIPayment({ amount, sellerAmount = 0, adminAmount = 0, 
                     type="button"
                     onClick={simulateQrScan}
                     disabled={isVerifying}
-                    className="w-full py-3 bg-[#3395ff] hover:bg-[#207add] text-white rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-md active:scale-[0.98]"
+                    className="w-full py-3 bg-[#3395ff] hover:bg-[#207add] text-white rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-md active:scale-[0.98] cursor-pointer"
                   >
                     <CheckCircle className="h-5 w-5" />
                     {language === 'en' ? 'Simulate Razorpay QR Scan' : 'रेजरपे क्यूआर स्कैन करें'}
@@ -341,7 +342,7 @@ export default function UPIPayment({ amount, sellerAmount = 0, adminAmount = 0, 
                   <button
                     type="submit"
                     disabled={isVerifying}
-                    className="w-full py-3 bg-[#3395ff] hover:bg-[#207add] text-white rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:bg-slate-200 disabled:text-slate-400 active:scale-[0.98] shadow-md shadow-[#3395ff]/20"
+                    className="w-full py-3 bg-[#3395ff] hover:bg-[#207add] text-white rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:bg-slate-200 disabled:text-slate-400 active:scale-[0.98] shadow-md shadow-[#3395ff]/20 cursor-pointer"
                   >
                     {isVerifying ? (
                       <>

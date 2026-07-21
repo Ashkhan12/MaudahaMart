@@ -244,7 +244,7 @@ export default function ScratchCardComponent({
 
       {/* Complete Reveal Fireworks Button (If user gets stuck/lazy) */}
       {!isScratched && (
-        <button
+        <button type="button"
           onClick={revealCard}
           className="absolute bottom-2 right-2 z-20 text-[9px] bg-slate-900/80 backdrop-blur-xs text-white hover:bg-slate-900 font-black px-2 py-1 rounded-lg transition active:scale-95 cursor-pointer shadow-sm border border-slate-700"
         >

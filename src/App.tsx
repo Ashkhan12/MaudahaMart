@@ -320,6 +320,19 @@ export default function App() {
     localStorage.setItem('mau_selected_area_id', selectedServiceAreaId);
   }, [selectedServiceAreaId]);
 
+  // Lock selectedServiceAreaId to customer's assigned service area
+  useEffect(() => {
+    if (isLoggedIn && role === 'customer' && activeUserId) {
+      const activeUser = users.find(u => u.id === activeUserId);
+      if (activeUser) {
+        const userArea = activeUser.serviceAreaId || activeUser.assignedArea || 'area-maudaha';
+        if (selectedServiceAreaId !== userArea) {
+          setSelectedServiceAreaId(userArea);
+        }
+      }
+    }
+  }, [isLoggedIn, role, activeUserId, users, selectedServiceAreaId]);
+
   const [customPanels, setCustomPanels] = useState<CustomPanel[]>(() => {
     const saved = localStorage.getItem('mau_custom_panels');
     if (saved) return JSON.parse(saved);
@@ -413,25 +426,25 @@ export default function App() {
 
   const [isDbLoading, setIsDbLoading] = useState<boolean>(true);
 
-  // Programmatically checks for the specific admin email 'biengwithash@gmail.com' and assigns 'admin' role privileges
+  // Programmatically checks for the specific admin email 'biengwithash@gmail.com' and assigns 'admin' role privileges on first load
   const checkAndAssignAdminRole = (userList: RegisteredUser[], activeId: string) => {
+    const savedRole = localStorage.getItem('mau_role');
+    if (savedRole) return; // Respect user's explicit role selection
+    
     const matchedUser = userList.find(u => u.id === activeId);
     const targetUser = matchedUser || userList.find(u => u.email?.toLowerCase() === 'biengwithash@gmail.com');
     if (targetUser && targetUser.email?.toLowerCase() === 'biengwithash@gmail.com') {
-      if ((activeId === targetUser.id || (matchedUser && matchedUser.email?.toLowerCase() === 'biengwithash@gmail.com')) && role !== 'admin') {
-        setRole('admin');
-        localStorage.setItem('mau_role', 'admin');
-        console.log("Programmatically assigned 'admin' role privileges to biengwithash@gmail.com");
-      }
+      setRole('admin');
+      localStorage.setItem('mau_role', 'admin');
     }
   };
 
-  // Run a reactive effect to continually enforce the admin assignment
+  // Run initial check once database is loaded
   useEffect(() => {
     if (!isDbLoading && isLoggedIn) {
       checkAndAssignAdminRole(users, activeUserId);
     }
-  }, [isDbLoading, isLoggedIn, users, activeUserId, role]);
+  }, [isDbLoading, isLoggedIn]);
 
   // Sync data from Firestore at startup
   useEffect(() => {
@@ -951,6 +964,37 @@ export default function App() {
     const updatedOrders = [newOrder, ...orders];
     setOrders(updatedOrders);
 
+    // Auto-calculate seller's MSP-based share and queue payout request + notification for UPI payments
+    if (paymentMethod === 'UPI') {
+      const sellerShare = Math.round(storeCart.reduce((sum, item) => {
+        const msp = item.product.msp ?? (item.product.sellingPrice ?? item.product.price);
+        return sum + msp * item.quantity;
+      }, 0));
+
+      const newPayoutReq: PayoutRequest = {
+        id: 'payout-auto-' + Date.now() + '-' + Math.floor(1000 + Math.random() * 9000),
+        sellerId: storeId,
+        sellerName: targetStore?.name || 'Local Store',
+        amount: sellerShare,
+        upiId: targetStore?.upiId || 'merchant@ybl',
+        status: 'approved',
+        date: new Date().toISOString().split('T')[0]
+      };
+      setPayoutRequests(prev => [...prev, newPayoutReq]);
+
+      const sellerNotif: Notification = {
+        id: 'NOTIF-UPI-' + Date.now() + '-' + Math.floor(1000 + Math.random() * 9000),
+        title: `⚡ Instant UPI Settlement: ₹${sellerShare}`,
+        titleHi: `⚡ त्वरित UPI भुगतान: ₹${sellerShare}`,
+        body: `Order ${newOrder.id} paid via UPI. Seller's share of ₹${sellerShare} (based on MSP) has been instantly routed to your UPI ID: ${newPayoutReq.upiId}.`,
+        bodyHi: `ऑर्डर ${newOrder.id} का भुगतान UPI द्वारा किया गया। ₹${sellerShare} का सेलर हिस्सा (MSP पर आधारित) आपके UPI आईडी पर तुरंत भेज दिया गया है: ${newPayoutReq.upiId}।`,
+        type: 'general',
+        date: new Date().toISOString().split('T')[0],
+        isRead: false
+      };
+      setNotifications(prev => [sellerNotif, ...prev]);
+    }
+
     // Update loyalty points
     let finalPoints = loyalty.points - redeemedCoins + pointsEarned;
     let nextTier = loyalty.tier;
@@ -1400,6 +1444,7 @@ export default function App() {
       <LoginPage
         language={language}
         existingUsers={users}
+        serviceAreas={serviceAreas}
         onLoginSuccess={(user, selectedRole) => {
           let roleToAssign = selectedRole;
           if (user.email?.toLowerCase() === 'biengwithash@gmail.com') {
@@ -1489,14 +1534,22 @@ export default function App() {
           {/* Settings & Switches */}
           <div className="flex items-center gap-1 md:gap-4">
 
-            {role === "admin" && (
+            {(activeUser?.email?.toLowerCase() === 'biengwithash@gmail.com' || activeUser?.role === 'admin' || role === 'admin') && (
               <button
-                onClick={() => setShowAdminPortal(!showAdminPortal)}
-                className="p-2 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition flex items-center gap-1"
-                title={language === "en" ? "Admin Settings" : "एडमिन सेटिंग्स"}
+                onClick={() => {
+                  const newRole: UserRole = role === 'admin' ? 'customer' : 'admin';
+                  setRole(newRole);
+                  localStorage.setItem('mau_role', newRole);
+                }}
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-3xs ${
+                  role === 'admin' 
+                    ? 'bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300' 
+                    : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300'
+                }`}
+                title={language === "en" ? "Switch Portal View" : "पोर्टल व्यू बदलें"}
               >
-                <Shield className="h-5 w-5" />
-                <span className="text-xs font-bold hidden md:inline">Admin</span>
+                <Shield className="h-3.5 w-3.5" />
+                <span>{role === 'admin' ? '🛡️ Admin' : '🛒 Customer'}</span>
               </button>
             )}
             {/* Notification Drawer trigger */}
@@ -1850,6 +1903,7 @@ export default function App() {
                 onUpdateUsers={setUsers}
                 language={language}
                 onAddActivity={handleAddUserActivity}
+                selectedServiceAreaId={selectedServiceAreaId}
               />
             ) : activeTab === 'travel' ? (
               <TravelCorner
@@ -1860,6 +1914,11 @@ export default function App() {
               <CustomerHome
                 language={language}
                 onNavigateTab={setActiveTab}
+                products={productsWithScratchDiscount}
+                stores={visibleStores}
+                activeUser={activeUser}
+                onAddToCart={handleAddToCart}
+                onSelectStore={setSelectedStoreId}
               />
             ) : activeTab === 'orders' ? (
               <UserOrderPanel

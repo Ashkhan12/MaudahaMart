@@ -34,9 +34,9 @@ export default function PrivacyPolicyModal({ isOpen, onClose, language }: Privac
               </p>
             </div>
           </div>
-          <button 
+          <button type="button" 
             onClick={onClose}
-            className="p-2 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-full transition"
+            className="p-2 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-full transition cursor-pointer"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -146,9 +146,9 @@ export default function PrivacyPolicyModal({ isOpen, onClose, language }: Privac
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-          <button
+          <button type="button"
             onClick={onClose}
-            className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-2xl transition"
+            className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-2xl transition cursor-pointer"
           >
             {language === 'en' ? 'Close' : 'बंद करें'}
           </button>

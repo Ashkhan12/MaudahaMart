@@ -269,7 +269,7 @@ function RestaurantOwnerDashboard({
 
       {/* Navigation tabs */}
       <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl max-w-sm">
-        <button
+        <button type="button"
           onClick={() => setActiveTab('orders')}
           className={`flex-1 py-2.5 text-xs font-black rounded-xl transition ${
             activeTab === 'orders' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'
@@ -277,7 +277,7 @@ function RestaurantOwnerDashboard({
         >
           🍔 Orders Queue ({orders.filter(o => o.order.status !== 'delivered').length})
         </button>
-        <button
+        <button type="button"
           onClick={() => setActiveTab('menu')}
           className={`flex-1 py-2.5 text-xs font-black rounded-xl transition ${
             activeTab === 'menu' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'
@@ -288,7 +288,7 @@ function RestaurantOwnerDashboard({
       </div>
 
       {/* Dashboard Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 cursor-pointer">
         <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-2xs">
           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block font-mono">Today's Revenue</span>
           <span className="text-2xl font-black text-slate-800 block mt-1">₹{totalRevenue}</span>
@@ -354,25 +354,25 @@ function RestaurantOwnerDashboard({
                     {order.status !== 'delivered' && (
                       <>
                         {order.status === 'cooking' && (
-                          <button
+                          <button type="button"
                             onClick={() => handleUpdateOrderStatus(order.id, userId, 'packing')}
-                            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-extrabold transition"
+                            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-extrabold transition cursor-pointer"
                           >
                             Mark Packed
                           </button>
                         )}
                         {order.status === 'packing' && (
-                          <button
+                          <button type="button"
                             onClick={() => handleUpdateOrderStatus(order.id, userId, 'out')}
-                            className="px-3.5 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-extrabold transition"
+                            className="px-3.5 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-extrabold transition cursor-pointer"
                           >
                             Dispatch Order
                           </button>
                         )}
                         {order.status === 'out' && (
-                          <button
+                          <button type="button"
                             onClick={() => handleUpdateOrderStatus(order.id, userId, 'delivered')}
-                            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-extrabold transition"
+                            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-extrabold transition cursor-pointer"
                           >
                             Mark Delivered
                           </button>
@@ -423,15 +423,15 @@ function RestaurantOwnerDashboard({
                         className="w-16 px-1.5 py-1 bg-white border border-slate-300 rounded text-xs font-bold text-slate-800 text-right outline-none focus:border-amber-500"
                       />
                       <div className="flex gap-1">
-                        <button
+                        <button type="button"
                           onClick={() => handleUpdateMenuPrice(item.id, editPrice)}
-                          className="p-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded transition"
+                          className="p-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded transition cursor-pointer"
                         >
                           <Check className="h-3.5 w-3.5" />
                         </button>
-                        <button
+                        <button type="button"
                           onClick={() => setEditingItem(null)}
-                          className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-500 rounded transition"
+                          className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-500 rounded transition cursor-pointer"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -440,12 +440,12 @@ function RestaurantOwnerDashboard({
                   ) : (
                     <>
                       <span className="text-sm font-black text-slate-800 block">₹{item.price}</span>
-                      <button
+                      <button type="button"
                         onClick={() => {
                           setEditingItem(item);
                           setEditPrice(item.price);
                         }}
-                        className="text-[10px] text-amber-600 hover:text-amber-700 font-extrabold mt-1 hover:underline"
+                        className="text-[10px] text-amber-600 hover:text-amber-700 font-extrabold mt-1 hover:underline cursor-pointer"
                       >
                         Edit Price
                       </button>
@@ -540,7 +540,7 @@ function ShopOwnerDashboard({
 
       {/* Nav */}
       <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl max-w-sm">
-        <button
+        <button type="button"
           onClick={() => setActiveTab('orders')}
           className={`flex-1 py-2.5 text-xs font-black rounded-xl transition ${
             activeTab === 'orders' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'
@@ -548,7 +548,7 @@ function ShopOwnerDashboard({
         >
           📦 Active Orders ({orders.filter(o => o.order.status !== 'delivered').length})
         </button>
-        <button
+        <button type="button"
           onClick={() => setActiveTab('inventory')}
           className={`flex-1 py-2.5 text-xs font-black rounded-xl transition ${
             activeTab === 'inventory' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'
@@ -559,7 +559,7 @@ function ShopOwnerDashboard({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 cursor-pointer">
         <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-2xs">
           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block font-mono">Gross Sales</span>
           <span className="text-2xl font-black text-slate-800 block mt-1">₹{totalRevenue}</span>
@@ -627,25 +627,25 @@ function ShopOwnerDashboard({
                     {order.status !== 'delivered' && (
                       <>
                         {order.status === 'processing' && (
-                          <button
+                          <button type="button"
                             onClick={() => handleUpdateOrderStatus(order.id, userId, shopType === 'boutique' ? 'tailoring' : 'dispatched')}
-                            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-extrabold transition"
+                            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-extrabold transition cursor-pointer"
                           >
                             {shopType === 'boutique' ? 'Send to Tailor' : 'Ready to Dispatch'}
                           </button>
                         )}
                         {order.status === 'tailoring' && (
-                          <button
+                          <button type="button"
                             onClick={() => handleUpdateOrderStatus(order.id, userId, 'dispatched')}
-                            className="px-3.5 py-1.5 bg-violet-500 hover:bg-violet-600 text-white rounded-xl text-xs font-extrabold transition"
+                            className="px-3.5 py-1.5 bg-violet-500 hover:bg-violet-600 text-white rounded-xl text-xs font-extrabold transition cursor-pointer"
                           >
                             Finish Stitching & Dispatch
                           </button>
                         )}
                         {order.status === 'dispatched' && (
-                          <button
+                          <button type="button"
                             onClick={() => handleUpdateOrderStatus(order.id, userId, 'delivered')}
-                            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-extrabold transition"
+                            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-extrabold transition cursor-pointer"
                           >
                             Mark Delivered
                           </button>
@@ -696,15 +696,15 @@ function ShopOwnerDashboard({
                         className="w-16 px-1.5 py-1 bg-white border border-slate-300 rounded text-xs font-bold text-slate-800 text-right outline-none focus:border-emerald-500"
                       />
                       <div className="flex gap-1">
-                        <button
+                        <button type="button"
                           onClick={() => handleUpdateItemPrice(item.id, editPrice)}
-                          className="p-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded transition"
+                          className="p-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded transition cursor-pointer"
                         >
                           <Check className="h-3.5 w-3.5" />
                         </button>
-                        <button
+                        <button type="button"
                           onClick={() => setEditingItem(null)}
-                          className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-500 rounded transition"
+                          className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-500 rounded transition cursor-pointer"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -713,12 +713,12 @@ function ShopOwnerDashboard({
                   ) : (
                     <>
                       <span className="text-sm font-black text-slate-800 block">₹{item.price}</span>
-                      <button
+                      <button type="button"
                         onClick={() => {
                           setEditingItem(item);
                           setEditPrice(item.price);
                         }}
-                        className="text-[10px] text-emerald-600 hover:text-emerald-700 font-extrabold mt-1 hover:underline"
+                        className="text-[10px] text-emerald-600 hover:text-emerald-700 font-extrabold mt-1 hover:underline cursor-pointer"
                       >
                         Edit Price
                       </button>
@@ -826,7 +826,7 @@ function LocalServiceProviderDashboard({ language, role, header }: LocalServiceP
             <span className="font-extrabold text-slate-800 text-xs block">Service Availability</span>
             <span className="text-[10px] text-slate-400 mt-1 block">Toggle whether you are currently taking active bookings.</span>
           </div>
-          <button
+          <button type="button"
             onClick={() => setIsOnline(!isOnline)}
             className={`px-4 py-2 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer ${
               isOnline ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200'
@@ -837,7 +837,7 @@ function LocalServiceProviderDashboard({ language, role, header }: LocalServiceP
         </div>
 
         {/* Pricing Card */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-2xs flex items-center justify-between">
+        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-2xs flex items-center justify-between cursor-pointer">
           <div>
             <span className="font-extrabold text-slate-800 text-xs block">Service Callout Fee</span>
             <span className="text-[10px] text-slate-400 mt-1 block">Base charge for visiting consumer's home.</span>
@@ -851,12 +851,12 @@ function LocalServiceProviderDashboard({ language, role, header }: LocalServiceP
                   onChange={e => setInputCharge(Number(e.target.value))}
                   className="w-20 px-2 py-1 bg-slate-50 border border-slate-300 rounded-lg text-xs font-black text-right"
                 />
-                <button
+                <button type="button"
                   onClick={() => {
                     setBaseCharge(inputCharge);
                     setEditingCharge(false);
                   }}
-                  className="p-1 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition"
+                  className="p-1 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition cursor-pointer"
                 >
                   <Check className="h-4 w-4" />
                 </button>
@@ -864,12 +864,12 @@ function LocalServiceProviderDashboard({ language, role, header }: LocalServiceP
             ) : (
               <div className="flex items-center gap-2">
                 <span className="text-base font-black text-slate-800">₹{baseCharge}</span>
-                <button
+                <button type="button"
                   onClick={() => {
                     setInputCharge(baseCharge);
                     setEditingCharge(true);
                   }}
-                  className="p-1 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-lg transition"
+                  className="p-1 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer"
                 >
                   <Edit className="h-3.5 w-3.5" />
                 </button>
@@ -934,24 +934,24 @@ function LocalServiceProviderDashboard({ language, role, header }: LocalServiceP
                 <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
                   {booking.status === 'pending' && (
                     <>
-                      <button
+                      <button type="button"
                         onClick={() => updateStatus(booking.id, 'cancelled')}
-                        className="px-3 py-1.5 border border-slate-200 hover:bg-slate-100 rounded-xl text-[10px] text-slate-500 font-extrabold transition"
+                        className="px-3 py-1.5 border border-slate-200 hover:bg-slate-100 rounded-xl text-[10px] text-slate-500 font-extrabold transition cursor-pointer"
                       >
                         Decline
                       </button>
-                      <button
+                      <button type="button"
                         onClick={() => updateStatus(booking.id, 'accepted')}
-                        className="px-3.5 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-[10px] text-xs font-extrabold transition"
+                        className="px-3.5 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-[10px] text-xs font-extrabold transition cursor-pointer"
                       >
                         Accept Visit
                       </button>
                     </>
                   )}
                   {booking.status === 'accepted' && (
-                    <button
+                    <button type="button"
                       onClick={() => updateStatus(booking.id, 'completed')}
-                      className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] text-xs font-extrabold transition"
+                      className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] text-xs font-extrabold transition cursor-pointer"
                     >
                       Complete Service Job
                     </button>
