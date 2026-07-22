@@ -274,7 +274,19 @@ export default function App() {
 
   const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>(() => {
     const saved = localStorage.getItem('mau_service_areas');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      try {
+        const parsed: ServiceArea[] = JSON.parse(saved);
+        const maudahaOnly = parsed.filter(a => 
+          (a.area_name && a.area_name.toLowerCase().includes('maudaha')) || 
+          (a.city && a.city.toLowerCase().includes('maudaha')) ||
+          a.id === 'area-maudaha'
+        );
+        if (maudahaOnly.length > 0) return maudahaOnly;
+      } catch (e) {
+        console.error('Error parsing mau_service_areas:', e);
+      }
+    }
     return [
       {
         id: 'area-maudaha',
@@ -1476,10 +1488,10 @@ export default function App() {
 
 
       {/* Universal Top Header */}
-      <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50 px-4 py-3.5">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50 px-2 sm:px-4 py-2.5">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-1">
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Back Button */}
             {(activeTab !== 'home' || selectedStoreId || activeOrderTrackingId || showAdminPortal) && (
               <button 
@@ -1494,10 +1506,10 @@ export default function App() {
                       setActiveTab('home');
                    }
                 }}
-                className="mr-1 p-2 rounded-full hover:bg-slate-100 text-slate-600 transition"
+                className="p-1 sm:p-2 rounded-full hover:bg-slate-100 text-slate-600 transition"
                 title="Go Back"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             )}
 
@@ -1508,50 +1520,30 @@ export default function App() {
                 setActiveOrderTrackingId(null);
                 setActiveTab('home');
               }}
-              className="flex items-center gap-2 cursor-pointer group"
+              className="flex items-center gap-1.5 sm:gap-2 cursor-pointer group"
             >
-              <div className="h-10 w-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg transform group-hover:rotate-3 transition duration-200">
-                <ShoppingBag className="h-6 w-6 text-white" />
+              <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-md transform group-hover:rotate-3 transition duration-200">
+                <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-black tracking-tight text-slate-800 leading-none">Maudaha</h1>
-                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">Mart</p>
+                <h1 className="text-sm sm:text-xl font-black tracking-tight text-slate-800 leading-none">Maudaha</h1>
+                <p className="text-[8px] sm:text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">Mart</p>
               </div>
             </div>
           </div>
 
+          {/* Settings & Switches (Compact & visible on all phone screens) */}
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* My Orders Header Trigger */}
+            <button
+              onClick={() => setActiveTab('orders')} 
+              className="flex items-center gap-1 bg-emerald-50/80 hover:bg-emerald-100/80 border border-emerald-200/60 rounded-xl px-1.5 sm:px-2.5 py-1 text-emerald-700 transition duration-200 select-none cursor-pointer"
+              title={language === 'en' ? 'Orders' : 'ऑर्डर'}
+            >
+              <ShoppingBag className="h-4 w-4 text-emerald-600" />
+              <span className="text-[9px] sm:text-[10px] font-extrabold uppercase hidden xs:inline">{language === 'en' ? 'Orders' : 'ऑर्डर'}</span>
+            </button>
 
-
-          {/* My Orders Header Trigger (Replaces Live Weather) */}
-          <div className="flex flex-col items-center gap-0 bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-0.5 cursor-pointer hover:bg-slate-100 transition duration-200 select-none" 
-               onClick={() => setActiveTab('orders')} 
-               title={language === 'en' ? 'Orders' : 'ऑर्डर'}>
-            <ShoppingBag className="h-4 w-4 text-emerald-600" />
-            <span className="text-[8px] text-slate-700 font-extrabold uppercase">{language === 'en' ? 'Orders' : 'ऑर्डर'}</span>
-
-          </div>
-
-          {/* Settings & Switches */}
-          <div className="flex items-center gap-1 md:gap-4">
-
-            {(activeUser?.email?.toLowerCase() === 'biengwithash@gmail.com' || activeUser?.role === 'admin' || role === 'admin') && (
-              <button
-                onClick={() => {
-                  const newRole: UserRole = role === 'admin' ? 'customer' : 'admin';
-                  setRole(newRole);
-                  localStorage.setItem('mau_role', newRole);
-                }}
-                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-3xs ${
-                  role === 'admin' 
-                    ? 'bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300' 
-                    : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300'
-                }`}
-                title={language === "en" ? "Switch Portal View" : "पोर्टल व्यू बदलें"}
-              >
-                <Shield className="h-3.5 w-3.5" />
-                <span>{role === 'admin' ? '🛡️ Admin' : '🛒 Customer'}</span>
-              </button>
-            )}
             {/* Notification Drawer trigger */}
             <div className="relative">
               <button
@@ -1559,9 +1551,10 @@ export default function App() {
                   setViewingNotificationPanel(!viewingNotificationPanel);
                   setShowNotificationBadge(false);
                 }}
-                className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-emerald-600 transition"
+                className="p-1.5 sm:p-2 hover:bg-slate-100 rounded-xl text-slate-600 hover:text-emerald-600 transition relative cursor-pointer"
+                title={language === 'en' ? 'Alerts' : 'अलर्ट'}
               >
-                <Bell className="h-5 w-5" />
+                <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
                 {showNotificationBadge && (
                   <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
                 )}
@@ -1569,7 +1562,7 @@ export default function App() {
 
               {/* Float Notification Panel */}
               {viewingNotificationPanel && (
-                <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl p-4 shadow-xl z-50 max-h-[300px] overflow-y-auto">
+                <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white border border-slate-200 rounded-2xl p-4 shadow-xl z-50 max-h-[300px] overflow-y-auto">
                   <h3 className="font-extrabold text-slate-800 text-sm border-b border-slate-100 pb-2 mb-3">
                     {language === 'en' ? 'Alerts & Messages' : 'अलर्ट और संदेश'}
                   </h3>
@@ -1581,13 +1574,10 @@ export default function App() {
                       <p className="text-[11px] text-slate-500 leading-normal mt-0.5">
                         {language === 'hi' ? notif.bodyHi : notif.body}
                       </p>
-
                     </div>
                   ))}
-
                 </div>
               )}
-
             </div>
 
             {/* Wishlist Header Trigger */}
@@ -1596,10 +1586,10 @@ export default function App() {
                 setDrawerInitialTab('wishlist');
                 setShowWishlistDrawer(true);
               }}
-              className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-rose-500 transition relative cursor-pointer"
+              className="p-1.5 sm:p-2 hover:bg-slate-100 rounded-xl text-slate-600 hover:text-rose-500 transition relative cursor-pointer"
               title={language === 'en' ? 'My Wishlist' : 'मेरी इच्छासूची'}
             >
-              <Heart className={`h-5 w-5 ${activeUser?.watchlist?.length ? 'fill-rose-500 text-rose-500' : ''}`} />
+              <Heart className={`h-4 w-4 sm:h-5 sm:w-5 ${activeUser?.watchlist?.length ? 'fill-rose-500 text-rose-500' : ''}`} />
               {activeUser?.watchlist && activeUser.watchlist.length > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 bg-rose-500 text-white font-mono text-[9px] font-black h-4 min-w-4 px-1 rounded-full flex items-center justify-center">
                   {activeUser.watchlist.length}
@@ -1613,10 +1603,10 @@ export default function App() {
                 setDrawerInitialTab('cart');
                 setShowWishlistDrawer(true);
               }}
-              className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-emerald-600 transition relative cursor-pointer"
+              className="p-1.5 sm:p-2 hover:bg-slate-100 rounded-xl text-slate-600 hover:text-emerald-600 transition relative cursor-pointer"
               title={language === 'en' ? 'Global Shopping Cart' : 'ग्लोबल शॉपिंग कार्ट'}
             >
-              <ShoppingBag className="h-5 w-5" />
+              <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5" />
               {Object.keys(cart).filter(sId => cart[sId] && cart[sId].length > 0).reduce((sum, sId) => sum + (cart[sId]?.reduce((s, it) => s + it.quantity, 0) || 0), 0) > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 bg-emerald-600 text-white font-mono text-[9px] font-black h-4 min-w-4 px-1 rounded-full flex items-center justify-center">
                   {Object.keys(cart).filter(sId => cart[sId] && cart[sId].length > 0).reduce((sum, sId) => sum + (cart[sId]?.reduce((s, it) => s + it.quantity, 0) || 0), 0)}
@@ -1627,21 +1617,17 @@ export default function App() {
             {/* UserProfile Header Trigger */}
             <button
               onClick={() => setShowProfileDrawer(true)}
-              className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-600 hover:text-emerald-600 transition flex items-center gap-1 bg-slate-50 border border-slate-200/60 cursor-pointer"
+              className="p-1 sm:p-1.5 hover:bg-slate-100 rounded-xl text-slate-600 hover:text-emerald-600 transition flex items-center gap-1 bg-slate-50 border border-slate-200/60 cursor-pointer"
               title={language === 'en' ? 'User Profile' : 'यूज़र प्रोफ़ाइल'}
             >
               <div className="h-6 w-6 rounded-lg bg-emerald-600 text-white text-xs font-black flex items-center justify-center">
                 {activeUser?.name.charAt(0).toUpperCase() || 'U'}
-
               </div>
               <span className="text-[11px] font-extrabold pr-1 hidden sm:inline">
                 {activeUser?.name.split(' ')[0]}
               </span>
             </button>
-
-
           </div>
-
 
         </div>
       </header>
@@ -2196,19 +2182,18 @@ export default function App() {
       </AnimatePresence>
 
       {/* Floating Support Button ("Help") */}
-      {isLoggedIn && role === 'customer' && (
-        <div className="fixed bottom-20 right-6 md:bottom-6 md:right-6 z-40">
+      {(role === 'customer' || role === 'admin') && (
+        <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-40">
           <motion.button
             whileHover={{ scale: 1.05, translateY: -2 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowSupportDrawer(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs tracking-wider uppercase rounded-full shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer border border-emerald-500/20"
-            style={{ boxShadow: '0 8px 30px rgba(16,185,129,0.3)' }}
+            className="flex items-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs tracking-wider uppercase rounded-full shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer border border-emerald-500/20"
+            style={{ boxShadow: '0 8px 30px rgba(16,185,129,0.35)' }}
           >
             <LifeBuoy className="h-4 w-4 text-amber-300 animate-spin-slow" />
             <span>{language === 'en' ? 'Help' : 'सहायता'}</span>
           </motion.button>
-
         </div>
       )}
 
@@ -2363,19 +2348,6 @@ export default function App() {
             >
               <Gift className={`h-5 w-5 transition duration-200 ${activeTab === 'loyalty' ? 'text-emerald-600' : 'text-slate-400'}`} />
               <span className="text-[10px] tracking-tight">{language === 'en' ? 'Rewards' : 'इनाम'}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                triggerHapticFeedback();
-                setActiveTab('support');
-              }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all duration-200 active:scale-95 ${
-                activeTab === 'support' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
-              }`}
-            >
-              <LifeBuoy className={`h-5 w-5 transition duration-200 ${activeTab === 'support' ? 'text-emerald-600' : 'text-slate-400'}`} />
-              <span className="text-[10px] tracking-tight">{language === 'en' ? 'Help' : 'मदद'}</span>
             </button>
 
           </div>

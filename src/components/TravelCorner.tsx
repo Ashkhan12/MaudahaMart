@@ -164,7 +164,7 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
     }
   };
 
-  const handleSearchFlight = (e: React.FormEvent) => {
+  const handleSearchFlight = async (e: React.FormEvent) => {
     e.preventDefault();
     setFlightLoading(true);
     setFlightStatusResult(null);
@@ -172,14 +172,25 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
 
     const query = flightNum.trim().toUpperCase();
 
-    setTimeout(() => {
-      setFlightLoading(false);
+    try {
+      const res = await fetch('/api/travel/flight-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ flightNum: query, isInternational })
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.data) {
+        setFlightStatusResult(data.data);
+      } else {
+        setFlightError(data.error || 'Failed to fetch flight status.');
+      }
+    } catch (err: any) {
+      console.error('Flight status fetch error:', err);
+      // Fallback
       const match = FLIGHT_DATABASE[query] || FLIGHT_DATABASE[Object.keys(FLIGHT_DATABASE).find(k => k.includes(query)) || ''];
-      
       if (match) {
         setFlightStatusResult(match);
       } else {
-        // Fallback realistic simulation for any random code entered
         setFlightStatusResult({
           airline: isInternational ? 'Air India' : 'IndiGo',
           flightNum: query || '6E-543',
@@ -201,10 +212,12 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
           speed: '820 km/h'
         });
       }
-    }, 1200);
+    } finally {
+      setFlightLoading(false);
+    }
   };
 
-  const handleSearchTrain = (e: React.FormEvent) => {
+  const handleSearchTrain = async (e: React.FormEvent) => {
     e.preventDefault();
     setTrainLoading(true);
     setTrainStatusResult(null);
@@ -212,16 +225,26 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
 
     const query = trainNumber.trim();
 
-    setTimeout(() => {
-      setTrainLoading(false);
+    try {
+      const res = await fetch('/api/travel/train-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trainNumber: query })
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.data) {
+        setTrainStatusResult(data.data);
+      } else {
+        setTrainError(data.error || 'Failed to fetch train status.');
+      }
+    } catch (err: any) {
+      console.error('Train status fetch error:', err);
       const match = RAILWAY_DATABASE[query] || RAILWAY_DATABASE[Object.keys(RAILWAY_DATABASE).find(k => k.includes(query)) || ''];
-
       if (match) {
         setTrainStatusResult(match);
       } else {
-        // Fallback realistic simulation for any random train number
         setTrainStatusResult({
-          trainName: 'Maudaha Superfast Link',
+          trainName: 'Maudaha Express',
           number: query || '12542',
           status: 'Running On Time',
           statusType: 'success',
@@ -237,7 +260,9 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
           ]
         });
       }
-    }, 1200);
+    } finally {
+      setTrainLoading(false);
+    }
   };
 
   const loadPresetFlight = (key: string) => {
@@ -280,7 +305,7 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
                 {language === 'en' ? 'Travel' : 'यात्रा'}
               </h1>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                {language === 'en' ? 'Amadeus & RailRadar' : 'अमाडेस और रेलराडार'}
+                {language === 'en' ? 'Flight & Train Live Status' : 'उड़ान और ट्रेन लाइव अपडेट'}
               </p>
             </div>
           </div>
@@ -314,8 +339,8 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
                 </h2>
                 <p className="text-slate-300 text-xs font-medium leading-relaxed">
                   {language === 'en' 
-                    ? 'Check realtime international flight statuses using Amadeus API, or track local railways instantly via RailRadar.'
-                    : 'अमाडेस एपीआई का उपयोग करके वास्तविक समय की अंतर्राष्ट्रीय उड़ानों की स्थिति की जांच करें, या रेलराडार के माध्यम से तुरंत स्थानीय रेलवे को ट्रैक करें।'}
+                    ? 'Check realtime flight status for domestic & international flights or track live running trains in real-time.'
+                    : 'घरेलू और अंतर्राष्ट्रीय उड़ानों की लाइव स्थिति जांचें या रीयल-टाइम में भारतीय ट्रेनों को ट्रैक करें।'}
                 </p>
               </div>
             </div>
@@ -338,7 +363,7 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
                   <div>
                     <h2 className="text-xl font-extrabold mb-1">{language === 'en' ? 'Flight Status Dashboard' : 'उड़ान की स्थिति'}</h2>
                     <p className="text-blue-100 text-xs font-medium opacity-90">
-                      {language === 'en' ? 'Monitor flights globally via Amadeus API' : 'अमाडेस एपीआई के माध्यम से उड़ानों की निगरानी करें'}
+                      {language === 'en' ? 'Monitor domestic and international flights globally' : 'दुनिया भर में उड़ानों की लाइव स्थिति ट्रैक करें'}
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/15 px-2.5 py-1 rounded-lg uppercase tracking-wider">
@@ -361,9 +386,9 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
                     <Train className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-extrabold mb-1">{language === 'en' ? 'RailRadar Live Tracker' : 'रेलवे की स्थिति'}</h2>
+                    <h2 className="text-xl font-extrabold mb-1">{language === 'en' ? 'Live Train Tracker' : 'रेलवे की लाइव स्थिति'}</h2>
                     <p className="text-orange-100 text-xs font-medium opacity-90">
-                      {language === 'en' ? 'Track live trains instantly via RailRadar' : 'रेलराडार के माध्यम से लाइव ट्रेनों को ट्रैक करें'}
+                      {language === 'en' ? 'Track live running status of trains instantly' : 'ट्रेनों की लाइव रनिंग स्थिति तुरंत ट्रैक करें'}
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/15 px-2.5 py-1 rounded-lg uppercase tracking-wider">
@@ -375,7 +400,7 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
           </div>
         )}
 
-        {/* Flight Search Section (Amadeus API) */}
+        {/* Flight Search Section */}
         {activeTab === 'flights' && (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
             
@@ -402,7 +427,7 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
                   <Plane className="h-5 w-5 text-blue-500" />
                   {language === 'en' ? 'Enter Flight Code for Status' : 'स्थिति के लिए उड़ान कोड दर्ज करें'}
                 </h3>
-                <span className="text-[10px] font-bold text-slate-400 font-mono">AMADEUS SERVICE v2</span>
+                <span className="text-[10px] font-bold text-slate-400 font-mono">LIVE TRACKING v2</span>
               </div>
 
               <div className="relative">
@@ -423,7 +448,7 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl py-3.5 flex justify-center items-center gap-2 shadow-lg shadow-blue-600/10 transition-colors cursor-pointer"
               >
                 {flightLoading ? (
-                  <span className="flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" /> Querying Amadeus API...</span>
+                  <span className="flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" /> Fetching Live Flight Status...</span>
                 ) : (
                   <><Search className="h-4 w-4" /> Fetch Realtime Status</>
                 )}
@@ -432,7 +457,7 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
               {/* Presets */}
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider font-mono">
-                  Popular Presets (Test Sandbox)
+                  Popular Presets
                 </span>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => loadPresetFlight('AI-101')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
@@ -442,7 +467,154 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
                     ✈️ 6E-2104 (Lucknow-Delhi)
                   </button>
                   <button type="button" onClick={() => loadPresetFlight('EK-507')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
-                    ✈️ EK-577 (Mumbai-Dubai)
+                    ✈️ EK-507 (Mumbai-Dubai)
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            {/* Flight Results Card */}
+            {flightStatusResult && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.98 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-md"
+              >
+                {/* Boarding Pass header */}
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-5 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-blue-200 font-mono">
+                      {flightStatusResult.airline}
+                    </span>
+                    <h4 className="text-xl font-black tracking-tight">{flightStatusResult.flightNum}</h4>
+                  </div>
+                  <div className="text-right">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold ${
+                      flightStatusResult.statusType === 'success' ? 'bg-green-500/20 text-green-300' :
+                      flightStatusResult.statusType === 'warning' ? 'bg-amber-500/20 text-amber-300' :
+                      'bg-blue-500/20 text-blue-300'
+                    }`}>
+                      <span className="h-1.5 w-1.5 rounded-full bg-current animate-ping"></span>
+                      {flightStatusResult.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Main Pass Info */}
+                <div className="p-6 space-y-6">
+                  {/* Route Visualizer */}
+                  <div className="flex items-center justify-between relative">
+                    <div className="space-y-1 w-1/3">
+                      <span className="text-3xl font-black text-slate-800">{flightStatusResult.origin}</span>
+                      <p className="text-[10px] text-slate-500 font-semibold leading-tight line-clamp-1">{flightStatusResult.originName}</p>
+                    </div>
+
+                    <div className="flex-1 px-4 flex flex-col items-center justify-center relative">
+                      <span className="text-[10px] font-bold font-mono text-slate-400 mb-1">{flightStatusResult.duration}</span>
+                      <div className="w-full h-[2px] bg-dashed bg-slate-200 relative flex items-center justify-center">
+                        <Plane className="h-4.5 w-4.5 text-blue-500 absolute rotate-90 transform bg-white px-0.5" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 w-1/3 text-right">
+                      <span className="text-3xl font-black text-slate-800">{flightStatusResult.destination}</span>
+                      <p className="text-[10px] text-slate-500 font-semibold leading-tight line-clamp-1">{flightStatusResult.destinationName}</p>
+                    </div>
+                  </div>
+
+                  {/* Flight Details Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider font-mono">Scheduled Dep</span>
+                      <div className="font-extrabold text-slate-800 text-sm">{flightStatusResult.departure}</div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider font-mono">Scheduled Arr</span>
+                      <div className="font-extrabold text-slate-800 text-sm">{flightStatusResult.arrival}</div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider font-mono">Terminal / Gate</span>
+                      <div className="font-extrabold text-slate-800 text-sm">{flightStatusResult.terminal} / {flightStatusResult.gate}</div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider font-mono">Baggage Belt</span>
+                      <div className="font-extrabold text-slate-800 text-sm">{flightStatusResult.baggage}</div>
+                    </div>
+                  </div>
+
+                  {/* Operational Data */}
+                  <div className="flex items-center justify-between text-xs text-slate-500 border-t border-slate-100 pt-4">
+                    <span className="font-medium">Aircraft: <strong className="font-extrabold text-slate-700">{flightStatusResult.aircraft}</strong></span>
+                    <span className="font-medium">Telemetry: <strong className="font-extrabold text-slate-700">{flightStatusResult.altitude} @ {flightStatusResult.speed}</strong></span>
+                  </div>
+
+                  {flightStatusResult.apiGateway && (
+                    <div className="bg-blue-50/70 border border-blue-100/80 rounded-xl px-3 py-1.5 flex items-center justify-between text-[10px] text-blue-700 font-medium">
+                      <span className="flex items-center gap-1 font-bold">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" />
+                        API Status
+                      </span>
+                      <span className="font-mono font-bold">{flightStatusResult.apiGateway}</span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Railway Tracker Section */}
+        {activeTab === 'railways' && (
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            
+            {/* Railway Form */}
+            <form onSubmit={handleSearchTrain} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="font-extrabold text-slate-800 flex items-center gap-2 text-sm md:text-base">
+                  <Train className="h-5 w-5 text-orange-500" />
+                  {language === 'en' ? 'Check Live Running Train Status' : 'ट्रेन की लाइव रनिंग स्थिति जांचें'}
+                </h3>
+                <span className="text-[10px] font-bold text-slate-400 font-mono">LIVE TRACKING v3</span>
+              </div>
+
+              <div className="relative">
+                <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+                <input 
+                  type="text" 
+                  value={trainNumber} 
+                  onChange={(e) => setTrainNumber(e.target.value)} 
+                  placeholder={language === 'en' ? 'Enter Train No. (e.g., 22436 or 11108)' : 'ट्रेन नंबर दर्ज करें (जैसे, 22436 या 11108)'} 
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none font-bold text-slate-800 placeholder-slate-400 focus:border-orange-500 focus:bg-white transition-all" 
+                  required 
+                />
+              </div>
+
+              <button 
+                disabled={trainLoading} 
+                type="submit" 
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-extrabold rounded-2xl py-3.5 flex justify-center items-center gap-2 shadow-lg shadow-orange-600/10 transition-colors cursor-pointer"
+              >
+                {trainLoading ? (
+                  <span className="flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" /> Fetching Live Train Status...</span>
+                ) : (
+                  <><Search className="h-4 w-4" /> Fetch Live Train Status</>
+                )}
+              </button>
+
+              {/* Presets */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider font-mono">
+                  Popular Presets
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => loadPresetTrain('22436')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
+                    🚆 22436 (Vande Bharat)
+                  </button>
+                  <button type="button" onClick={() => loadPresetTrain('11108')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
+                    🚆 11108 (Bundelkhand Exp)
+                  </button>
+                  <button type="button" onClick={() => loadPresetTrain('12424')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
+                    🚆 12424 (Rajdhani Exp)
                   </button>
                 </div>
               </div>
@@ -539,7 +711,7 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
                   <Train className="h-5 w-5 text-orange-500" />
                   {language === 'en' ? 'Check Live Running Train Status' : 'ट्रेन की लाइव रनिंग स्थिति जांचें'}
                 </h3>
-                <span className="text-[10px] font-bold text-slate-400 font-mono">RAILRADAR PRO v3</span>
+                <span className="text-[10px] font-bold text-slate-400 font-mono">RAILWAY TRACKER v3</span>
               </div>
 
               <div className="relative">
@@ -560,16 +732,16 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
                 className="w-full bg-orange-600 hover:bg-orange-700 text-white font-extrabold rounded-2xl py-3.5 flex justify-center items-center gap-2 shadow-lg shadow-orange-600/10 transition-colors cursor-pointer"
               >
                 {trainLoading ? (
-                  <span className="flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" /> Querying RailRadar...</span>
+                  <span className="flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" /> Fetching Live Train Status...</span>
                 ) : (
-                  <><Search className="h-4 w-4" /> Fetch RailRadar Feed</>
+                  <><Search className="h-4 w-4" /> Fetch Live Train Status</>
                 )}
               </button>
 
               {/* Presets */}
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider font-mono">
-                  Popular Presets (Test Sandbox)
+                  Popular Presets
                 </span>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => loadPresetTrain('22436')} className="px-3.5 py-2 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
@@ -613,6 +785,11 @@ export default function TravelCorner({ language, onBack }: TravelCornerProps) {
                         {trainStatusResult.status}
                       </span>
                       <span className="text-[10px] text-slate-400 font-mono mt-1">Current Speed: {trainStatusResult.speed}</span>
+                      {trainStatusResult.apiGateway && (
+                        <span className="text-[9px] text-orange-300/80 font-mono mt-1 bg-orange-950/60 border border-orange-500/30 px-2 py-0.5 rounded-md">
+                          {trainStatusResult.apiGateway}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

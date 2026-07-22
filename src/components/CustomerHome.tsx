@@ -5,7 +5,6 @@ import {
   Utensils, 
   Shirt, 
   Wrench, 
-  Plane, 
   MapPin, 
   CloudSun, 
   ArrowRight,
@@ -83,15 +82,6 @@ export default function CustomerHome({
       color: 'text-indigo-600', 
       bg: 'bg-indigo-50/75 hover:bg-indigo-100/80 border-indigo-100',
       tag: language === 'en' ? 'Top Rated' : 'टॉप रेटेड'
-    },
-    { 
-      id: 'travel', 
-      name: language === 'en' ? 'Travel' : 'यात्रा', 
-      desc: language === 'en' ? 'Live Flight & Train Status' : 'लाइव उड़ान और ट्रेन स्थिति',
-      icon: Plane, 
-      color: 'text-emerald-600', 
-      bg: 'bg-emerald-50/75 hover:bg-emerald-100/80 border-emerald-100',
-      tag: language === 'en' ? 'Amadeus • RailRadar' : 'अमाडेस • रेलराडार'
     },
   ];
 

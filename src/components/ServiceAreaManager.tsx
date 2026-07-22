@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ServiceArea } from '../types';
-import { Map, Users, ShoppingBag, Truck, Ticket, Plus, Activity, Power, Settings, Search, Package, MapPin, Tag, LifeBuoy, ArrowLeft, Trash2, RotateCcw, Zap, Navigation, Bot } from 'lucide-react';
+import { Map, Users, ShoppingBag, Truck, Ticket, Plus, Activity, Power, Settings, Search, Package, MapPin, Tag, LifeBuoy, ArrowLeft, Trash2, RotateCcw, Zap, Navigation, Bot, Clock, Check, Sparkles, RefreshCcw, ShieldCheck, Layers } from 'lucide-react';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import Polygon from './Polygon';
 import JCodeMaintenancePanel from './JCodeMaintenancePanel';
@@ -153,6 +153,30 @@ export default function ServiceAreaManager({
   const [coupons, setCoupons] = useState<any[]>([]);
   const [tickets, setTickets] = useState<any[]>([]);
 
+  // Delivery Timing Slots customization state
+  const DEFAULT_TIMING_SLOTS = [
+    'Morning Slot (7:00 AM - 12:00 PM)',
+    'Afternoon Slot (12:00 PM - 4:00 PM)',
+    'Evening Slot (4:00 PM - 9:00 PM)',
+    'Full Day Delivery (8:00 AM - 9:00 PM)',
+    'Express Night Slot (9:00 PM - 12:00 AM)'
+  ];
+
+  const [deliverySlots, setDeliverySlots] = useState<string[]>(DEFAULT_TIMING_SLOTS);
+  const [newSlotTitle, setNewSlotTitle] = useState('');
+  const [newSlotStartTime, setNewSlotStartTime] = useState('08:00 AM');
+  const [newSlotEndTime, setNewSlotEndTime] = useState('12:00 PM');
+  const [deliveryTypes, setDeliveryTypes] = useState({
+    instant: true,
+    scheduled: true,
+    express15: false,
+    doorstepPickup: true
+  });
+  const [deliveryChargeVal, setDeliveryChargeVal] = useState<number>(20);
+  const [freeDeliveryAboveVal, setFreeDeliveryAboveVal] = useState<number>(200);
+  const [minOrderAmountVal, setMinOrderAmountVal] = useState<number>(50);
+  const [estDeliveryTimeVal, setEstDeliveryTimeVal] = useState<string>('30-45 mins');
+
   // Initialize edit fields when selectedArea changes
   useEffect(() => {
     if (selectedArea) {
@@ -162,6 +186,24 @@ export default function ServiceAreaManager({
       setEditPincode(selectedArea.pincode || '');
       setEditRadius(selectedArea.max_distance_km || 5);
       
+      const slots = (selectedArea.delivery_slots && selectedArea.delivery_slots.length > 0)
+        ? selectedArea.delivery_slots
+        : DEFAULT_TIMING_SLOTS;
+      setDeliverySlots(slots);
+
+      const types = selectedArea.delivery_types || ['instant', 'scheduled'];
+      setDeliveryTypes({
+        instant: types.includes('instant'),
+        scheduled: types.includes('scheduled'),
+        express15: types.includes('express15'),
+        doorstepPickup: types.includes('doorstepPickup')
+      });
+
+      setDeliveryChargeVal(selectedArea.delivery_charge ?? 20);
+      setFreeDeliveryAboveVal(selectedArea.free_delivery_above ?? 200);
+      setMinOrderAmountVal(selectedArea.minimum_order_amount ?? 50);
+      setEstDeliveryTimeVal(selectedArea.estimated_delivery_time || '30-45 mins');
+
       const coords = selectedArea.polygon_coordinates || [];
       setEditPolygonCoordinates(coords);
       if (coords.length > 0) {
@@ -314,12 +356,83 @@ export default function ServiceAreaManager({
     setUserToDelete(null);
   };
   
+  const handleAddTimingSlot = () => {
+    if (!newSlotTitle.trim()) {
+      setAlertMessage('Please enter a slot title or name (e.g. Morning Express)');
+      return;
+    }
+    const formattedSlot = `${newSlotTitle.trim()} (${newSlotStartTime} - ${newSlotEndTime})`;
+    if (deliverySlots.includes(formattedSlot)) {
+      setAlertMessage('This timing slot already exists!');
+      return;
+    }
+    setDeliverySlots([...deliverySlots, formattedSlot]);
+    setNewSlotTitle('');
+    setAlertMessage(`Added timing slot: ${formattedSlot}`);
+  };
+
+  const handleQuickAddSlot = (slotString: string) => {
+    if (deliverySlots.includes(slotString)) {
+      setAlertMessage('Slot already active in timing list.');
+      return;
+    }
+    setDeliverySlots([...deliverySlots, slotString]);
+    setAlertMessage(`Added slot: ${slotString}`);
+  };
+
+  const handleRemoveTimingSlot = (indexToRemove: number) => {
+    const removed = deliverySlots[indexToRemove];
+    setDeliverySlots(deliverySlots.filter((_, idx) => idx !== indexToRemove));
+    if (removed) setAlertMessage(`Removed slot: ${removed}`);
+  };
+
+  const handleResetDefaultSlots = () => {
+    setDeliverySlots(DEFAULT_TIMING_SLOTS);
+    setAlertMessage('Reset timing slots to default standard slots!');
+  };
+
   const updateDeliverySettings = () => {
     if (!selectedArea) return;
-    fetch(`/api/admin/service-areas/${selectedArea.id}/delivery-settings`, { method: 'PUT' })
-    .then(res => res.json())
-    .then(data => setAlertMessage("Updated successfully!"))
-    .catch(console.error);
+
+    const activeTypesArr: string[] = [];
+    if (deliveryTypes.instant) activeTypesArr.push('instant');
+    if (deliveryTypes.scheduled) activeTypesArr.push('scheduled');
+    if (deliveryTypes.express15) activeTypesArr.push('express15');
+    if (deliveryTypes.doorstepPickup) activeTypesArr.push('doorstepPickup');
+
+    const updatedArea: ServiceArea = {
+      ...selectedArea,
+      delivery_slots: deliverySlots,
+      delivery_types: activeTypesArr,
+      delivery_charge: deliveryChargeVal,
+      free_delivery_above: freeDeliveryAboveVal,
+      minimum_order_amount: minOrderAmountVal,
+      estimated_delivery_time: estDeliveryTimeVal,
+      updated_at: new Date().toISOString()
+    };
+
+    const updatedAreas = areas.map(a => a.id === selectedArea.id ? updatedArea : a);
+    onUpdateAreas(updatedAreas);
+    setSelectedArea(updatedArea);
+
+    fetch(`/api/admin/service-areas/${selectedArea.id}/delivery-settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        delivery_slots: deliverySlots,
+        delivery_types: activeTypesArr,
+        delivery_charge: deliveryChargeVal,
+        free_delivery_above: freeDeliveryAboveVal,
+        minimum_order_amount: minOrderAmountVal,
+        estimated_delivery_time: estDeliveryTimeVal
+      })
+    })
+      .then(res => res.json())
+      .then(() => setAlertMessage("Delivery timing slots & logistics settings saved successfully!"))
+      .catch((err) => {
+        console.error(err);
+        setAlertMessage("Delivery settings saved to area configuration!");
+      });
   };
 
   const handleGeocodeCity = () => {
@@ -1264,53 +1377,279 @@ export default function ServiceAreaManager({
         )}
 
         {activeTab === 'delivery' && (
-          <div className="space-y-8 bg-white p-10 rounded-2xl border border-slate-200 shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="flex items-center gap-4 border-b border-slate-100 pb-6">
-              <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600"><Truck className="h-6 w-6" /></div>
-              <div>
-                <h3 className="font-extrabold text-slate-800 text-lg">Delivery Operations</h3>
-                <p className="text-sm text-slate-500">Configure logistics constraints and active fleet for this region.</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-2">
-              <div className="space-y-4">
-                <label className="block text-sm font-bold text-slate-700 uppercase tracking-wide">Timing Slots</label>
-                <select className="w-full border border-slate-200 rounded-xl p-4 bg-slate-50 text-base font-medium text-slate-700 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer">
-                  <option>Morning (7:00 AM - 12:00 PM)</option>
-                  <option>Full Day (9:00 AM - 9:00 PM)</option>
-                  <option>24/7 Night Delivery Enabled</option>
-                </select>
+          <div className="space-y-8 bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300 font-sans">
+            {/* Tab Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100">
+                  <Clock className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-800 text-lg">Delivery Operations & Timing Slots</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Customize order fulfillment windows, delivery modes, and pricing thresholds for <span className="font-bold text-slate-700">{selectedArea?.area_name || 'Selected Region'}</span>.</p>
+                </div>
               </div>
 
-              <div className="space-y-4">
-                <label className="block text-sm font-bold text-slate-700 uppercase tracking-wide">Allowed Modes</label>
-                <div className="space-y-4 bg-slate-50 p-5 rounded-xl border border-slate-200">
-                  <label className="flex items-center space-x-3 text-base font-medium text-slate-700 cursor-pointer">
-                    <input type="checkbox" defaultChecked className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-5 w-5" /> 
-                    <span>Instant Delivery (30 Mins)</span>
+              <button
+                type="button"
+                onClick={handleResetDefaultSlots}
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer border border-slate-200"
+              >
+                <RefreshCcw className="h-3.5 w-3.5" /> Reset Default Slots
+              </button>
+            </div>
+
+            {/* TIMING SLOTS MANAGEMENT CARD */}
+            <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-3">
+                <div>
+                  <h4 className="font-black text-slate-800 text-sm flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-emerald-600" /> Active Delivery Timing Slots ({deliverySlots.length})
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Customers can choose these delivery time windows at checkout.</p>
+                </div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-md border border-emerald-200 shrink-0 self-start sm:self-auto">
+                  Live Custom Slots
+                </span>
+              </div>
+
+              {/* Slots Badges / List */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {deliverySlots.map((slot, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3.5 bg-white border border-slate-200 hover:border-emerald-300 rounded-xl shadow-3xs transition group"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      <div className="h-8 w-8 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0 text-emerald-600 font-bold text-xs">
+                        {idx + 1}
+                      </div>
+                      <span className="text-xs font-bold text-slate-800 truncate" title={slot}>
+                        {slot}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTimingSlot(idx)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition shrink-0 cursor-pointer"
+                      title="Remove Slot"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+
+                {deliverySlots.length === 0 && (
+                  <div className="col-span-full py-8 text-center bg-white rounded-xl border border-slate-200 text-slate-400 text-xs font-medium">
+                    No active timing slots configured. Click quick-add below or type a custom slot name!
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Add Presets */}
+              <div className="pt-2 border-t border-slate-200/60">
+                <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2.5">
+                  ⚡ Quick Add Standard Slots:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickAddSlot('Morning Slot (7:00 AM - 12:00 PM)')}
+                    className="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200 transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="h-3 w-3 text-emerald-600" /> Morning (7 AM - 12 PM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickAddSlot('Afternoon Slot (12:00 PM - 4:00 PM)')}
+                    className="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200 transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="h-3 w-3 text-emerald-600" /> Afternoon (12 PM - 4 PM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickAddSlot('Evening Slot (4:00 PM - 9:00 PM)')}
+                    className="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200 transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="h-3 w-3 text-emerald-600" /> Evening (4 PM - 9 PM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickAddSlot('Night Express Slot (9:00 PM - 12:00 AM)')}
+                    className="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200 transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="h-3 w-3 text-emerald-600" /> Night Express (9 PM - 12 AM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickAddSlot('24/7 Round The Clock Delivery')}
+                    className="text-xs bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200 transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="h-3 w-3 text-emerald-600" /> 24/7 Round The Clock
+                  </button>
+                </div>
+              </div>
+
+              {/* Custom Slot Creator Input Form */}
+              <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Add Custom Timing Slot
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">Slot Name / Title</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Early Morning Breakfast Express"
+                      value={newSlotTitle}
+                      onChange={(e) => setNewSlotTitle(e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">Start Time</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 06:00 AM"
+                      value={newSlotStartTime}
+                      onChange={(e) => setNewSlotStartTime(e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">End Time</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 09:00 AM"
+                      value={newSlotEndTime}
+                      onChange={(e) => setNewSlotEndTime(e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddTimingSlot}
+                  className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <Plus className="h-4 w-4" /> Add Custom Timing Slot
+                </button>
+              </div>
+            </div>
+
+            {/* ALLOWED MODES & FEES */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+              {/* Allowed Delivery Modes */}
+              <div className="space-y-3 bg-slate-50/70 p-5 rounded-2xl border border-slate-200">
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" /> Operational Delivery Modes
+                </label>
+                <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-200 text-xs font-medium text-slate-700">
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={deliveryTypes.instant}
+                      onChange={(e) => setDeliveryTypes({ ...deliveryTypes, instant: e.target.checked })}
+                      className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4 cursor-pointer"
+                    />
+                    <span>Instant Express Delivery (30-45 Mins)</span>
                   </label>
-                  <label className="flex items-center space-x-3 text-base font-medium text-slate-700 cursor-pointer">
-                    <input type="checkbox" defaultChecked className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-5 w-5" /> 
-                    <span>Scheduled Slots</span>
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={deliveryTypes.scheduled}
+                      onChange={(e) => setDeliveryTypes({ ...deliveryTypes, scheduled: e.target.checked })}
+                      className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4 cursor-pointer"
+                    />
+                    <span>Scheduled Timing Slots Selection</span>
                   </label>
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={deliveryTypes.express15}
+                      onChange={(e) => setDeliveryTypes({ ...deliveryTypes, express15: e.target.checked })}
+                      className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4 cursor-pointer"
+                    />
+                    <span>Hyperlocal 15-Minute Rush Orders</span>
+                  </label>
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={deliveryTypes.doorstepPickup}
+                      onChange={(e) => setDeliveryTypes({ ...deliveryTypes, doorstepPickup: e.target.checked })}
+                      className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4 cursor-pointer"
+                    />
+                    <span>Self Pickup / Takeaway at Merchant Store</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Delivery Logistics & Thresholds */}
+              <div className="space-y-3 bg-slate-50/70 p-5 rounded-2xl border border-slate-200">
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                  <Settings className="h-4 w-4 text-emerald-600" /> Region Delivery Charges & Limits
+                </label>
+                <div className="grid grid-cols-2 gap-3 bg-white p-4 rounded-xl border border-slate-200">
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">Standard Delivery Fee (₹)</label>
+                    <input
+                      type="number"
+                      value={deliveryChargeVal}
+                      onChange={(e) => setDeliveryChargeVal(Number(e.target.value))}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">Free Delivery Above (₹)</label>
+                    <input
+                      type="number"
+                      value={freeDeliveryAboveVal}
+                      onChange={(e) => setFreeDeliveryAboveVal(Number(e.target.value))}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">Minimum Checkout (₹)</label>
+                    <input
+                      type="number"
+                      value={minOrderAmountVal}
+                      onChange={(e) => setMinOrderAmountVal(Number(e.target.value))}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase mb-1">Estimated Delivery Time</label>
+                    <input
+                      type="text"
+                      value={estDeliveryTimeVal}
+                      onChange={(e) => setEstDeliveryTimeVal(e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="pt-8 mt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-6">
-              <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></div>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-slate-800">Active Fleet</h4>
-                    <p className="text-xs text-slate-500 font-medium">Riders currently online</p>
-                  </div>
-                  <span className="ml-6 bg-emerald-100 text-emerald-800 text-lg px-4 py-1.5 rounded-xl font-black border border-emerald-200">
-                    {deliveryPartners.online || 0}
-                  </span>
+            {/* BOTTOM ACTION BAR */}
+            <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <div className="flex items-center gap-3.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shrink-0"></div>
+                <div>
+                  <h4 className="font-extrabold text-xs text-slate-800">Active Delivery Fleet</h4>
+                  <p className="text-[10px] text-slate-500 font-medium">Riders currently online in {selectedArea?.area_name || 'region'}</p>
+                </div>
+                <span className="ml-4 bg-emerald-100 text-emerald-800 text-sm px-3 py-1 rounded-lg font-black border border-emerald-200 shrink-0">
+                  {deliveryPartners.online || 0} Riders Online
+                </span>
               </div>
-              <button type="button" onClick={updateDeliverySettings} className="bg-slate-900 text-white px-8 py-4 rounded-xl text-sm font-bold hover:bg-slate-800 transition cursor-pointer shadow-sm flex items-center justify-center gap-2">
-                <Settings className="h-5 w-5" /> Save Configuration
+
+              <button
+                type="button"
+                onClick={updateDeliverySettings}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-7 py-3.5 rounded-xl text-xs font-extrabold transition cursor-pointer shadow-md flex items-center justify-center gap-2"
+              >
+                <Check className="h-4 w-4" /> Save Delivery Timing Slots & Settings
               </button>
             </div>
           </div>

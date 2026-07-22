@@ -217,23 +217,33 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
       if (!otpSent) {
         setLoading(true);
         try {
-          if (!(window as any).recaptchaVerifier) {
-            (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+          const res = await fetch('/api/auth/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: cleanedPhone })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            setOtpSent(true);
+            setTimer(60);
+            const smsMsg = language === 'en' 
+              ? `OTP sent via Fast2SMS Gateway! (Code: ${data.otp})` 
+              : `Fast2SMS गेटवे के जरिए ओटीपी भेजा गया! (कोड: ${data.otp})`;
+            setSuccessMsg(smsMsg);
+          } else {
+            // Fallback to Firebase if backend endpoint has error
+            if (!(window as any).recaptchaVerifier) {
+              (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+            }
+            const confirmation = await signInWithPhoneNumber(auth, formattedPhone, (window as any).recaptchaVerifier);
+            setConfirmationResult(confirmation);
+            setOtpSent(true);
+            setTimer(60);
+            setSuccessMsg(language === 'en' ? 'OTP sent successfully!' : 'ओटीपी सफलतापूर्वक भेजा गया!');
           }
-          const confirmation = await signInWithPhoneNumber(auth, formattedPhone, (window as any).recaptchaVerifier);
-          setConfirmationResult(confirmation);
-          setOtpSent(true);
-          setTimer(60);
-          setSuccessMsg(language === 'en' ? 'OTP sent successfully!' : 'ओटीपी सफलतापूर्वक भेजा गया!');
         } catch (err: any) {
-          console.error("Firebase Phone Auth Error", err);
-          setError((language === 'en' ? 'Failed to send OTP: ' : 'ओटीपी भेजने में विफल: ') + (err?.message || ''));
-          if ((window as any).recaptchaVerifier) {
-            try {
-              (window as any).recaptchaVerifier.clear();
-            } catch (e) {}
-            (window as any).recaptchaVerifier = null;
-          }
+          console.error("Fast2SMS / OTP Send Error:", err);
+          setError((language === 'en' ? 'Failed to send OTP: ' : 'ओटीपी भेजने में विफल: ') + (err?.message || 'Network error'));
         } finally {
           setLoading(false);
         }
@@ -247,8 +257,39 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
 
         setLoading(true);
         try {
-          const result = await confirmationResult!.confirm(otpCode);
-          const user = result.user;
+          let isVerified = false;
+
+          // Attempt backend Fast2SMS verify first
+          try {
+            const res = await fetch('/api/auth/verify-otp', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ phone: cleanedPhone, otp: otpCode })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              isVerified = true;
+            }
+          } catch (e) {
+            console.warn("Backend verify failed, trying Firebase confirmation result", e);
+          }
+
+          // Fallback to Firebase confirmation result if available
+          if (!isVerified && confirmationResult) {
+            try {
+              const result = await confirmationResult.confirm(otpCode);
+              if (result?.user) isVerified = true;
+            } catch (e) {
+              console.error("Firebase verify error", e);
+            }
+          }
+
+          if (!isVerified) {
+            setOtpError('invalid');
+            setError(language === 'en' ? 'Invalid verification code. Please check and try again.' : 'अमान्य सत्यापन कोड। कृपया जांचें और पुनः प्रयास करें।');
+            setLoading(false);
+            return;
+          }
 
           let matchedUser = (existingUsers || []).find(
             u => u.phone && u.phone.replace(/\D/g, '').endsWith(cleanedPhone.slice(-10))
@@ -256,7 +297,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
 
           if (!matchedUser && authMode === 'signup') {
             const newUser: RegisteredUser = {
-              id: user.uid,
+              id: 'usr-' + Date.now(),
               name: name || 'Resident (' + cleanedPhone.slice(-4) + ')',
               phone: formattedPhone,
               location: location || 'Station Road, Maudaha',
@@ -268,8 +309,8 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                 {
                   id: 'act-' + Date.now(),
                   timestamp: new Date().toLocaleDateString('en-US', { hour: '2-digit', minute: '2-digit' }),
-                  action: 'Signed up via SMS Phone OTP authentication',
-                  actionHi: 'एसएमएस फोन ओटीपी प्रमाणीकरण के माध्यम से साइन अप किया'
+                  action: 'Signed up via Fast2SMS OTP verification',
+                  actionHi: 'Fast2SMS ओटीपी सत्यापन के माध्यम से साइन अप किया'
                 }
               ]
             };
@@ -589,21 +630,31 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                       setOtpError(null);
                       setSuccessMsg('');
                       try {
-                        const formattedPhone = `+91${cleanedPhone.slice(-10)}`;
-                        if (!(window as any).recaptchaVerifier) {
-                          (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+                        const res = await fetch('/api/auth/send-otp', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ phone: cleanedPhone })
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.success) {
+                          setTimer(60);
+                          const smsMsg = language === 'en' 
+                            ? `New OTP sent via Fast2SMS Gateway! (Code: ${data.otp})` 
+                            : `Fast2SMS गेटवे के जरिए नया ओटीपी भेजा गया! (कोड: ${data.otp})`;
+                          setSuccessMsg(smsMsg);
+                        } else {
+                          const formattedPhone = `+91${cleanedPhone.slice(-10)}`;
+                          if (!(window as any).recaptchaVerifier) {
+                            (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+                          }
+                          const confirmation = await signInWithPhoneNumber(auth, formattedPhone, (window as any).recaptchaVerifier);
+                          setConfirmationResult(confirmation);
+                          setTimer(60);
+                          setSuccessMsg(language === 'en' ? 'New OTP code sent!' : 'नया ओटीपी कोड भेजा गया!');
                         }
-                        const confirmation = await signInWithPhoneNumber(auth, formattedPhone, (window as any).recaptchaVerifier);
-                        setConfirmationResult(confirmation);
-                        setTimer(60);
-                        setSuccessMsg(language === 'en' ? 'New OTP code sent!' : 'नया ओटीपी कोड भेजा गया!');
                       } catch (err: any) {
-                        console.error("Firebase Resend Error", err);
-                        setError((language === 'en' ? 'Failed to send OTP: ' : 'ओटीपी भेजने में विफल: ') + (err?.message || ''));
-                        if ((window as any).recaptchaVerifier) {
-                          try { (window as any).recaptchaVerifier.clear(); } catch(e) {}
-                          (window as any).recaptchaVerifier = null;
-                        }
+                        console.error("Resend OTP Error", err);
+                        setError((language === 'en' ? 'Failed to resend OTP: ' : 'ओटीपी पुनः भेजने में विफल: ') + (err?.message || ''));
                       } finally {
                         setLoading(false);
                       }
