@@ -240,7 +240,8 @@ export default function App() {
   });
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem('mau_logged_in') === 'true';
+    // Default to true so the Home Page serves as the primary landing page
+    return localStorage.getItem('mau_logged_in') !== 'false';
   });
 
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(() => {

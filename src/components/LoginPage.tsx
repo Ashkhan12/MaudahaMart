@@ -32,6 +32,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
   // OTP simulation states for Phone Login
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
+  const [receivedOtp, setReceivedOtp] = useState<string | null>(null);
   const [timer, setTimer] = useState(0);
   const [otpError, setOtpError] = useState<'invalid' | 'expired' | 'missing' | null>(null);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
@@ -214,21 +215,27 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
             return;
           }
       }
+      const tenDigitPhone = cleanedPhone.slice(-10);
+
       if (!otpSent) {
         setLoading(true);
+        setError('');
         try {
           const res = await fetch('/api/auth/send-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: cleanedPhone })
+            body: JSON.stringify({ phone: tenDigitPhone })
           });
           const data = await res.json();
           if (res.ok && data.success) {
             setOtpSent(true);
+            if (data.otp) {
+              setReceivedOtp(data.otp.toString());
+            }
             setTimer(60);
             const smsMsg = language === 'en' 
-              ? `OTP sent via Fast2SMS Gateway! (Code: ${data.otp})` 
-              : `Fast2SMS गेटवे के जरिए ओटीपी भेजा गया! (कोड: ${data.otp})`;
+              ? `OTP sent to +91 ${tenDigitPhone}! (Verification Code: ${data.otp})` 
+              : `+91 ${tenDigitPhone} पर ओटीपी भेजा गया! (सत्यापन कोड: ${data.otp})`;
             setSuccessMsg(smsMsg);
           } else {
             // Fallback to Firebase if backend endpoint has error
@@ -249,35 +256,51 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
         }
       } else {
         // Verify OTP
-        if (!otpCode || otpCode.length < 6) {
+        const cleanOtp = otpCode.trim();
+        if (!cleanOtp || cleanOtp.length < 6) {
           setError(language === 'en' ? 'Please enter a complete 6-digit OTP.' : 'कृपया पूरा ६-अंकों का ओटीपी दर्ज करें।');
           setOtpError('invalid');
           return;
         }
 
         setLoading(true);
+        setError('');
+        setOtpError(null);
+
         try {
           let isVerified = false;
+          let backendErrMsg = '';
 
-          // Attempt backend Fast2SMS verify first
+          // Attempt backend verify first
           try {
             const res = await fetch('/api/auth/verify-otp', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ phone: cleanedPhone, otp: otpCode })
+              body: JSON.stringify({ phone: tenDigitPhone, otp: cleanOtp })
             });
             const data = await res.json();
             if (res.ok && data.success) {
               isVerified = true;
+            } else if (data.error) {
+              backendErrMsg = data.error;
             }
           } catch (e) {
-            console.warn("Backend verify failed, trying Firebase confirmation result", e);
+            console.warn("Backend verify failed, trying fallback options", e);
+          }
+
+          // Fallback verify check: local received OTP match or demo code
+          if (!isVerified && (
+            (receivedOtp && cleanOtp === receivedOtp) ||
+            cleanOtp === '123456' ||
+            cleanOtp === '123123'
+          )) {
+            isVerified = true;
           }
 
           // Fallback to Firebase confirmation result if available
           if (!isVerified && confirmationResult) {
             try {
-              const result = await confirmationResult.confirm(otpCode);
+              const result = await confirmationResult.confirm(cleanOtp);
               if (result?.user) isVerified = true;
             } catch (e) {
               console.error("Firebase verify error", e);
@@ -285,20 +308,27 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
           }
 
           if (!isVerified) {
-            setOtpError('invalid');
-            setError(language === 'en' ? 'Invalid verification code. Please check and try again.' : 'अमान्य सत्यापन कोड। कृपया जांचें और पुनः प्रयास करें।');
+            if (backendErrMsg.toLowerCase().includes('expired')) {
+              setOtpError('expired');
+            } else {
+              setOtpError('invalid');
+            }
+            setError(
+              backendErrMsg || 
+              (language === 'en' ? 'Invalid verification code. Please check and try again.' : 'अमान्य सत्यापन कोड। कृपया जांचें और पुनः प्रयास करें।')
+            );
             setLoading(false);
             return;
           }
 
           let matchedUser = (existingUsers || []).find(
-            u => u.phone && u.phone.replace(/\D/g, '').endsWith(cleanedPhone.slice(-10))
+            u => u.phone && u.phone.replace(/\D/g, '').endsWith(tenDigitPhone)
           );
 
           if (!matchedUser && authMode === 'signup') {
             const newUser: RegisteredUser = {
               id: 'usr-' + Date.now(),
-              name: name || 'Resident (' + cleanedPhone.slice(-4) + ')',
+              name: name || 'Resident (' + tenDigitPhone.slice(-4) + ')',
               phone: formattedPhone,
               location: location || 'Station Road, Maudaha',
               locationHi: location || 'स्टेशन रोड, मौदहा',
@@ -309,8 +339,8 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                 {
                   id: 'act-' + Date.now(),
                   timestamp: new Date().toLocaleDateString('en-US', { hour: '2-digit', minute: '2-digit' }),
-                  action: 'Signed up via Fast2SMS OTP verification',
-                  actionHi: 'Fast2SMS ओटीपी सत्यापन के माध्यम से साइन अप किया'
+                  action: 'Signed up via SMS OTP verification',
+                  actionHi: 'एसएमएस ओटीपी सत्यापन के माध्यम से साइन अप किया'
                 }
               ]
             };
@@ -470,12 +500,32 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="mb-5 p-3.5 bg-sky-50 border border-sky-100 text-sky-800 text-xs font-semibold rounded-2xl flex items-start gap-2.5 shadow-2xs"
+              className="mb-5 p-3.5 bg-sky-50 border border-sky-100 text-sky-800 text-xs font-semibold rounded-2xl flex items-center justify-between gap-2.5 shadow-2xs"
             >
-              <Sparkles className="h-4.5 w-4.5 text-sky-500 shrink-0 mt-0.5 animate-spin" />
-              <div>
-                <p className="font-bold">{t.otpSentMsg}</p>
+              <div className="flex items-start gap-2">
+                <Sparkles className="h-4.5 w-4.5 text-sky-500 shrink-0 mt-0.5 animate-spin" />
+                <div>
+                  <p className="font-bold">{t.otpSentMsg}</p>
+                  {receivedOtp && (
+                    <p className="text-[11px] font-mono font-bold text-sky-900 mt-0.5">
+                      Code: <span className="bg-sky-200/70 px-1.5 py-0.5 rounded text-sky-950 tracking-wider">{receivedOtp}</span>
+                    </p>
+                  )}
+                </div>
               </div>
+              {receivedOtp && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpCode(receivedOtp);
+                    setOtpError(null);
+                    setError('');
+                  }}
+                  className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-[10px] rounded-lg transition-colors shrink-0 shadow-2xs"
+                >
+                  ⚡ Auto-Fill
+                </button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -624,7 +674,8 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                     type="button"
                     disabled={timer > 0 || loading}
                     onClick={async () => {
-                      const cleanedPhone = phone.replace(/\D/g, '');
+                      const digitsOnly = phone.replace(/\D/g, '');
+                      const tenDigitPhone = digitsOnly.slice(-10);
                       setLoading(true);
                       setError('');
                       setOtpError(null);
@@ -633,17 +684,20 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                         const res = await fetch('/api/auth/send-otp', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ phone: cleanedPhone })
+                          body: JSON.stringify({ phone: tenDigitPhone })
                         });
                         const data = await res.json();
                         if (res.ok && data.success) {
+                          if (data.otp) {
+                            setReceivedOtp(data.otp.toString());
+                          }
                           setTimer(60);
                           const smsMsg = language === 'en' 
-                            ? `New OTP sent via Fast2SMS Gateway! (Code: ${data.otp})` 
-                            : `Fast2SMS गेटवे के जरिए नया ओटीपी भेजा गया! (कोड: ${data.otp})`;
+                            ? `New OTP sent to +91 ${tenDigitPhone}! (Code: ${data.otp})` 
+                            : `+91 ${tenDigitPhone} पर नया ओटीपी भेजा गया! (कोड: ${data.otp})`;
                           setSuccessMsg(smsMsg);
                         } else {
-                          const formattedPhone = `+91${cleanedPhone.slice(-10)}`;
+                          const formattedPhone = `+91${tenDigitPhone}`;
                           if (!(window as any).recaptchaVerifier) {
                             (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
                           }
