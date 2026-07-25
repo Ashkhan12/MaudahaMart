@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Plus, Edit2, TrendingUp, CheckCircle, Package, Send, Star, Layers, Bell, Eye, EyeOff, Map, Sliders, Sparkles, AlertTriangle, Check } from 'lucide-react';
-import { Product, Store, Review, Order, Notification, Language, RegisteredUser, PayoutRequest, OrderItem } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit2, TrendingUp, CheckCircle, Package, Send, Star, Layers, Bell, Eye, EyeOff, Map, Sliders, Sparkles, AlertTriangle, Check, Volume2, Radio } from 'lucide-react';
+import { Product, Store, Review, Order, type Notification, Language, RegisteredUser, PayoutRequest, OrderItem } from '../types';
 import { TRANSLATIONS } from '../data';
+import { requestNotificationPermission, playOrderAlertSound, triggerHapticVibration, triggerOrderAlert } from '../utils/notification';
 
 interface ZoneDemandData {
   id: string;
@@ -200,6 +201,33 @@ export default function MerchantDashboard({
   const [promoBodyHi, setPromoBodyHi] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [promoDiscount, setPromoDiscount] = useState('');
+  const [notifGranted, setNotifGranted] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotifGranted(Notification.permission === 'granted');
+    }
+  }, []);
+
+  const handleEnablePushNotifications = async () => {
+    const granted = await requestNotificationPermission();
+    setNotifGranted(granted);
+    if (granted) {
+      triggerOrderAlert(
+        language === 'en' ? '🔔 FCM Merchant Alerts Active!' : '🔔 मर्चेंट अलर्ट सक्रिय!',
+        language === 'en' ? 'Your phone will vibrate & ring whenever a customer places an order.' : 'जब भी कोई ग्राहक ऑर्डर देगा, आपका फोन वाइब्रेट और रिंग करेगा।',
+        [300, 100, 300, 100, 500]
+      );
+    } else {
+      alert(language === 'en' ? 'Notification permission denied in browser.' : 'ब्राउज़र में नोटिफिकेशन अनुमति अस्वीकृत है।');
+    }
+  };
+
+  const handleTestChime = () => {
+    playOrderAlertSound();
+    triggerHapticVibration([400, 150, 400, 150, 800]);
+    alert(language === 'en' ? '🔊 Played order alert ringtone & vibration!' : '🔊 मर्चेंट ऑर्डर रिंगटोन और कंपन टेस्ट पूर्ण!');
+  };
 
   // Editing States
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -798,8 +826,57 @@ export default function MerchantDashboard({
         </div>
       </div>
 
-      {/* Main Grid content */}
-      <div className="max-w-6xl mx-auto px-4 mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Main Container */}
+      <div className="max-w-6xl mx-auto px-4 mt-6 space-y-6">
+
+        {/* Merchant FCM Order Alert & Vibration Settings Bar */}
+        <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white rounded-2xl p-4 shadow-lg flex flex-wrap items-center justify-between gap-4 border border-emerald-700/50">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-400">
+              <Radio className="h-5 w-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-300">
+                  {language === 'en' ? 'Merchant Real-Time Order Sound & FCM Push Alerts' : 'मर्चेंट रियल-टाइम ऑर्डर साउंड और पुश अलर्ट'}
+                </h3>
+                {notifGranted && (
+                  <span className="text-[9px] bg-emerald-500/30 border border-emerald-400/50 text-emerald-200 font-extrabold px-2 py-0.5 rounded-full">
+                    ✓ {language === 'en' ? 'Active' : 'सक्रिय'}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-300 mt-0.5">
+                {language === 'en' ? 'Receives loud audio chime + haptic vibration instantly when a customer places an order.' : 'ग्राहक द्वारा ऑर्डर देने पर तुरंत लाउड साउंड टोन और वाइब्रेशन बजता है।'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {!notifGranted && (
+              <button
+                type="button"
+                onClick={handleEnablePushNotifications}
+                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <Bell className="h-3.5 w-3.5" />
+                <span>{language === 'en' ? 'Enable Push Alerts' : 'पुश अलर्ट चालू करें'}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleTestChime}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <Volume2 className="h-3.5 w-3.5 text-emerald-400" />
+              <span>{language === 'en' ? 'Test Order Ringtone' : 'साउंड / वाइब्रेशन टेस्ट'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Main Grid content */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Left Column (8 cols): Inventory & Incoming Orders */}
         <div className="lg:col-span-8 space-y-8">
@@ -1752,5 +1829,6 @@ export default function MerchantDashboard({
 
       </div>
     </div>
-  );
+  </div>
+);
 }

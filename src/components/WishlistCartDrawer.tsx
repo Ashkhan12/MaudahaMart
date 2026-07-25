@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { X, Heart, ShoppingBag, Plus, Minus, Trash2, ArrowRight, Sparkles } from 'lucide-react';
+import { X, Heart, ShoppingBasket, Plus, Minus, Trash2, ArrowRight, Sparkles } from 'lucide-react';
 import { Product, Store, OrderItem, Language, RegisteredUser, SystemSettings } from '../types';
 
 interface WishlistCartDrawerProps {
@@ -81,7 +81,7 @@ export default function WishlistCartDrawer({
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <ShoppingBag className="h-3.5 w-3.5 text-emerald-600 cursor-pointer" />
+              <ShoppingBasket className="h-3.5 w-3.5 text-emerald-600 cursor-pointer" />
               <span>{language === 'en' ? 'Cart' : 'कार्ट'}</span>
               {totalCartItemCount > 0 && (
                 <span className="text-[9px] bg-emerald-600 text-white font-black px-1.5 py-0.2 rounded-full">

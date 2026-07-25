@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, Sparkles, MapPin, Layers, History, Bell, Languages, Store as StoreIcon, ShieldAlert, Shield, Palette, LogOut, User, Heart, Utensils, Shirt, Package, MessageSquare, Train, Plane, ArrowRight, X, LifeBuoy, FileText, Wrench, Stethoscope, Grid, Gift, ArrowLeft } from 'lucide-react';
+import { ShoppingBag, Sparkles, MapPin, Layers, History, Bell, Languages, Store as StoreIcon, ShieldAlert, Shield, Palette, LogOut, User, Heart, Utensils, Shirt, Package, MessageSquare, Train, Plane, ArrowRight, X, LifeBuoy, FileText, Wrench, Stethoscope, Grid, Gift, ArrowLeft, PackageCheck, ShoppingBasket } from 'lucide-react';
 import { Language, Store, Product, Review, Order, OrderItem, LoyaltyInfo, Notification, RegisteredUser, UserActivity, AppState, SupportTicket, SupportMessage, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, ScratchCard, Restaurant, ClothingBoutique, MerchantRequest, UserRole, ServiceArea } from './types';
 import { INITIAL_STORES, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_NOTIFICATIONS, INITIAL_USERS, INITIAL_SUPPORT_TICKETS, INITIAL_ORDERS, TRANSLATIONS } from './data';
 import { INITIAL_RESTAURANTS } from './dataRestaurants';
@@ -28,6 +28,7 @@ import { THEMES, generateThemeStyles, getColorsAndDescForWeather } from './theme
 import PrivacyPolicyModal from './components/PrivacyPolicyModal';
 import UserProfileCorner from './components/UserProfileCorner';
 import WishlistCartDrawer from './components/WishlistCartDrawer';
+import { triggerOrderAlert, requestNotificationPermission } from './utils/notification';
 import { seedDatabaseIfEmpty, loadAllCollections, syncDocToFirestore } from './firebaseSync';
 import { motion, AnimatePresence } from 'motion/react';
 import AndroidAppHub from './components/AndroidAppHub';
@@ -977,6 +978,49 @@ export default function App() {
     const updatedOrders = [newOrder, ...orders];
     setOrders(updatedOrders);
 
+    // Trigger Push Notification, Sound Chime, & Vibration for Seller, Admin & Rider
+    triggerOrderAlert(
+      `🚨 New Order Received #${newOrder.id}`,
+      `Store: ${newOrder.storeName} | Total: ₹${newOrder.total} | Delivery Address: ${newOrder.customerLocation}`,
+      [500, 200, 500, 200, 1000]
+    );
+
+    // Dispatch System Notifications for Seller, Admin, and Delivery Agent
+    const sellerNotif: Notification = {
+      id: 'NOTIF-ORD-' + Date.now() + '-1',
+      title: `🚨 New Order #${newOrder.id}`,
+      titleHi: `🚨 नया ऑर्डर #${newOrder.id}`,
+      body: `New order worth ₹${newOrder.total} placed for ${newOrder.storeName}. Prepare items immediately.`,
+      bodyHi: `${newOrder.storeName} के लिए ₹${newOrder.total} का नया ऑर्डर आया है। तुरंत सामग्री तैयार करें।`,
+      type: 'order',
+      date: new Date().toISOString().split('T')[0],
+      isRead: false
+    };
+
+    const adminNotif: Notification = {
+      id: 'NOTIF-ORD-' + Date.now() + '-2',
+      title: `📢 Admin Alert: Order #${newOrder.id}`,
+      titleHi: `📢 एडमिन अलर्ट: ऑर्डर #${newOrder.id}`,
+      body: `New order placed for ${newOrder.storeName} worth ₹${newOrder.total}.`,
+      bodyHi: `${newOrder.storeName} के लिए ₹${newOrder.total} का नया ऑर्डर आया।`,
+      type: 'order',
+      date: new Date().toISOString().split('T')[0],
+      isRead: false
+    };
+
+    const riderNotif: Notification = {
+      id: 'NOTIF-ORD-' + Date.now() + '-3',
+      title: `🚴 Delivery Request: #${newOrder.id}`,
+      titleHi: `🚴 डिलीवरी अनुरोध: #${newOrder.id}`,
+      body: `Pickup from ${newOrder.storeName} -> Deliver to ${newOrder.customerLocation}. Total: ₹${newOrder.total}.`,
+      bodyHi: `${newOrder.storeName} से पिकअप करें -> ${newOrder.customerLocation} पर डिलीवर करें। कुल: ₹${newOrder.total}।`,
+      type: 'order',
+      date: new Date().toISOString().split('T')[0],
+      isRead: false
+    };
+
+    setNotifications(prev => [sellerNotif, adminNotif, riderNotif, ...prev]);
+
     // Auto-calculate seller's MSP-based share and queue payout request + notification for UPI payments
     if (paymentMethod === 'UPI') {
       const sellerShare = Math.round(storeCart.reduce((sum, item) => {
@@ -1541,7 +1585,7 @@ export default function App() {
               className="flex items-center gap-1 bg-emerald-50/80 hover:bg-emerald-100/80 border border-emerald-200/60 rounded-xl px-1.5 sm:px-2.5 py-1 text-emerald-700 transition duration-200 select-none cursor-pointer"
               title={language === 'en' ? 'Orders' : 'ऑर्डर'}
             >
-              <ShoppingBag className="h-4 w-4 text-emerald-600" />
+              <PackageCheck className="h-4 w-4 text-emerald-600" />
               <span className="text-[9px] sm:text-[10px] font-extrabold uppercase hidden xs:inline">{language === 'en' ? 'Orders' : 'ऑर्डर'}</span>
             </button>
 
@@ -1581,44 +1625,10 @@ export default function App() {
               )}
             </div>
 
-            {/* Wishlist Header Trigger */}
-            <button
-              onClick={() => {
-                setDrawerInitialTab('wishlist');
-                setShowWishlistDrawer(true);
-              }}
-              className="p-1.5 sm:p-2 hover:bg-slate-100 rounded-xl text-slate-600 hover:text-rose-500 transition relative cursor-pointer"
-              title={language === 'en' ? 'My Wishlist' : 'मेरी इच्छासूची'}
-            >
-              <Heart className={`h-4 w-4 sm:h-5 sm:w-5 ${activeUser?.watchlist?.length ? 'fill-rose-500 text-rose-500' : ''}`} />
-              {activeUser?.watchlist && activeUser.watchlist.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-rose-500 text-white font-mono text-[9px] font-black h-4 min-w-4 px-1 rounded-full flex items-center justify-center">
-                  {activeUser.watchlist.length}
-                </span>
-              )}
-            </button>
-
-            {/* Cart Header Trigger */}
-            <button
-              onClick={() => {
-                setDrawerInitialTab('cart');
-                setShowWishlistDrawer(true);
-              }}
-              className="p-1.5 sm:p-2 hover:bg-slate-100 rounded-xl text-slate-600 hover:text-emerald-600 transition relative cursor-pointer"
-              title={language === 'en' ? 'Global Shopping Cart' : 'ग्लोबल शॉपिंग कार्ट'}
-            >
-              <ShoppingBag className="h-4 w-4 sm:h-5 sm:w-5" />
-              {Object.keys(cart).filter(sId => cart[sId] && cart[sId].length > 0).reduce((sum, sId) => sum + (cart[sId]?.reduce((s, it) => s + it.quantity, 0) || 0), 0) > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-emerald-600 text-white font-mono text-[9px] font-black h-4 min-w-4 px-1 rounded-full flex items-center justify-center">
-                  {Object.keys(cart).filter(sId => cart[sId] && cart[sId].length > 0).reduce((sum, sId) => sum + (cart[sId]?.reduce((s, it) => s + it.quantity, 0) || 0), 0)}
-                </span>
-              )}
-            </button>
-
-            {/* UserProfile Header Trigger */}
+            {/* UserProfile Header Trigger (Includes Wishlist & Cart inside) */}
             <button
               onClick={() => setShowProfileDrawer(true)}
-              className="p-1 sm:p-1.5 hover:bg-slate-100 rounded-xl text-slate-600 hover:text-emerald-600 transition flex items-center gap-1 bg-slate-50 border border-slate-200/60 cursor-pointer"
+              className="p-1 sm:p-1.5 hover:bg-slate-100 rounded-xl text-slate-600 hover:text-emerald-600 transition flex items-center gap-1 bg-slate-50 border border-slate-200/60 cursor-pointer relative"
               title={language === 'en' ? 'User Profile' : 'यूज़र प्रोफ़ाइल'}
             >
               <div className="h-6 w-6 rounded-lg bg-emerald-600 text-white text-xs font-black flex items-center justify-center">
@@ -1627,6 +1637,9 @@ export default function App() {
               <span className="text-[11px] font-extrabold pr-1 hidden sm:inline">
                 {activeUser?.name.split(' ')[0]}
               </span>
+              {(activeUser?.watchlist?.length || Object.keys(cart).filter(sId => cart[sId] && cart[sId].length > 0).length > 0) ? (
+                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-600 ring-2 ring-white" />
+              ) : null}
             </button>
           </div>
 
@@ -2122,6 +2135,15 @@ export default function App() {
       <UserProfileCorner
         isOpen={showProfileDrawer}
         onClose={() => setShowProfileDrawer(false)}
+        onOpenWishlist={() => {
+          setDrawerInitialTab('wishlist');
+          setShowWishlistDrawer(true);
+        }}
+        onOpenCart={() => {
+          setDrawerInitialTab('cart');
+          setShowWishlistDrawer(true);
+        }}
+        cart={cart}
         language={language}
         onSwitchLanguage={setLanguage}
         themeId={themeId}
@@ -2334,7 +2356,7 @@ export default function App() {
                 activeTab === 'orders' ? 'text-emerald-600 font-extrabold -translate-y-0.5' : 'text-slate-400 font-medium hover:text-slate-600'
               }`}
             >
-              <Package className={`h-5 w-5 transition duration-200 ${activeTab === 'orders' ? 'text-emerald-600' : 'text-slate-400'}`} />
+              <PackageCheck className={`h-5 w-5 transition duration-200 ${activeTab === 'orders' ? 'text-emerald-600' : 'text-slate-400'}`} />
               <span className="text-[10px] tracking-tight">{language === 'en' ? 'Orders' : 'ऑर्डर'}</span>
             </button>
 

@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { User, Phone, Mail, MapPin, Award, History, X, Edit2, Check, Languages, Palette, Layers, LogOut, Smartphone, Sparkles, Building, Landmark, ChevronLeft, FileText } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Award, History, X, Edit2, Check, Languages, Palette, Layers, LogOut, Smartphone, Sparkles, Building, Landmark, ChevronLeft, FileText, Heart, ShoppingBasket } from 'lucide-react';
 import { RegisteredUser, Language, MerchantRequest, UserRole } from '../types';
 import MapLocationPicker from './MapLocationPicker';
 import { THEMES } from '../theme';
@@ -29,6 +29,9 @@ interface UserProfileCornerProps {
   onOpenPitchDeck?: () => void;
   merchantRequests?: MerchantRequest[];
   onAddMerchantRequest?: (req: MerchantRequest) => void;
+  onOpenWishlist?: () => void;
+  onOpenCart?: () => void;
+  cart?: { [storeId: string]: any[] };
   weather?: {
     temp: number;
     code: number;
@@ -61,9 +64,17 @@ export default function UserProfileCorner({
   onOpenAndroidHub,
   onOpenPitchDeck,
   merchantRequests = [],
-  onAddMerchantRequest
+  onAddMerchantRequest,
+  onOpenWishlist,
+  onOpenCart,
+  cart = {}
 }: UserProfileCornerProps) {
   const activeUser = users.find(u => u.id === activeUserId);
+  
+  const watchlistCount = activeUser?.watchlist?.length || 0;
+  const totalCartItems = Object.keys(cart || {})
+    .filter(sId => cart[sId] && cart[sId].length > 0)
+    .reduce((sum, sId) => sum + (cart[sId]?.reduce((s, it) => s + it.quantity, 0) || 0), 0);
   
   // Edit form states
   const [isEditing, setIsEditing] = useState(false);
@@ -309,6 +320,71 @@ export default function UserProfileCorner({
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* My Shopping Cart & Wishlist Triggers inside Profile */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Shopping Cart Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenCart) onOpenCart();
+                onClose();
+              }}
+              className="p-3 bg-emerald-50 hover:bg-emerald-100/90 border border-emerald-200/80 rounded-2xl flex items-center justify-between transition cursor-pointer group shadow-2xs active:scale-95"
+            >
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-xs group-hover:scale-105 transition">
+                  <ShoppingBasket className="h-4 w-4" />
+                </div>
+                <div className="text-left">
+                  <span className="text-xs font-black text-slate-800 block leading-tight">
+                    {language === 'en' ? 'My Cart' : 'मेरी कार्ट'}
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-bold">
+                    {totalCartItems > 0 
+                      ? (language === 'en' ? `${totalCartItems} Items` : `${totalCartItems} सामान`)
+                      : (language === 'en' ? 'Empty' : 'खाली')}
+                  </span>
+                </div>
+              </div>
+              {totalCartItems > 0 && (
+                <span className="bg-emerald-600 text-white text-[10px] font-black h-5 min-w-5 px-1.5 rounded-full flex items-center justify-center font-mono">
+                  {totalCartItems}
+                </span>
+              )}
+            </button>
+
+            {/* Wishlist Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenWishlist) onOpenWishlist();
+                onClose();
+              }}
+              className="p-3 bg-rose-50 hover:bg-rose-100/90 border border-rose-200/80 rounded-2xl flex items-center justify-between transition cursor-pointer group shadow-2xs active:scale-95"
+            >
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-rose-500 text-white rounded-xl shadow-xs group-hover:scale-105 transition">
+                  <Heart className="h-4 w-4 fill-white" />
+                </div>
+                <div className="text-left">
+                  <span className="text-xs font-black text-slate-800 block leading-tight">
+                    {language === 'en' ? 'Wishlist' : 'इच्छासूची'}
+                  </span>
+                  <span className="text-[10px] text-rose-700 font-bold">
+                    {watchlistCount > 0 
+                      ? (language === 'en' ? `${watchlistCount} Saved` : `${watchlistCount} सेव्ड`)
+                      : (language === 'en' ? 'Empty' : 'खाली')}
+                  </span>
+                </div>
+              </div>
+              {watchlistCount > 0 && (
+                <span className="bg-rose-500 text-white text-[10px] font-black h-5 min-w-5 px-1.5 rounded-full flex items-center justify-center font-mono">
+                  {watchlistCount}
+                </span>
+              )}
+            </button>
           </div>
 
           {/* Quick Log Out option (Moved Higher Up) */}

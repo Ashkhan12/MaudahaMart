@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { RegisteredUser, Restaurant, RestaurantMenuItem, RestaurantOrderItem, RestaurantOrder } from '../types';
 import { INITIAL_RESTAURANTS } from '../dataRestaurants';
-import UPIPayment from './UPIPayment';
+import { triggerOrderAlert } from '../utils/notification';
 
 interface RestaurantCornerProps {
   activeUserId: string;
@@ -55,8 +55,15 @@ export default function RestaurantCorner({
   const [promoCode, setPromoCode] = useState('');
   const [discountAmount, setDiscountAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'COD'>('COD');
-  const [showUpiCheckout, setShowUpiCheckout] = useState(false);
+  const [foodDeliveryAddress, setFoodDeliveryAddress] = useState('');
   const [showActiveTracker, setShowActiveTracker] = useState<string | null>(null);
+
+  // Auto-fill address from user profile
+  React.useEffect(() => {
+    if (activeUser?.location && !foodDeliveryAddress.trim()) {
+      setFoodDeliveryAddress(activeUser.location);
+    }
+  }, [activeUser]);
 
   // Helper to save user-specific restaurant cart/orders
   const updateUserData = (updatedCart: { [restaurantId: string]: RestaurantOrderItem[] }, updatedOrders: RestaurantOrder[]) => {
@@ -162,7 +169,6 @@ export default function RestaurantCorner({
     }
 
     const orderId = `FOOD-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
-    const actualPaymentMethod = (paymentMethod === 'UPI' && settings.enableUpiPaymentRestaurants !== false) ? 'UPI' : 'COD';
     const newOrder: RestaurantOrder = {
       id: orderId,
       restaurantId: currentRestaurant.id,
@@ -172,7 +178,7 @@ export default function RestaurantCorner({
       subtotal,
       deliveryFee,
       total: grandTotal,
-      paymentMethod: actualPaymentMethod,
+      paymentMethod: 'COD',
       status: 'cooking',
       date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', Today'
     };
@@ -183,6 +189,13 @@ export default function RestaurantCorner({
 
     updateUserData(currentCart, updatedOrders);
     
+    // Trigger Push Notification, Sound Chime, & Vibration
+    triggerOrderAlert(
+      `🍕 New Food Order Received #${orderId}`,
+      `Restaurant: ${currentRestaurant.name} | Total: ₹${grandTotal} | Address: ${foodDeliveryAddress || 'Maudaha'}`,
+      [500, 200, 500, 200, 1000]
+    );
+
     // Log activity
     onAddActivity(
       activeUserId, 
@@ -194,7 +207,6 @@ export default function RestaurantCorner({
     setPromoCode('');
     setDiscountAmount(0);
     setShowCartDrawer(false);
-    setShowUpiCheckout(false);
     setShowActiveTracker(orderId);
 
     alert(language === 'en' 
@@ -203,11 +215,11 @@ export default function RestaurantCorner({
   };
 
   const handleCheckoutBtn = () => {
-    if (paymentMethod === 'UPI' && settings.enableUpiPaymentRestaurants !== false) {
-      setShowUpiCheckout(true);
-    } else {
-      executePlaceOrder();
+    if (!foodDeliveryAddress.trim()) {
+      alert(language === 'en' ? 'Please enter a delivery address for your food order.' : 'कृपया अपने भोजन वितरण का पता दर्ज करें।');
+      return;
     }
+    executePlaceOrder();
   };
 
   // Reorder action
@@ -875,34 +887,59 @@ export default function RestaurantCorner({
                   </div>
                 </div>
 
+                {/* Delivery Address Field & Quick Chips */}
+                <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      {language === 'en' ? 'Delivery Location' : 'वितरण का स्थान'}
+                    </span>
+                  </div>
+
+                  {/* Quick Address Chips */}
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                    {activeUser?.location && (
+                      <button
+                        type="button"
+                        onClick={() => setFoodDeliveryAddress(activeUser.location || '')}
+                        className="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md text-[9px] font-bold text-rose-700 whitespace-nowrap transition cursor-pointer shrink-0"
+                      >
+                        🏠 {language === 'hi' ? 'प्रोफाइल' : 'Saved'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setFoodDeliveryAddress('Station Road, Near Bus Stand, Maudaha')}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-md text-[9px] font-bold text-slate-700 whitespace-nowrap transition cursor-pointer shrink-0"
+                    >
+                      📍 Station Rd
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFoodDeliveryAddress('Main Market, Maudaha')}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-md text-[9px] font-bold text-slate-700 whitespace-nowrap transition cursor-pointer shrink-0"
+                    >
+                      🏢 Market
+                    </button>
+                  </div>
+
+                  <textarea
+                    required
+                    value={foodDeliveryAddress}
+                    onChange={(e) => setFoodDeliveryAddress(e.target.value)}
+                    placeholder={language === 'en' ? 'e.g. Near Bus Stand, Maudaha' : 'उदा. बस स्टैंड के पास, मौदहा'}
+                    rows={2}
+                    className="w-full bg-slate-50 border border-slate-200 p-2 rounded-xl text-xs focus:outline-none focus:border-rose-400 focus:bg-white transition"
+                  />
+                </div>
+
                 {/* Payment selectors */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                     {language === 'en' ? 'Payment Method' : 'भुगतान का प्रकार'}
                   </span>
-                  <div className={`grid ${settings.enableUpiPaymentRestaurants !== false ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
-                    <button type="button"
-                      onClick={() => setPaymentMethod('COD')}
-                      className={`py-2 rounded-xl text-xs font-bold transition border cursor-pointer text-center ${
-                        paymentMethod === 'COD' || (settings.enableUpiPaymentRestaurants === false)
-                          ? 'bg-rose-50 border-rose-300 text-rose-700'
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      💵 {language === 'en' ? 'Cash on Delivery' : 'कैश ऑन डिलीवरी'}
-                    </button>
-                    {settings.enableUpiPaymentRestaurants !== false && (
-                      <button type="button"
-                        onClick={() => setPaymentMethod('UPI')}
-                        className={`py-2 rounded-xl text-xs font-bold transition border cursor-pointer text-center ${
-                          paymentMethod === 'UPI'
-                            ? 'bg-rose-50 border-rose-300 text-rose-700'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        📱 {language === 'en' ? 'Instant UPI' : 'त्वरित UPI'}
-                      </button>
-                    )}
+                  <div className="py-2 px-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-black text-rose-700 flex items-center justify-between">
+                    <span>💵 {language === 'en' ? 'Cash on Delivery (COD)' : 'कैश ऑन डिलीवरी (COD)'}</span>
+                    <span className="text-[9px] bg-rose-200/60 px-1.5 py-0.5 rounded font-extrabold">Active</span>
                   </div>
                 </div>
 
@@ -933,39 +970,6 @@ export default function RestaurantCorner({
         </div>
       )}
 
-      {/* Razorpay UPI Checkout Modal */}
-      {showUpiCheckout && currentRestaurant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowUpiCheckout(false)} />
-          <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl relative border border-slate-100 z-50">
-            <button type="button"
-              onClick={() => setShowUpiCheckout(false)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 font-extrabold font-mono text-base transition-colors duration-150 z-50 cursor-pointer"
-            >
-              ✕
-            </button>
-            <div className="p-1">
-              <div className="bg-[#3395ff] text-white p-5 text-center rounded-t-2xl">
-                <span className="text-[10px] font-black tracking-widest font-mono uppercase opacity-85">Maudaha Mart UPI Gateway</span>
-                <p className="text-2xl font-black mt-1">₹{grandTotal}</p>
-              </div>
-              <div className="p-5">
-                <UPIPayment
-                  amount={grandTotal}
-                  sellerAmount={Math.round(activeRestaurantCart.reduce((sum, item) => sum + (item.item.price * 0.9) * item.quantity, 0))}
-                  adminAmount={Math.max(0, grandTotal - Math.round(activeRestaurantCart.reduce((sum, item) => sum + (item.item.price * 0.9) * item.quantity, 0)))}
-                  sellerUpiId={currentRestaurant.upiId || 'merchant@ybl'}
-                  adminUpiId="dingdang7081@okhdfcbank"
-                  onPaymentSuccess={(confirmedUpiId) => {
-                    executePlaceOrder(confirmedUpiId);
-                  }}
-                  language={language}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

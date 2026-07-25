@@ -23,7 +23,7 @@ import {
   Smartphone
 } from 'lucide-react';
 import { INITIAL_BOUTIQUES } from '../dataClothing';
-import UPIPayment from './UPIPayment';
+import { triggerOrderAlert } from '../utils/notification';
 import { 
   RegisteredUser, 
   ClothingBoutique, 
@@ -73,9 +73,16 @@ export default function ClothingHub({
   const [appliedDiscount, setAppliedDiscount] = useState<{ code: string; percent: number } | null>(null);
   const [promoError, setPromoError] = useState('');
 
-  // Payment method
+  // Payment method & Address
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'COD'>('COD');
-  const [showUpiCheckout, setShowUpiCheckout] = useState(false);
+  const [fashionDeliveryAddress, setFashionDeliveryAddress] = useState('');
+
+  // Auto-fill address from user profile
+  React.useEffect(() => {
+    if (activeUser?.location && !fashionDeliveryAddress.trim()) {
+      setFashionDeliveryAddress(activeUser.location);
+    }
+  }, [activeUser]);
 
   // Translations dictionary
   const t = {
@@ -315,7 +322,6 @@ export default function ClothingHub({
     }
 
     const orderId = 'ODR-FSH-' + Math.floor(100000 + Math.random() * 90000);
-    const actualPaymentMethod = (paymentMethod === 'UPI' && settings.enableUpiPaymentFashion !== false) ? 'UPI' : 'COD';
     const newOrder: ClothingOrder = {
       id: orderId,
       boutiqueId: currentBoutique.id,
@@ -325,7 +331,7 @@ export default function ClothingHub({
       subtotal,
       deliveryFee: baseDeliveryCharge,
       total: grandTotal,
-      paymentMethod: actualPaymentMethod,
+      paymentMethod: 'COD',
       status: 'processing',
       date: new Date().toLocaleDateString('en-IN', {
         day: '2-digit',
@@ -342,6 +348,13 @@ export default function ClothingHub({
     const updatedOrders = [newOrder, ...ordersState];
     updateUserData(currentCart, updatedOrders);
 
+    // Trigger Push Notification, Sound Chime, & Vibration
+    triggerOrderAlert(
+      `👗 New Fashion Order Received #${orderId}`,
+      `Boutique: ${currentBoutique.name} | Total: ₹${grandTotal} | Address: ${fashionDeliveryAddress || 'Maudaha'}`,
+      [500, 200, 500, 200, 1000]
+    );
+
     onAddActivity(
       activeUserId || '',
       `Placed premium fashion order ${orderId} from ${currentBoutique.name} for ₹${grandTotal}`,
@@ -349,16 +362,15 @@ export default function ClothingHub({
     );
 
     setIsCartOpen(false);
-    setShowUpiCheckout(false);
     setViewMode('history');
   };
 
   const handleCheckoutBtn = () => {
-    if (paymentMethod === 'UPI' && settings.enableUpiPaymentFashion !== false) {
-      setShowUpiCheckout(true);
-    } else {
-      executePlaceOrder();
+    if (!fashionDeliveryAddress.trim()) {
+      alert(language === 'en' ? 'Please enter a delivery address for your fashion order.' : 'कृपया अपने फैशन ऑर्डर के लिए डिलीवरी पता दर्ज करें।');
+      return;
     }
+    executePlaceOrder();
   };
 
   const handleReorder = (oldOrder: ClothingOrder) => {
@@ -1085,34 +1097,57 @@ export default function ClothingHub({
                       )}
                     </div>
 
-                    {/* Payment Mode Selector */}
-                    <div className="p-3.5 bg-purple-50/30 rounded-xl border border-purple-100">
-                      <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider block mb-2">
-                        {t.paymentMethod}
+                    {/* Delivery Address Field & Quick Chips */}
+                    <div className="p-3 bg-purple-50/20 rounded-xl border border-purple-100 space-y-1.5">
+                      <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider block">
+                        {language === 'en' ? 'Delivery Address' : 'डिलीवरी का पता'}
                       </span>
-                      <div className={`grid ${settings.enableUpiPaymentFashion !== false ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
-                        <button type="button"
-                          onClick={() => setPaymentMethod('COD')}
-                          className={`p-2 rounded-lg border text-xs font-black transition text-center ${
-                            paymentMethod === 'COD' || (settings.enableUpiPaymentFashion === false)
-                              ? 'border-pink-500 bg-pink-50 text-pink-700 shadow-sm'
-                              : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'
-                          }`}
-                        >
-                          💸 {t.cod}
-                        </button>
-                        {settings.enableUpiPaymentFashion !== false && (
-                          <button type="button"
-                            onClick={() => setPaymentMethod('UPI')}
-                            className={`p-2 rounded-lg border text-xs font-black transition text-center ${
-                              paymentMethod === 'UPI'
-                                ? 'border-pink-500 bg-pink-50 text-pink-700 shadow-sm'
-                                : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'
-                            }`}
+
+                      {/* Quick Address Chips */}
+                      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                        {activeUser?.location && (
+                          <button
+                            type="button"
+                            onClick={() => setFashionDeliveryAddress(activeUser.location || '')}
+                            className="px-2 py-0.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-md text-[9px] font-bold text-purple-700 whitespace-nowrap transition cursor-pointer shrink-0"
                           >
-                            📱 {t.upi}
+                            🏠 {language === 'hi' ? 'प्रोफाइल' : 'Saved'}
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => setFashionDeliveryAddress('Station Road, Near Bus Stand, Maudaha')}
+                          className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-md text-[9px] font-bold text-slate-700 whitespace-nowrap transition cursor-pointer shrink-0"
+                        >
+                          📍 Station Rd
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFashionDeliveryAddress('Main Market, Maudaha')}
+                          className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-md text-[9px] font-bold text-slate-700 whitespace-nowrap transition cursor-pointer shrink-0"
+                        >
+                          🏢 Market
+                        </button>
+                      </div>
+
+                      <textarea
+                        required
+                        value={fashionDeliveryAddress}
+                        onChange={(e) => setFashionDeliveryAddress(e.target.value)}
+                        placeholder={language === 'en' ? 'e.g. Near Station Road, Maudaha' : 'उदा. स्टेशन रोड, मौदहा'}
+                        rows={2}
+                        className="w-full bg-white border border-slate-200 p-2 rounded-xl text-xs focus:outline-none focus:border-purple-400 transition"
+                      />
+                    </div>
+
+                    {/* Payment Mode Selector */}
+                    <div className="p-3.5 bg-purple-50/30 rounded-xl border border-purple-100 space-y-1.5">
+                      <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider block">
+                        {t.paymentMethod}
+                      </span>
+                      <div className="p-2 rounded-lg border border-pink-500 bg-pink-50 text-pink-700 text-xs font-black flex items-center justify-between">
+                        <span>💸 {t.cod}</span>
+                        <span className="text-[9px] bg-pink-200/60 px-1.5 py-0.5 rounded font-extrabold">Active</span>
                       </div>
                     </div>
                   </div>
@@ -1184,39 +1219,6 @@ export default function ClothingHub({
         )}
       </AnimatePresence>
 
-      {/* Razorpay UPI Checkout Modal */}
-      {showUpiCheckout && currentBoutique && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowUpiCheckout(false)} />
-          <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl relative border border-slate-100 z-50">
-            <button type="button"
-              onClick={() => setShowUpiCheckout(false)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 font-extrabold font-mono text-base transition-colors duration-150 z-50 cursor-pointer"
-            >
-              ✕
-            </button>
-            <div className="p-1">
-              <div className="bg-[#3395ff] text-white p-5 text-center rounded-t-2xl">
-                <span className="text-[10px] font-black tracking-widest font-mono uppercase opacity-85">Maudaha Mart UPI Gateway</span>
-                <p className="text-2xl font-black mt-1">₹{grandTotal}</p>
-              </div>
-              <div className="p-5">
-                <UPIPayment
-                  amount={grandTotal}
-                  sellerAmount={Math.round(activeBoutiqueCart.reduce((sum, item) => sum + (item.item.price * 0.9) * item.quantity, 0))}
-                  adminAmount={Math.max(0, grandTotal - Math.round(activeBoutiqueCart.reduce((sum, item) => sum + (item.item.price * 0.9) * item.quantity, 0)))}
-                  sellerUpiId={currentBoutique.upiId || 'merchant@ybl'}
-                  adminUpiId="dingdang7081@okhdfcbank"
-                  onPaymentSuccess={(confirmedUpiId) => {
-                    executePlaceOrder(confirmedUpiId);
-                  }}
-                  language={language}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

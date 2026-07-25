@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Navigation, 
   MapPin, 
@@ -18,9 +18,21 @@ import {
   Power,
   ChevronRight,
   Sparkles,
-  UserCheck
+  UserCheck,
+  Bell,
+  Volume2,
+  Compass,
+  Radio
 } from 'lucide-react';
 import { Order, Language, DeliveryStatus } from '../types';
+import { 
+  requestNotificationPermission, 
+  triggerOrderAlert, 
+  watchGPSLocation, 
+  getCurrentGPSLocation, 
+  triggerHapticVibration, 
+  playOrderAlertSound 
+} from '../utils/notification';
 
 interface DeliveryAgentPortalProps {
   orders: Order[];
@@ -46,10 +58,88 @@ export default function DeliveryAgentPortal({
   const [verifiedItems, setVerifiedItems] = useState<{ [itemId: string]: boolean }>({});
   const [payoutUpiId, setPayoutUpiId] = useState('');
   const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [gpsTrackingActive, setGpsTrackingActive] = useState(true);
+  const [notifGranted, setNotifGranted] = useState(false);
   const [photoFile, setPhotoFile] = useState<string | null>(() => {
     const active = orders.find(o => o.id === (localStorage.getItem('mau_active_job_id') || null));
     return active?.photoUrl || null;
   });
+
+  // Check notification permission on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotifGranted(Notification.permission === 'granted');
+    }
+  }, []);
+
+  const handleEnablePushNotifications = async () => {
+    const granted = await requestNotificationPermission();
+    setNotifGranted(granted);
+    if (granted) {
+      triggerOrderAlert(
+        language === 'en' ? '🔔 Push Notifications Active!' : '🔔 पुश नोटिफिकेशन सक्रिय!',
+        language === 'en' ? 'You will now receive sound & vibration alerts for new delivery orders.' : 'अब आप नए डिलीवरी ऑर्डरों के लिए ध्वनि और कंपन अलर्ट प्राप्त करेंगे।',
+        [300, 100, 300, 100, 500]
+      );
+    } else {
+      alert(language === 'en' ? 'Notification permission denied in browser settings.' : 'ब्राउज़र सेटिंग्स में नोटिफिकेशन की अनुमति अस्वीकृत की गई।');
+    }
+  };
+
+  const handleTestAlert = () => {
+    playOrderAlertSound();
+    triggerHapticVibration([400, 150, 400, 150, 800]);
+    alert(language === 'en' ? '🔊 Played test order chime & vibration!' : '🔊 टेस्ट ऑर्डर टोन और वाइब्रेशन बज गया!');
+  };
+
+  const activeJob = orders.find(o => o.id === activeJobId);
+
+  const handleSnapCurrentLocation = async () => {
+    try {
+      const coords = await getCurrentGPSLocation();
+      if (activeJob) {
+        const updated = orders.map(o => {
+          if (o.id === activeJob.id) {
+            return {
+              ...o,
+              riderLat: Number(coords.lat.toFixed(5)),
+              riderLng: Number(coords.lng.toFixed(5))
+            };
+          }
+          return o;
+        });
+        onUpdateOrders(updated);
+        alert(language === 'en' ? `📍 Snapped GPS Location: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}` : `📍 जीपीएस लोकेशन अपडेट हुई: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
+      }
+    } catch (err) {
+      alert(language === 'en' ? 'Please enable GPS/Location permissions on your device.' : 'कृपया अपने डिवाइस पर GPS/लोकेशन अनुमति चालू करें।');
+    }
+  };
+
+  // Real Device GPS Watcher Effect
+  useEffect(() => {
+    if (!gpsTrackingActive || !activeJob || !isOnline) return;
+
+    const watchId = watchGPSLocation((coords) => {
+      const updated = orders.map(o => {
+        if (o.id === activeJob.id) {
+          return {
+            ...o,
+            riderLat: Number(coords.lat.toFixed(5)),
+            riderLng: Number(coords.lng.toFixed(5))
+          };
+        }
+        return o;
+      });
+      onUpdateOrders(updated);
+    });
+
+    return () => {
+      if (watchId !== null && typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, [gpsTrackingActive, activeJob?.id, isOnline]);
 
   const saveWallet = (amount: number) => {
     setRiderWallet(amount);
@@ -59,8 +149,6 @@ export default function DeliveryAgentPortal({
   const handleToggleOnline = () => {
     setIsOnline(!isOnline);
   };
-
-  const activeJob = orders.find(o => o.id === activeJobId);
 
   // Bezier curve calculations for dynamic moving dot on the Map
   const startLat = 25.6840;
@@ -322,6 +410,63 @@ export default function DeliveryAgentPortal({
             <Power className="h-3.5 w-3.5 cursor-pointer" />
             <span>{isOnline ? t.online : t.offline}</span>
           </button>
+        </div>
+      </div>
+
+      {/* Live GPS & Push Notification Alert Bar */}
+      <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 rounded-2xl p-4 border border-emerald-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-xs">
+            <Radio className="h-5 w-5 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                {language === 'en' ? 'Live Device GPS & FCM Push Alerts' : 'लाइव डिवाइस जीपीएस और पुश अलर्ट'}
+              </h3>
+              {notifGranted && (
+                <span className="text-[9px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full">
+                  ✓ {language === 'en' ? 'Push Active' : 'पुश सक्रिय'}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-600 mt-0.5">
+              {language === 'en' ? 'Transmits exact rider latitude/longitude to customer app with sound & vibration ringtone.' : 'ध्वनि और कंपन रिंगटोन के साथ ग्राहक ऐप पर सटीक स्थान भेजता है।'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {!notifGranted && (
+            <button
+              type="button"
+              onClick={handleEnablePushNotifications}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs cursor-pointer"
+            >
+              <Bell className="h-3.5 w-3.5" />
+              <span>{language === 'en' ? 'Enable Push Notifications' : 'पुश नोटिफिकेशन चालू करें'}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleTestAlert}
+            className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+          >
+            <Volume2 className="h-3.5 w-3.5 text-emerald-600" />
+            <span>{language === 'en' ? 'Test Alert Ringtone' : 'साउंड / कंपन टेस्ट'}</span>
+          </button>
+
+          {activeJob && (
+            <button
+              type="button"
+              onClick={handleSnapCurrentLocation}
+              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+            >
+              <Compass className="h-3.5 w-3.5" />
+              <span>{language === 'en' ? 'Snap Current GPS' : 'लोकेशन स्नैप करें'}</span>
+            </button>
+          )}
         </div>
       </div>
 

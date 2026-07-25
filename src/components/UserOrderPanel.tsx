@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { 
-  ShoppingBag, 
+  PackageCheck, 
   Clock, 
   MapPin, 
   Truck, 
@@ -312,7 +312,7 @@ export default function UserOrderPanel({
         <div>
           <div className="flex items-center gap-2">
             <span className="p-2 bg-emerald-50 rounded-xl text-emerald-600 block shadow-inner">
-              <ShoppingBag className="h-5 w-5" />
+              <PackageCheck className="h-5 w-5" />
             </span>
             <h1 className="text-xl font-black text-slate-800 tracking-tight">{text.title}</h1>
           </div>
