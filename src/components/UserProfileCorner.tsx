@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { User, Phone, Mail, MapPin, Award, History, X, Edit2, Check, Languages, Palette, Layers, LogOut, Smartphone, Sparkles, Building, Landmark, ChevronLeft, FileText, Heart, ShoppingBasket } from 'lucide-react';
 import { RegisteredUser, Language, MerchantRequest, UserRole } from '../types';
 import MapLocationPicker from './MapLocationPicker';
+import ImageUploadControl from './ImageUploadControl';
 import { THEMES } from '../theme';
 
 interface UserProfileCornerProps {
@@ -290,9 +291,17 @@ export default function UserProfileCorner({
             <div className="absolute top-[-30px] right-[-30px] w-32 h-32 rounded-full bg-white/5" />
             
             <div className="flex items-center gap-4">
-              <div className="h-16 w-16 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl flex items-center justify-center text-2xl font-black text-white shadow-inner transition cursor-pointer select-none border border-white/25">
-                {activeUser.name.charAt(0).toUpperCase()}
-              </div>
+              {activeUser.profilePic || activeUser.photoUrl ? (
+                <img
+                  src={activeUser.profilePic || activeUser.photoUrl}
+                  alt={activeUser.name}
+                  className="h-16 w-16 rounded-2xl object-cover border-2 border-white/40 shadow-md shrink-0"
+                />
+              ) : (
+                <div className="h-16 w-16 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl flex items-center justify-center text-2xl font-black text-white shadow-inner transition cursor-pointer select-none border border-white/25 shrink-0">
+                  {activeUser.name.charAt(0).toUpperCase()}
+                </div>
+              )}
               <div>
                 <h3 className="text-lg font-extrabold tracking-tight leading-tight">{activeUser.name}</h3>
                 <span className="text-xs bg-emerald-500/30 text-emerald-100 font-bold px-2 py-0.5 rounded-md mt-1 inline-block border border-white/10">
@@ -458,6 +467,28 @@ export default function UserProfileCorner({
               </div>
             ) : (
               <form onSubmit={handleSaveChanges} className="space-y-3.5">
+                <ImageUploadControl
+                  label={language === 'en' ? 'Profile Picture' : 'प्रोफ़ाइल फोटो'}
+                  labelHi={language === 'en' ? 'Upload photo' : 'फोटो अपलोड करें'}
+                  currentImageUrl={activeUser.profilePic || activeUser.photoUrl}
+                  type="profile"
+                  identifier={activeUser.id}
+                  aspectRatio="square"
+                  onImageUploaded={(url) => {
+                    const updatedUsers = users.map(u => {
+                      if (u.id === activeUserId) {
+                        return {
+                          ...u,
+                          profilePic: url,
+                          photoUrl: url
+                        };
+                      }
+                      return u;
+                    });
+                    onUpdateUsers(updatedUsers);
+                  }}
+                />
+
                 <div>
                   <label className="text-[10px] text-slate-400 font-extrabold block mb-1 uppercase tracking-wide">
                     {language === 'en' ? 'Name' : 'नाम'}
@@ -807,7 +838,6 @@ export default function UserProfileCorner({
                   <option value="footwear_owner">👟 Footwear Owner</option>
                   <option value="boutique_owner">👗 Boutique Owner</option>
                   <option value="beautician">💅 Beautician</option>
-                  <option value="tailor">🪡 Tailor</option>
                   <option value="plumber">🪠 Plumber</option>
                   <option value="electrician">⚡ Electrician</option>
                   <option value="mechanic">🔧 Mechanic</option>

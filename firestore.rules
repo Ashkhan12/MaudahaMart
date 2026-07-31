@@ -111,6 +111,18 @@ service cloud.firestore {
         && data.get('area_name', '') is string;
     }
 
+    // 16. Local Services Schema Validation
+    function isValidLocalService(data) {
+      return data.get('id', '') is string
+        && data.get('name', '') is string;
+    }
+
+    // 17. Local Service Bookings Schema Validation
+    function isValidLocalServiceBooking(data) {
+      return data.get('id', '') is string
+        && data.get('serviceId', '') is string;
+    }
+
 
     // ROUTE RULE DEFINITIONS
 
@@ -216,6 +228,20 @@ service cloud.firestore {
     match /serviceAreas/{areaId} {
       allow read: if true;
       allow create, update: if isValidId(areaId) && isValidServiceArea(request.resource.data);
+      allow delete: if true;
+    }
+
+    // 16. Local Services Collection
+    match /localServices/{serviceId} {
+      allow read: if true;
+      allow create, update: if isValidId(serviceId) && isValidLocalService(request.resource.data);
+      allow delete: if true;
+    }
+
+    // 17. Local Service Bookings Collection
+    match /localServiceBookings/{bookingId} {
+      allow read: if true;
+      allow create, update: if isValidId(bookingId) && isValidLocalServiceBooking(request.resource.data);
       allow delete: if true;
     }
   }

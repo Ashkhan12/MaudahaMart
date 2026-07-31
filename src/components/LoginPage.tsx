@@ -9,6 +9,7 @@ import { RegisteredUser, Language, UserRole, ServiceArea } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
+import { ErrorNotification, OtpErrorType } from './ErrorNotification';
 
 interface LoginPageProps {
   language: Language;
@@ -34,7 +35,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
   const [otpCode, setOtpCode] = useState('');
   const [receivedOtp, setReceivedOtp] = useState<string | null>(null);
   const [timer, setTimer] = useState(0);
-  const [otpError, setOtpError] = useState<'invalid' | 'expired' | 'missing' | null>(null);
+  const [otpError, setOtpError] = useState<OtpErrorType>(null);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
   // Status & loading
@@ -182,7 +183,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
     const formattedPhone = `+91${cleanedPhone.slice(-10)}`;
 
     if (authMode === 'login') {
-      // --- LOGIN LOGIC ---
+      // --- LOGIN LOGIC WITH STRICT PASSWORD CHECK ---
       setLoading(true);
       setTimeout(() => {
         let matchedUser = (existingUsers || []).find(
@@ -195,13 +196,29 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
           return;
         }
 
-        // Simulating password check for mock
+        // Check password strictly
+        const enteredPass = password ? password.trim() : '';
+        let isPassValid = false;
+
+        if (matchedUser.password) {
+          isPassValid = (matchedUser.password === enteredPass);
+        } else {
+          // Fallback comparison for initial pre-seeded users
+          isPassValid = (enteredPass === '123456' || enteredPass === 'admin123' || enteredPass === 'manager123' || enteredPass === cleanedPhone.slice(-4));
+        }
+
+        if (!isPassValid) {
+          setLoading(false);
+          setError(language === 'en' ? 'Incorrect password. Please enter the correct password.' : 'गलत पासवर्ड। कृपया सही पासवर्ड दर्ज करें।');
+          return;
+        }
+
         setLoading(false);
         setSuccessMsg(t.loginSuccess);
         setTimeout(() => {
-          onLoginSuccess(matchedUser, matchedUser.role);
+          onLoginSuccess(matchedUser!, matchedUser!.role);
         }, 1000);
-      }, 1200);
+      }, 800);
       
     } else {
       // --- SIGNUP & LOGIN_OTP LOGIC (Requires OTP) ---
@@ -220,6 +237,9 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
       if (!otpSent) {
         setLoading(true);
         setError('');
+        setOtpCode('');
+        setOtpError(null);
+        console.log(`[LoginPage Auth] Requesting OTP for phone: +91 ${tenDigitPhone}...`);
         try {
           const res = await fetch('/api/auth/send-otp', {
             method: 'POST',
@@ -227,10 +247,12 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
             body: JSON.stringify({ phone: tenDigitPhone })
           });
           const data = await res.json();
+          console.log(`[LoginPage Auth] /api/auth/send-otp response:`, data);
           if (res.ok && data.success) {
             setOtpSent(true);
             if (data.otp) {
               setReceivedOtp(data.otp.toString());
+              console.log(`[LoginPage Auth] Server assigned OTP: "${data.otp}". SMS status: "${data.smsStatus}"`);
             }
             setTimer(60);
             const smsMsg = language === 'en' 
@@ -238,6 +260,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
               : `+91 ${tenDigitPhone} पर ओटीपी भेजा गया! (सत्यापन कोड: ${data.otp})`;
             setSuccessMsg(smsMsg);
           } else {
+            console.warn(`[LoginPage Auth] Backend /api/auth/send-otp returned non-success. Attempting Firebase fallback...`);
             // Fallback to Firebase if backend endpoint has error
             if (!(window as any).recaptchaVerifier) {
               (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
@@ -250,16 +273,24 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
           }
         } catch (err: any) {
           console.error("Fast2SMS / OTP Send Error:", err);
-          setError((language === 'en' ? 'Failed to send OTP: ' : 'ओटीपी भेजने में विफल: ') + (err?.message || 'Network error'));
+          const isNetwork = err?.message?.includes('fetch') || err?.name === 'TypeError' || !navigator.onLine;
+          setOtpError(isNetwork ? 'gateway_offline' : 'invalid');
+          setError(
+            (language === 'en' ? 'Failed to send OTP: ' : 'ओटीपी भेजने में विफल: ') + 
+            (isNetwork ? (language === 'en' ? 'API Gateway Offline / Network Error' : 'एपीआई गेटवे ऑफलाइन / नेटवर्क समस्या') : (err?.message || 'Network error'))
+          );
         } finally {
           setLoading(false);
         }
       } else {
         // Verify OTP
         const cleanOtp = otpCode.trim();
+        console.log(`[LoginPage Auth] Initiating OTP verification. Entered OTP="${cleanOtp}", Client Known Received OTP="${receivedOtp || 'None'}", Target Phone="+91 ${tenDigitPhone}"`);
+
         if (!cleanOtp || cleanOtp.length < 6) {
+          console.warn(`[LoginPage Auth] Incomplete OTP entered (${cleanOtp.length} digits).`);
           setError(language === 'en' ? 'Please enter a complete 6-digit OTP.' : 'कृपया पूरा ६-अंकों का ओटीपी दर्ज करें।');
-          setOtpError('invalid');
+          setOtpError('missing');
           return;
         }
 
@@ -270,49 +301,73 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
         try {
           let isVerified = false;
           let backendErrMsg = '';
+          let isNetworkError = false;
 
           // Attempt backend verify first
           try {
+            console.log(`[LoginPage Auth] Posting to /api/auth/verify-otp...`);
             const res = await fetch('/api/auth/verify-otp', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ phone: tenDigitPhone, otp: cleanOtp })
             });
-            const data = await res.json();
+
+            if (!res.ok && (res.status === 502 || res.status === 503 || res.status === 504)) {
+              isNetworkError = true;
+              backendErrMsg = language === 'en' ? 'API Gateway Offline (502/503).' : 'एपीआई गेटवे ऑफलाइन है।';
+            }
+
+            const data = await res.json().catch(() => ({}));
+            console.log(`[LoginPage Auth] /api/auth/verify-otp response status=${res.status}:`, data);
+
             if (res.ok && data.success) {
               isVerified = true;
+              console.log(`[LoginPage Auth] Backend verification SUCCESSFUL.`);
             } else if (data.error) {
               backendErrMsg = data.error;
+              console.warn(`[LoginPage Auth] Backend verification rejected with error: "${data.error}"`);
             }
-          } catch (e) {
-            console.warn("Backend verify failed, trying fallback options", e);
+          } catch (e: any) {
+            console.warn("[LoginPage Auth] Backend verify request failed with exception:", e);
+            isNetworkError = true;
+            backendErrMsg = language === 'en' 
+              ? 'API Gateway Offline / Network Error' 
+              : 'एपीआई गेटवे या नेटवर्क समस्या।';
           }
 
-          // Fallback verify check: local received OTP match or demo code
-          if (!isVerified && (
-            (receivedOtp && cleanOtp === receivedOtp) ||
-            cleanOtp === '123456' ||
-            cleanOtp === '123123'
+          // Fallback verify check: local received OTP match (only if backend was offline or didn't explicitly reject wrong OTP)
+          if (!isVerified && (isNetworkError || !backendErrMsg || backendErrMsg.includes('Gateway')) && (
+            receivedOtp && cleanOtp === receivedOtp
           )) {
+            console.log(`[LoginPage Auth] Local client fallback match verified (Match with received OTP).`);
             isVerified = true;
           }
 
           // Fallback to Firebase confirmation result if available
-          if (!isVerified && confirmationResult) {
+          if (!isVerified && (isNetworkError || !backendErrMsg) && confirmationResult) {
             try {
+              console.log(`[LoginPage Auth] Attempting Firebase confirmation fallback...`);
               const result = await confirmationResult.confirm(cleanOtp);
-              if (result?.user) isVerified = true;
-            } catch (e) {
-              console.error("Firebase verify error", e);
+              if (result?.user) {
+                console.log(`[LoginPage Auth] Firebase confirmation SUCCESSFUL.`);
+                isVerified = true;
+              }
+            } catch (e: any) {
+              console.error("[LoginPage Auth] Firebase verify error:", e);
             }
           }
 
           if (!isVerified) {
-            if (backendErrMsg.toLowerCase().includes('expired')) {
+            console.error(`[LoginPage Auth MISMATCH DETECTED] Entered OTP "${cleanOtp}" failed verification against expected OTP "${receivedOtp || 'Unknown'}" for phone +91 ${tenDigitPhone}`);
+            
+            if (isNetworkError) {
+              setOtpError('gateway_offline');
+            } else if (backendErrMsg && backendErrMsg.toLowerCase().includes('expired')) {
               setOtpError('expired');
             } else {
               setOtpError('invalid');
             }
+
             setError(
               backendErrMsg || 
               (language === 'en' ? 'Invalid verification code. Please check and try again.' : 'अमान्य सत्यापन कोड। कृपया जांचें और पुनः प्रयास करें।')
@@ -325,11 +380,12 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
             u => u.phone && u.phone.replace(/\D/g, '').endsWith(tenDigitPhone)
           );
 
-          if (!matchedUser && authMode === 'signup') {
+          if (!matchedUser) {
             const newUser: RegisteredUser = {
               id: 'usr-' + Date.now(),
               name: name || 'Resident (' + tenDigitPhone.slice(-4) + ')',
               phone: formattedPhone,
+              password: password ? password.trim() : '123456',
               location: location || 'Station Road, Maudaha',
               locationHi: location || 'स्टेशन रोड, मौदहा',
               role: 'customer',
@@ -344,7 +400,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                 }
               ]
             };
-            onAddNewUser(newUser);
+            if (onAddNewUser) onAddNewUser(newUser);
             matchedUser = newUser;
           }
 
@@ -354,9 +410,15 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
             onLoginSuccess(matchedUser!, matchedUser!.role);
           }, 1000);
         } catch (err: any) {
-          console.error("OTP verification error:", err);
-          setOtpError('invalid');
-          setError(language === 'en' ? 'Invalid verification code.' : 'अमान्य सत्यापन कोड।');
+          console.error("[LoginPage Auth] OTP verification exception caught:", err);
+          const isNetwork = err?.message?.includes('fetch') || err?.name === 'TypeError';
+          setOtpError(isNetwork ? 'gateway_offline' : 'invalid');
+          setError(
+            (language === 'en' ? 'OTP Verification Error: ' : 'ओटीपी सत्यापन त्रुटि: ') + 
+            (isNetwork 
+              ? (language === 'en' ? 'API Gateway Offline. Please retry or check internet connection.' : 'एपीआई गेटवे ऑफलाइन। कृपया पुनः प्रयास करें।') 
+              : (err?.message || (language === 'en' ? 'Invalid verification code.' : 'अमान्य सत्यापन कोड।')))
+          );
           setLoading(false);
         }
       }
@@ -469,16 +531,28 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
         {/* Feedback Alerts Container */}
         <AnimatePresence mode="popLayout">
           {error && (
-            <motion.div 
+            <ErrorNotification
               key="error-alert"
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="mb-5 p-3.5 bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold rounded-2xl flex items-start gap-2.5 shadow-2xs"
-            >
-              <AlertCircle className="h-4.5 w-4.5 text-rose-500 shrink-0 mt-0.5 animate-bounce" />
-              <span>{error}</span>
-            </motion.div>
+              error={error}
+              errorType={otpError}
+              language={language}
+              onDismiss={() => {
+                setError('');
+                setOtpError(null);
+              }}
+              onRetry={otpSent ? () => {
+                setError('');
+                setOtpError(null);
+                handleSubmit(new Event('submit') as any);
+              } : undefined}
+              onResend={otpSent ? () => {
+                setOtpSent(false);
+                setOtpCode('');
+                setError('');
+                setOtpError(null);
+                setSuccessMsg('');
+              } : undefined}
+            />
           )}
 
           {successMsg && (
@@ -680,6 +754,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
                       setError('');
                       setOtpError(null);
                       setSuccessMsg('');
+                      setOtpCode('');
                       try {
                         const res = await fetch('/api/auth/send-otp', {
                           method: 'POST',
@@ -724,7 +799,7 @@ export default function LoginPage({ language, onLoginSuccess, existingUsers = []
 
           {/* Password field */}
           <AnimatePresence>
-            {authMode === 'login' && (
+            {(authMode === 'login' || authMode === 'signup') && (
               <motion.div 
                 key="password-field"
                 initial={{ opacity: 0, height: 0 }}

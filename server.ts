@@ -42,13 +42,17 @@ const otpStore = new Map<string, { otp: string; expires: number }>();
 app.post('/api/auth/send-otp', async (req, res) => {
   try {
     const { phone } = req.body;
+    console.log(`[OTP Lifecycle] Incoming send-otp request for raw phone: "${phone}"`);
+
     if (!phone) {
+      console.warn('[OTP Lifecycle] Rejected: Phone number is required.');
       return res.status(400).json({ error: 'Phone number is required.' });
     }
     const digitsOnly = phone.toString().replace(/\D/g, '');
     const tenDigitPhone = digitsOnly.slice(-10);
 
     if (tenDigitPhone.length < 10) {
+      console.warn(`[OTP Lifecycle] Rejected: Invalid phone number format "${tenDigitPhone}"`);
       return res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number.' });
     }
 
@@ -60,6 +64,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
     
     // Always store with 10-digit phone key
     otpStore.set(tenDigitPhone, { otp: generatedOtp, expires });
+    console.log(`[OTP Store] Saved OTP for +91 ${tenDigitPhone}: Generated OTP="${generatedOtp}", ExpiresAt="${new Date(expires).toISOString()}"`);
 
     let gatewayUsed = 'Fast2SMS Gateway (Default Simulator)';
     let realSmsStatus = 'Fast2SMS Ready';
@@ -69,13 +74,24 @@ app.post('/api/auth/send-otp', async (req, res) => {
     const twilioToken = process.env.TWILIO_AUTH_TOKEN;
     const twilioFrom = process.env.TWILIO_PHONE_NUMBER;
 
-    if (fast2smsKey && fast2smsKey.trim().length > 5) {
+    // Fast2SMS API Key Injection Audit Log
+    const keyInjected = !!(fast2smsKey && fast2smsKey.trim().length > 5);
+    const maskedKey = keyInjected 
+      ? `${fast2smsKey!.trim().substring(0, 4)}...${fast2smsKey!.trim().slice(-4)} (Length: ${fast2smsKey!.trim().length})`
+      : 'NOT CONFIGURED / EMPTY';
+
+    console.log(`[Fast2SMS Audit] FAST2SMS_API_KEY Status: Injected=${keyInjected}, KeyHint=${maskedKey}`);
+
+    if (keyInjected) {
       try {
-        console.log(`[Fast2SMS Gateway] Sending SMS OTP to +91 ${tenDigitPhone}...`);
+        console.log(`[Fast2SMS Gateway] Initiating HTTP request for +91 ${tenDigitPhone}...`);
         
         // Fast2SMS supports URL query format for dev/bulkV2 route=otp
-        const fast2smsUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(fast2smsKey.trim())}&route=otp&variables_values=${encodeURIComponent(generatedOtp)}&numbers=${encodeURIComponent(tenDigitPhone)}`;
+        const fast2smsUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(fast2smsKey!.trim())}&route=otp&variables_values=${encodeURIComponent(generatedOtp)}&numbers=${encodeURIComponent(tenDigitPhone)}`;
+        const maskedUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(maskedKey)}&route=otp&variables_values=${generatedOtp}&numbers=${tenDigitPhone}`;
         
+        console.log(`[Fast2SMS Request] GET ${maskedUrl}`);
+
         const fast2smsRes = await fetch(fast2smsUrl, {
           method: 'GET',
           headers: {
@@ -83,22 +99,26 @@ app.post('/api/auth/send-otp', async (req, res) => {
           }
         });
 
+        console.log(`[Fast2SMS Response Status] HTTP ${fast2smsRes.status} ${fast2smsRes.statusText}`);
         const data: any = await fast2smsRes.json();
+        console.log(`[Fast2SMS Response Payload]`, JSON.stringify(data));
+
         if (fast2smsRes.ok && data.return === true) {
           gatewayUsed = 'Fast2SMS Gateway (Active)';
-          realSmsStatus = `SMS Delivered! Message: ${data.message ? data.message[0] || data.message : 'OTP Sent'}`;
-          console.log(`[Fast2SMS Gateway] OTP successfully sent to ${tenDigitPhone}.`);
+          realSmsStatus = `SMS Delivered! Message: ${data.message ? (Array.isArray(data.message) ? data.message[0] : data.message) : 'OTP Sent'}`;
+          console.log(`[Fast2SMS Gateway SUCCESS] OTP ${generatedOtp} dispatched to ${tenDigitPhone}`);
         } else {
-          console.warn('[Fast2SMS Notice]', data.message || data);
+          console.warn('[Fast2SMS Notice Payload Warning]', data.message || data);
           gatewayUsed = 'Fast2SMS Gateway (Simulated - Configure valid FAST2SMS_API_KEY in Secrets)';
           realSmsStatus = `Fast2SMS response: ${Array.isArray(data.message) ? data.message[0] : (data.message || 'Key validation notice')}`;
         }
       } catch (smsErr: any) {
-        console.warn('[Fast2SMS Network Note]', smsErr.message || smsErr);
+        console.warn('[Fast2SMS Network Error Log]', smsErr.message || smsErr);
         gatewayUsed = 'Fast2SMS Gateway (Simulated Fallback)';
         realSmsStatus = `Fast2SMS network note: ${smsErr.message || smsErr}`;
       }
     } else if (twilioSid && twilioToken && twilioFrom) {
+      console.log(`[Twilio Audit] Fallback to Twilio gateway...`);
       try {
         const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
         const auth = Buffer.from(`${twilioSid}:${twilioToken}`).toString('base64');
@@ -142,6 +162,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
         realSmsStatus = `Twilio error: ${smsErr.message || smsErr}`;
       }
     } else {
+      console.log('[Gateway Notice] No external SMS API key provided. Operating in simulator mode.');
       gatewayUsed = 'Fast2SMS Gateway (Default Simulator)';
       realSmsStatus = 'FAST2SMS_API_KEY optional in .env for real carrier delivery.';
     }
@@ -156,6 +177,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
       smsStatus: realSmsStatus
     });
   } catch (error: any) {
+    console.error('[OTP Lifecycle Error in send-otp]', error);
     res.status(500).json({ error: error.message || 'Failed to send OTP.' });
   }
 });
@@ -164,7 +186,10 @@ app.post('/api/auth/send-otp', async (req, res) => {
 app.post('/api/auth/verify-otp', (req, res) => {
   try {
     const { phone, otp } = req.body;
+    console.log(`[OTP Verify Request] Incoming verification for phone: "${phone}", entered OTP: "${otp}"`);
+
     if (!phone || !otp) {
+      console.warn('[OTP Verify Warning] Missing phone or OTP in request body.');
       return res.status(400).json({ error: 'Phone number and OTP code are required.' });
     }
     const digitsOnly = phone.toString().replace(/\D/g, '');
@@ -172,28 +197,41 @@ app.post('/api/auth/verify-otp', (req, res) => {
     const enteredOtp = otp.toString().trim();
 
     if (tenDigitPhone.length < 10) {
+      console.warn(`[OTP Verify Warning] Invalid 10-digit phone format: "${tenDigitPhone}"`);
       return res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number.' });
     }
 
     const record = otpStore.get(tenDigitPhone);
+    console.log(`[OTP Verify Store Lookup] Key="+91 ${tenDigitPhone}", FoundRecord=${JSON.stringify(record || null)}`);
+
     if (!record) {
+      console.warn(`[OTP Verify Mismatch] No active OTP found in server memory for phone: ${tenDigitPhone}`);
       return res.status(400).json({ error: 'No active OTP found for this phone number. Please click Resend OTP.' });
     }
 
-    if (Date.now() > record.expires) {
+    const isExpired = Date.now() > record.expires;
+    if (isExpired) {
+      console.warn(`[OTP Verify Expired] OTP for ${tenDigitPhone} expired at ${new Date(record.expires).toISOString()}. Current time: ${new Date().toISOString()}`);
       otpStore.delete(tenDigitPhone);
       return res.status(400).json({ error: 'OTP has expired. Please request a new code.' });
     }
 
-    // Verify code match (or universal test sandbox code 123456 / 123123 if enabled)
-    if (record.otp !== enteredOtp && enteredOtp !== '123456' && enteredOtp !== '123123') {
+    const isMatch = record.otp === enteredOtp;
+
+    console.log(`[OTP Verification Check] Stored OTP="${record.otp}", Entered OTP="${enteredOtp}", ExactMatch=${isMatch}`);
+
+    // Verify code match
+    if (!isMatch) {
+      console.warn(`[OTP Verify Mismatch Error] Entered code "${enteredOtp}" does NOT match stored code "${record.otp}" for +91 ${tenDigitPhone}`);
       return res.status(400).json({ error: 'Incorrect verification code. Please check and try again.' });
     }
 
     // Verified! Delete the single-use OTP
+    console.log(`[OTP Verify SUCCESS] Successfully verified OTP for +91 ${tenDigitPhone}! Deleting stored OTP.`);
     otpStore.delete(tenDigitPhone);
     res.json({ success: true, message: 'OTP verified successfully!' });
   } catch (error: any) {
+    console.error('[OTP Verify Critical Error]', error);
     res.status(500).json({ error: error.message || 'Verification failed.' });
   }
 });

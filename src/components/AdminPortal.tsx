@@ -7,7 +7,7 @@ import React from 'react';
 import { 
   Store, Product, Review, Order, Notification, Language, RegisteredUser, 
   SupportTicket, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, 
-  Restaurant, ClothingBoutique, MerchantRequest, ServiceArea 
+  Restaurant, ClothingBoutique, MerchantRequest, ServiceArea, LocalService 
 } from '../types';
 import ServiceAreaManager from './ServiceAreaManager';
 
@@ -42,6 +42,8 @@ interface AdminPortalProps {
   onUpdateRestaurants: (restaurants: Restaurant[]) => void;
   boutiques: ClothingBoutique[];
   onUpdateBoutiques: (boutiques: ClothingBoutique[]) => void;
+  localServices?: LocalService[];
+  onUpdateLocalServices?: (services: LocalService[]) => void;
   activeAdminTab?: string;
   setActiveAdminTab?: (tab: string) => void;
   
@@ -65,6 +67,12 @@ export default function AdminPortal(props: AdminPortalProps) {
         allTickets={props.supportTickets}
         onToggleTicketStatus={props.onToggleTicketStatus}
         onUpdateUsers={props.onUpdateUsers}
+        allRestaurants={props.restaurants}
+        onUpdateRestaurants={props.onUpdateRestaurants}
+        allBoutiques={props.boutiques}
+        onUpdateBoutiques={props.onUpdateBoutiques}
+        allLocalServices={props.localServices}
+        onUpdateLocalServices={props.onUpdateLocalServices}
       />
     </div>
   );

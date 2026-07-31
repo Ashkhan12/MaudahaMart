@@ -8,6 +8,7 @@ import {
   RegisteredUser, Language, Restaurant, ClothingBoutique,
   LocalServiceBooking, RestaurantOrder, ClothingOrder, UserRole
 } from '../types';
+import BeautyCatalogManager from './BeautyCatalogManager';
 
 interface RoleDashboardsProps {
   role: UserRole;
@@ -159,7 +160,6 @@ export default function RoleDashboards({
 
     // Local Service providers
     case 'beautician':
-    case 'tailor':
     case 'plumber':
     case 'electrician':
     case 'mechanic':
@@ -169,10 +169,10 @@ export default function RoleDashboards({
           role={role}
           header={<DashboardHeader 
             title={`Maudaha Service Desk: ${role.charAt(0).toUpperCase() + role.slice(1)}`} 
-            titleHi={`मौदहा सेवा डेस्क: ${role === 'beautician' ? 'ब्यूटीशियन' : role === 'tailor' ? 'दर्जी' : role === 'plumber' ? 'प्लंबर' : role === 'electrician' ? 'इलेक्ट्रीशियन' : 'मैकेनिक'}`} 
+            titleHi={`मौदहा सेवा डेस्क: ${role === 'beautician' ? 'ब्यूटीशियन' : role === 'plumber' ? 'प्लंबर' : role === 'electrician' ? 'इलेक्ट्रीशियन' : 'मैकेनिक'}`} 
             desc={`Accept job requests, configure service pricing, and track scheduled bookings.`}
             descHi={`नौकरी के अनुरोधों को स्वीकार करें, सेवा की कीमतें कॉन्फ़िगर करें और शेड्यूल्ड बुकिंग ट्रैक करें।`}
-            icon={role === 'beautician' ? Sparkles : role === 'tailor' ? Scissors : role === 'plumber' ? Wrench : role === 'electrician' ? Zap : Car}
+            icon={role === 'beautician' ? Sparkles : role === 'plumber' ? Wrench : role === 'electrician' ? Zap : Car}
             colorClass="bg-sky-50 text-sky-500 border-sky-100"
           />}
         />
@@ -739,7 +739,7 @@ function ShopOwnerDashboard({
    ========================================== */
 interface LocalServiceProviderDashboardProps {
   language: Language;
-  role: 'beautician' | 'tailor' | 'plumber' | 'electrician' | 'mechanic';
+  role: 'beautician' | 'plumber' | 'electrician' | 'mechanic';
   header: React.ReactNode;
 }
 
@@ -747,7 +747,7 @@ function LocalServiceProviderDashboard({ language, role, header }: LocalServiceP
   const [bookings, setBookings] = useState<LocalServiceBooking[]>([]);
   const [isOnline, setIsOnline] = useState(true);
   const [baseCharge, setBaseCharge] = useState(() => {
-    return role === 'beautician' ? 350 : role === 'tailor' ? 200 : role === 'plumber' ? 150 : role === 'electrician' ? 180 : 250;
+    return role === 'beautician' ? 350 : role === 'plumber' ? 150 : role === 'electrician' ? 180 : 250;
   });
   const [editingCharge, setEditingCharge] = useState(false);
   const [inputCharge, setInputCharge] = useState(baseCharge);
@@ -878,6 +878,11 @@ function LocalServiceProviderDashboard({ language, role, header }: LocalServiceP
           </div>
         </div>
       </div>
+
+      {/* If beautician, render BeautyCatalogManager */}
+      {role === 'beautician' && (
+        <BeautyCatalogManager language={language} parlourId="ser1" />
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

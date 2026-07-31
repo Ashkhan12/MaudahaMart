@@ -155,7 +155,6 @@ export type UserRole =
   | 'footwear_owner' 
   | 'boutique_owner' 
   | 'beautician' 
-  | 'tailor' 
   | 'plumber' 
   | 'electrician' 
   | 'mechanic';
@@ -165,7 +164,10 @@ export interface RegisteredUser {
   name: string;
   nameHi?: string;
   phone: string;
+  password?: string;
   email?: string;
+  profilePic?: string;
+  photoUrl?: string;
   location: string;
   locationHi: string;
   role: UserRole;
@@ -495,9 +497,30 @@ export interface ScratchCard {
   storeId: string;
 }
 
+export type BeautyCategoryType = 
+  | 'bridal_makeup' 
+  | 'side_makeup' 
+  | 'bridal_mehendi' 
+  | 'side_mehendi' 
+  | 'bridal_lehenga' 
+  | 'side_lehenga';
+
+export interface BeautyServiceItem {
+  id: string;
+  category: BeautyCategoryType;
+  title: string;
+  titleHi: string;
+  price: number;
+  description?: string;
+  descriptionHi?: string;
+  image: string;
+  available: boolean;
+  parlourId?: string;
+}
+
 export interface LocalService {
   id: string;
-  category: 'beauty' | 'tailor' | 'plumber' | 'electrician' | 'mechanic';
+  category: 'beauty' | 'plumber' | 'electrician' | 'mechanic';
   name: string;
   nameHi: string;
   phone: string;
@@ -509,6 +532,7 @@ export interface LocalService {
   available: boolean;
   banner: string;
   serviceAreaId?: string;
+  beautyItems?: BeautyServiceItem[];
 }
 
 export interface LocalServiceBooking {
@@ -524,4 +548,6 @@ export interface LocalServiceBooking {
   status: 'pending' | 'accepted' | 'completed' | 'cancelled';
   address: string;
   notes?: string;
+  selectedBeautyItemName?: string;
+  price?: number;
 }

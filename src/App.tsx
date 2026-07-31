@@ -5,8 +5,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ShoppingBag, Sparkles, MapPin, Layers, History, Bell, Languages, Store as StoreIcon, ShieldAlert, Shield, Palette, LogOut, User, Heart, Utensils, Shirt, Package, MessageSquare, Train, Plane, ArrowRight, X, LifeBuoy, FileText, Wrench, Stethoscope, Grid, Gift, ArrowLeft, PackageCheck, ShoppingBasket } from 'lucide-react';
-import { Language, Store, Product, Review, Order, OrderItem, LoyaltyInfo, Notification, RegisteredUser, UserActivity, AppState, SupportTicket, SupportMessage, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, ScratchCard, Restaurant, ClothingBoutique, MerchantRequest, UserRole, ServiceArea } from './types';
-import { INITIAL_STORES, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_NOTIFICATIONS, INITIAL_USERS, INITIAL_SUPPORT_TICKETS, INITIAL_ORDERS, TRANSLATIONS } from './data';
+import { Language, Store, Product, Review, Order, OrderItem, LoyaltyInfo, Notification, RegisteredUser, UserActivity, AppState, SupportTicket, SupportMessage, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, ScratchCard, Restaurant, ClothingBoutique, MerchantRequest, UserRole, ServiceArea, LocalService } from './types';
+import { INITIAL_STORES, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_NOTIFICATIONS, INITIAL_USERS, INITIAL_SUPPORT_TICKETS, INITIAL_ORDERS, INITIAL_SERVICES, TRANSLATIONS } from './data';
 import { INITIAL_RESTAURANTS } from './dataRestaurants';
 import { INITIAL_BOUTIQUES } from './dataClothing';
 import CustomerPortal from './components/CustomerPortal';
@@ -334,6 +334,15 @@ export default function App() {
     localStorage.setItem('mau_selected_area_id', selectedServiceAreaId);
   }, [selectedServiceAreaId]);
 
+  const [localServices, setLocalServices] = useState<LocalService[]>(() => {
+    const saved = localStorage.getItem('mau_local_services');
+    return saved ? JSON.parse(saved) : INITIAL_SERVICES;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mau_local_services', JSON.stringify(localServices));
+  }, [localServices]);
+
   // Lock selectedServiceAreaId to customer's assigned service area
   useEffect(() => {
     if (isLoggedIn && role === 'customer' && activeUserId) {
@@ -554,6 +563,18 @@ export default function App() {
               return merged;
             });
           }
+          if (data.localServices && data.localServices.length > 0) {
+            setLocalServices(prev => {
+              const merged = [...data.localServices];
+              prev.forEach(localSvc => {
+                if (!merged.some(s => s.id === localSvc.id)) {
+                  merged.push(localSvc);
+                }
+              });
+              localStorage.setItem('mau_local_services', JSON.stringify(merged));
+              return merged;
+            });
+          }
           if (data.merchantRequests && data.merchantRequests.length > 0) {
             setMerchantRequests(data.merchantRequests);
           }
@@ -636,6 +657,7 @@ export default function App() {
     syncCollection('serviceAreas', serviceAreas);
     syncCollection('merchantRequests', merchantRequests);
     syncCollection('priceLogs', priceLogs);
+    syncCollection('localServices', localServices);
     
     // Settings is a single object
     if (!prevStates.current['settings']) {
@@ -650,7 +672,7 @@ export default function App() {
   }, [
     isDbLoading, stores, restaurants, boutiques, products, reviews, orders, 
     notifications, users, supportTickets, settings, customPanels, 
-    payoutRequests, serviceAreas, merchantRequests, priceLogs
+    payoutRequests, serviceAreas, merchantRequests, priceLogs, localServices
   ]);
 
   const [showProfileDrawer, setShowProfileDrawer] = useState<boolean>(false);
@@ -1716,6 +1738,8 @@ export default function App() {
             onUpdateBoutiques={setBoutiques}
             serviceAreas={serviceAreas}
             onUpdateServiceAreas={setServiceAreas}
+            localServices={localServices}
+            onUpdateLocalServices={setLocalServices}
           />
         ) : role === 'rider' ? (
           !settings.enableRiderPortal ? (
@@ -1807,7 +1831,7 @@ export default function App() {
             language={language}
             activeUserId={activeUserId}
           />
-        ) : (role === 'restaurant_owner' || role === 'jewellery_owner' || role === 'footwear_owner' || role === 'boutique_owner' || role === 'beautician' || role === 'tailor' || role === 'plumber' || role === 'electrician' || role === 'mechanic') ? (
+        ) : (role === 'restaurant_owner' || role === 'jewellery_owner' || role === 'footwear_owner' || role === 'boutique_owner' || role === 'beautician' || role === 'plumber' || role === 'electrician' || role === 'mechanic') ? (
           <RoleDashboards
             role={role}
             language={language}

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { ServiceArea } from '../types';
+import { ServiceArea, Restaurant, ClothingBoutique, LocalService } from '../types';
+import { deleteDocFromFirestore } from '../firebaseSync';
 import { 
   Map, Users, ShoppingBag, Truck, Ticket, Plus, Activity, Power, Settings, Search, Package, MapPin, Tag, LifeBuoy, ArrowLeft, Trash2, RotateCcw, Zap, Navigation, Bot, Clock, Check, Sparkles, RefreshCcw, ShieldCheck, Layers,
-  Radio, DollarSign, BellRing, AlertOctagon, Image as ImageIcon, CheckCircle, Smartphone, Volume2, Send, Gift, Star, Award, FileText, CheckCircle2, BarChart3, Database, AlertTriangle, TrendingUp, Trophy, Percent, MessageSquare, ArrowLeftRight, Crown, Compass, Calendar, Briefcase, Wallet, Wrench
+  Radio, DollarSign, BellRing, AlertOctagon, Image as ImageIcon, CheckCircle, Smartphone, Volume2, Send, Gift, Star, Award, FileText, CheckCircle2, BarChart3, Database, AlertTriangle, TrendingUp, Trophy, Percent, MessageSquare, ArrowLeftRight, Crown, Compass, Calendar, Briefcase, Wallet, Wrench, Utensils, Shirt, Eye, EyeOff, KeyRound, UserPlus, Edit, Save
 } from 'lucide-react';
 import { triggerOrderAlert, triggerHapticVibration, playOrderAlertSound } from '../utils/notification';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import Polygon from './Polygon';
 import JCodeMaintenancePanel from './JCodeMaintenancePanel';
+import ImageUploadControl from './ImageUploadControl';
 
 const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
@@ -27,7 +29,6 @@ const AVAILABLE_ROLES = [
   { value: 'footwear_owner', label: 'Footwear Owner' },
   { value: 'boutique_owner', label: 'Boutique Owner' },
   { value: 'beautician', label: 'Beautician Service' },
-  { value: 'tailor', label: 'Tailor Service' },
   { value: 'plumber', label: 'Plumber Service' },
   { value: 'electrician', label: 'Electrician Service' },
   { value: 'mechanic', label: 'Mechanic Service' }
@@ -41,35 +42,37 @@ interface ServiceAreaManagerProps {
   allProducts?: any[];
   allOrders?: any[];
   allTickets?: any[];
+  allRestaurants?: any[];
+  allBoutiques?: any[];
+  allLocalServices?: any[];
+  onToggleTicketStatus?: (id: string, status: 'open' | 'resolved') => void;
   onUpdateStores?: (stores: any[]) => void;
   onUpdateProducts?: (products: any[]) => void;
+  onUpdateUsers?: (users: any[]) => void;
+  onUpdateRestaurants?: (restaurants: any[]) => void;
+  onUpdateBoutiques?: (boutiques: any[]) => void;
+  onUpdateLocalServices?: (services: any[]) => void;
 }
 
 export default function ServiceAreaManager({ 
   areas, 
   onUpdateAreas, 
-  allUsers, 
-  allStores, 
-  allProducts, 
-  allOrders, 
-  allTickets, 
+  allUsers = [], 
+  allStores = [], 
+  allProducts = [], 
+  allOrders = [], 
+  allTickets = [], 
+  allRestaurants = [],
+  allBoutiques = [],
+  allLocalServices = [],
   onToggleTicketStatus,
   onUpdateStores,
   onUpdateProducts,
-  onUpdateUsers
-}: { 
-  areas: ServiceArea[], 
-  onUpdateAreas: (areas: ServiceArea[]) => void, 
-  allUsers?: any[], 
-  allStores?: any[], 
-  allProducts?: any[], 
-  allOrders?: any[], 
-  allTickets?: any[], 
-  onToggleTicketStatus?: (id: string, status: 'open' | 'resolved') => void,
-  onUpdateStores?: (stores: any[]) => void,
-  onUpdateProducts?: (products: any[]) => void,
-  onUpdateUsers?: (users: any[]) => void
-}) {
+  onUpdateUsers,
+  onUpdateRestaurants,
+  onUpdateBoutiques,
+  onUpdateLocalServices
+}: ServiceAreaManagerProps) {
   
   const [selectedArea, setSelectedArea] = useState<any>(() => {
     return areas && areas.length > 0 ? areas[0] : null;
@@ -482,9 +485,21 @@ export default function ServiceAreaManager({
   const confirmDeleteArea = () => {
     if (!areaToDelete) return;
     onUpdateAreas(areas.filter(a => a.id !== areaToDelete));
+    deleteDocFromFirestore('serviceAreas', areaToDelete);
     if (selectedArea?.id === areaToDelete) setSelectedArea(null);
     setAreaToDelete(null);
   };
+
+  // --- USER MANAGEMENT ENHANCEMENTS ---
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserPhone, setNewUserPhone] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState<any>('customer');
+  const [newUserArea, setNewUserArea] = useState('area-maudaha');
+  const [showPasswordsMap, setShowPasswordsMap] = useState<{ [id: string]: boolean }>({});
 
   const handleUpdateUserRole = (userId: string, newRole: any) => {
     if (!allUsers || !onUpdateUsers) return;
@@ -498,11 +513,327 @@ export default function ServiceAreaManager({
     onUpdateUsers(updated);
   };
 
+  const handleUpdateUserPassword = (userId: string, newPass: string) => {
+    if (!allUsers || !onUpdateUsers) return;
+    const updated = allUsers.map(u => u.id === userId ? { ...u, password: newPass } : u);
+    onUpdateUsers(updated);
+  };
+
+  const handleCreateUser = () => {
+    if (!newUserName.trim() || !newUserPhone.trim()) {
+      alert('Please fill Name and Phone');
+      return;
+    }
+    const newUser = {
+      id: `user-${Date.now()}`,
+      name: newUserName.trim(),
+      phone: newUserPhone.trim(),
+      email: newUserEmail.trim() || undefined,
+      password: newUserPassword.trim() || '123456',
+      location: 'Maudaha Central',
+      locationHi: 'मौदहा सेंट्रल',
+      role: newUserRole,
+      serviceAreaId: newUserArea,
+      assignedArea: newUserArea,
+      activities: [],
+      searchHistory: []
+    };
+    if (onUpdateUsers) {
+      onUpdateUsers([...allUsers, newUser]);
+    }
+    setShowAddUserModal(false);
+    setNewUserName('');
+    setNewUserPhone('');
+    setNewUserEmail('');
+    setNewUserPassword('');
+    setNewUserRole('customer');
+  };
+
   const confirmDeleteUser = () => {
     if (!userToDelete || !allUsers || !onUpdateUsers) return;
     const updated = allUsers.filter(u => u.id !== userToDelete.id);
     onUpdateUsers(updated);
+    deleteDocFromFirestore('users', userToDelete.id);
     setUserToDelete(null);
+  };
+
+  // --- RESTAURANTS MANAGEMENT ---
+  const [restaurantSearchTerm, setRestaurantSearchTerm] = useState('');
+  const [showRestaurantModal, setShowRestaurantModal] = useState(false);
+  const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
+  const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
+  const [restName, setRestName] = useState('');
+  const [restNameHiVal, setRestNameHiVal] = useState('');
+  const [restCuisine, setRestCuisine] = useState('');
+  const [restAddress, setRestAddress] = useState('');
+  const [restRating, setRestRating] = useState(4.5);
+  const [restDeliveryTime, setRestDeliveryTime] = useState('25-35 mins');
+  const [restMinOrder, setRestMinOrder] = useState(100);
+  const [restUpiId, setRestUpiId] = useState('');
+  const [restBanner, setRestBanner] = useState('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80');
+
+  const openRestaurantModal = (rest?: Restaurant) => {
+    if (rest) {
+      setEditingRestaurant(rest);
+      setRestName(rest.name || '');
+      setRestNameHiVal(rest.nameHi || '');
+      setRestCuisine(rest.cuisine || 'North Indian');
+      setRestAddress(rest.address || 'Maudaha');
+      setRestRating(rest.rating || 4.5);
+      setRestDeliveryTime(rest.deliveryTime || '25-35 mins');
+      setRestMinOrder(rest.minOrder || 100);
+      setRestUpiId(rest.upiId || '');
+      setRestBanner(rest.banner || '');
+    } else {
+      setEditingRestaurant(null);
+      setRestName('');
+      setRestNameHiVal('');
+      setRestCuisine('North Indian, Fast Food');
+      setRestAddress('Maudaha Main Road');
+      setRestRating(4.5);
+      setRestDeliveryTime('25-35 mins');
+      setRestMinOrder(100);
+      setRestUpiId('biengwithash@okicici');
+      setRestBanner('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80');
+    }
+    setShowRestaurantModal(true);
+  };
+
+  const handleSaveRestaurant = () => {
+    if (!restName.trim()) {
+      alert('Please enter restaurant name');
+      return;
+    }
+    if (editingRestaurant) {
+      const updated = allRestaurants.map(r => r.id === editingRestaurant.id ? {
+        ...r,
+        name: restName,
+        nameHi: restNameHiVal || restName,
+        cuisine: restCuisine,
+        cuisineHi: restCuisine,
+        address: restAddress,
+        addressHi: restAddress,
+        rating: Number(restRating),
+        deliveryTime: restDeliveryTime,
+        deliveryTimeHi: restDeliveryTime,
+        minOrder: Number(restMinOrder),
+        upiId: restUpiId,
+        banner: restBanner
+      } : r);
+      if (onUpdateRestaurants) onUpdateRestaurants(updated);
+    } else {
+      const newRest: Restaurant = {
+        id: `rest-${Date.now()}`,
+        name: restName,
+        nameHi: restNameHiVal || restName,
+        cuisine: restCuisine,
+        cuisineHi: restCuisine,
+        address: restAddress,
+        addressHi: restAddress,
+        rating: Number(restRating),
+        deliveryTime: restDeliveryTime,
+        deliveryTimeHi: restDeliveryTime,
+        minOrder: Number(restMinOrder),
+        upiId: restUpiId,
+        banner: restBanner,
+        menu: []
+      };
+      if (onUpdateRestaurants) onUpdateRestaurants([...allRestaurants, newRest]);
+    }
+    setShowRestaurantModal(false);
+  };
+
+  const confirmDeleteRestaurant = () => {
+    if (!restaurantToDelete || !onUpdateRestaurants) return;
+    const updated = allRestaurants.filter(r => r.id !== restaurantToDelete.id);
+    onUpdateRestaurants(updated);
+    deleteDocFromFirestore('restaurants', restaurantToDelete.id);
+    setRestaurantToDelete(null);
+  };
+
+  // --- BOUTIQUES MANAGEMENT ---
+  const [boutiqueSearchTerm, setBoutiqueSearchTerm] = useState('');
+  const [showBoutiqueModal, setShowBoutiqueModal] = useState(false);
+  const [editingBoutique, setEditingBoutique] = useState<ClothingBoutique | null>(null);
+  const [boutiqueToDelete, setBoutiqueToDelete] = useState<ClothingBoutique | null>(null);
+  const [btName, setBtName] = useState('');
+  const [btNameHiVal, setBtNameHiVal] = useState('');
+  const [btSpecialty, setBtSpecialty] = useState('');
+  const [btAddress, setBtAddress] = useState('');
+  const [btRating, setBtRating] = useState(4.6);
+  const [btDeliveryTime, setBtDeliveryTime] = useState('2-3 Days');
+  const [btMinOrder, setBtMinOrder] = useState(200);
+  const [btUpiId, setBtUpiId] = useState('');
+  const [btBanner, setBtBanner] = useState('https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80');
+
+  const openBoutiqueModal = (bt?: ClothingBoutique) => {
+    if (bt) {
+      setEditingBoutique(bt);
+      setBtName(bt.name || '');
+      setBtNameHiVal(bt.nameHi || '');
+      setBtSpecialty(bt.specialty || '');
+      setBtAddress(bt.address || '');
+      setBtRating(bt.rating || 4.6);
+      setBtDeliveryTime(bt.deliveryTime || '2-3 Days');
+      setBtMinOrder(bt.minOrder || 200);
+      setBtUpiId(bt.upiId || '');
+      setBtBanner(bt.banner || '');
+    } else {
+      setEditingBoutique(null);
+      setBtName('');
+      setBtNameHiVal('');
+      setBtSpecialty('Sarees & Lehengas');
+      setBtAddress('Market Road, Maudaha');
+      setBtRating(4.6);
+      setBtDeliveryTime('2-3 Days');
+      setBtMinOrder(200);
+      setBtUpiId('biengwithash@okicici');
+      setBtBanner('https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80');
+    }
+    setShowBoutiqueModal(true);
+  };
+
+  const handleSaveBoutique = () => {
+    if (!btName.trim()) {
+      alert('Please enter boutique name');
+      return;
+    }
+    if (editingBoutique) {
+      const updated = allBoutiques.map(b => b.id === editingBoutique.id ? {
+        ...b,
+        name: btName,
+        nameHi: btNameHiVal || btName,
+        specialty: btSpecialty,
+        specialtyHi: btSpecialty,
+        address: btAddress,
+        addressHi: btAddress,
+        rating: Number(btRating),
+        deliveryTime: btDeliveryTime,
+        deliveryTimeHi: btDeliveryTime,
+        minOrder: Number(btMinOrder),
+        upiId: btUpiId,
+        banner: btBanner
+      } : b);
+      if (onUpdateBoutiques) onUpdateBoutiques(updated);
+    } else {
+      const newBt: ClothingBoutique = {
+        id: `bt-${Date.now()}`,
+        name: btName,
+        nameHi: btNameHiVal || btName,
+        specialty: btSpecialty,
+        specialtyHi: btSpecialty,
+        address: btAddress,
+        addressHi: btAddress,
+        rating: Number(btRating),
+        deliveryTime: btDeliveryTime,
+        deliveryTimeHi: btDeliveryTime,
+        minOrder: Number(btMinOrder),
+        upiId: btUpiId,
+        banner: btBanner,
+        items: []
+      };
+      if (onUpdateBoutiques) onUpdateBoutiques([...allBoutiques, newBt]);
+    }
+    setShowBoutiqueModal(false);
+  };
+
+  const confirmDeleteBoutique = () => {
+    if (!boutiqueToDelete || !onUpdateBoutiques) return;
+    const updated = allBoutiques.filter(b => b.id !== boutiqueToDelete.id);
+    onUpdateBoutiques(updated);
+    deleteDocFromFirestore('boutiques', boutiqueToDelete.id);
+    setBoutiqueToDelete(null);
+  };
+
+  // --- LOCAL SERVICES MANAGEMENT ---
+  const [serviceSearchTerm, setServiceSearchTerm] = useState('');
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [editingService, setEditingService] = useState<LocalService | null>(null);
+  const [serviceToDelete, setServiceToDelete] = useState<LocalService | null>(null);
+  const [svcName, setSvcName] = useState('');
+  const [svcNameHiVal, setSvcNameHiVal] = useState('');
+  const [svcCategory, setSvcCategory] = useState<'beauty' | 'plumber' | 'electrician' | 'mechanic'>('plumber');
+  const [svcPhone, setSvcPhone] = useState('');
+  const [svcExperience, setSvcExperience] = useState(5);
+  const [svcRating, setSvcRating] = useState(4.8);
+  const [svcAddress, setSvcAddress] = useState('');
+  const [svcBaseCharge, setSvcBaseCharge] = useState(150);
+  const [svcBanner, setSvcBanner] = useState('https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80');
+
+  const openServiceModal = (svc?: LocalService) => {
+    if (svc) {
+      setEditingService(svc);
+      setSvcName(svc.name || '');
+      setSvcNameHiVal(svc.nameHi || '');
+      setSvcCategory(svc.category || 'plumber');
+      setSvcPhone(svc.phone || '');
+      setSvcExperience(svc.experience || 5);
+      setSvcRating(svc.rating || 4.8);
+      setSvcAddress(svc.address || '');
+      setSvcBaseCharge(svc.baseCharge || 150);
+      setSvcBanner(svc.banner || '');
+    } else {
+      setEditingService(null);
+      setSvcName('');
+      setSvcNameHiVal('');
+      setSvcCategory('plumber');
+      setSvcPhone('9876543210');
+      setSvcExperience(5);
+      setSvcRating(4.8);
+      setSvcAddress('Maudaha Town');
+      setSvcBaseCharge(150);
+      setSvcBanner('https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80');
+    }
+    setShowServiceModal(true);
+  };
+
+  const handleSaveService = () => {
+    if (!svcName.trim()) {
+      alert('Please enter service provider name');
+      return;
+    }
+    if (editingService) {
+      const updated = allLocalServices.map(s => s.id === editingService.id ? {
+        ...s,
+        name: svcName,
+        nameHi: svcNameHiVal || svcName,
+        category: svcCategory,
+        phone: svcPhone,
+        experience: Number(svcExperience),
+        rating: Number(svcRating),
+        address: svcAddress,
+        addressHi: svcAddress,
+        baseCharge: Number(svcBaseCharge),
+        banner: svcBanner
+      } : s);
+      if (onUpdateLocalServices) onUpdateLocalServices(updated);
+    } else {
+      const newSvc: LocalService = {
+        id: `svc-${Date.now()}`,
+        name: svcName,
+        nameHi: svcNameHiVal || svcName,
+        category: svcCategory,
+        phone: svcPhone,
+        experience: Number(svcExperience),
+        rating: Number(svcRating),
+        address: svcAddress,
+        addressHi: svcAddress,
+        baseCharge: Number(svcBaseCharge),
+        available: true,
+        banner: svcBanner,
+        serviceAreaId: 'area-maudaha'
+      };
+      if (onUpdateLocalServices) onUpdateLocalServices([...allLocalServices, newSvc]);
+    }
+    setShowServiceModal(false);
+  };
+
+  const confirmDeleteService = () => {
+    if (!serviceToDelete || !onUpdateLocalServices) return;
+    const updated = allLocalServices.filter(s => s.id !== serviceToDelete.id);
+    onUpdateLocalServices(updated);
+    deleteDocFromFirestore('localServices', serviceToDelete.id);
+    setServiceToDelete(null);
   };
   
   const handleAddTimingSlot = () => {
@@ -1062,8 +1393,11 @@ export default function ServiceAreaManager({
           { id: 'finance', label: '💰 Revenue & Payouts', icon: DollarSign },
           { id: 'broadcast', label: '📢 FCM Push Broadcast', icon: Radio },
           { id: 'system_logs', label: '📜 Security Audit Logs', icon: Database },
-          { id: 'catalog', label: 'Products & Shops', icon: ShoppingBag },
-          { id: 'users', label: 'Users & Roles', icon: Users },
+          { id: 'catalog', label: 'Shops & Products', icon: ShoppingBag },
+          { id: 'restaurants_admin', label: '🍽️ Restaurants & Dining', icon: Utensils },
+          { id: 'boutiques_admin', label: '👗 Fashion & Boutiques', icon: Shirt },
+          { id: 'services_admin', label: '🛠️ Local Services', icon: Wrench },
+          { id: 'users', label: 'Users & Passwords', icon: Users },
           { id: 'sys_config', label: '⚙️ App Rules & Banners', icon: Settings },
           { id: 'delivery', label: 'Delivery Charges', icon: Truck },
           { id: 'marketing', label: 'Support & Vouchers', icon: Ticket },
@@ -3755,46 +4089,100 @@ export default function ServiceAreaManager({
         )}
 
         {activeTab === 'users' && (
-          <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-3xs animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="flex justify-between items-center mb-5 pb-3 border-b border-slate-100">
+          <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-3xs animate-in fade-in slide-in-from-bottom-2 duration-300 font-sans space-y-5">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100">
               <div>
                 <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
-                  <Users className="h-4.5 w-4.5 text-emerald-600" /> Registered Customers
+                  <Users className="h-4.5 w-4.5 text-emerald-600" /> User Accounts & Password Management
                 </h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">View customer accounts registered in this operational boundary</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Manage passwords, assign roles (Admin, Seller, Rider, etc.), and control service areas.</p>
               </div>
-              <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-lg">{users.length} Customers</span>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-100">
+                  {allUsers?.length || 0} Total Users
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAddUserModal(true)}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-3xs"
+                >
+                  <UserPlus className="h-3.5 w-3.5" /> Add User
+                </button>
+              </div>
             </div>
-            
+
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search user by name, phone, email, or role..."
+                value={userSearchTerm}
+                onChange={(e) => setUserSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-500 font-sans">
                 <thead>
                   <tr className="border-b border-slate-100 text-slate-400 font-extrabold uppercase tracking-wider">
                     <th className="py-3 px-4">Name / Contact</th>
-                    <th className="py-3 px-4">Location / Area</th>
+                    <th className="py-3 px-4">Password</th>
+                    <th className="py-3 px-4">Assigned Area</th>
                     <th className="py-3 px-4">Role</th>
                     <th className="py-3 px-4 text-center">Status</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {users.map(u => {
+                  {(allUsers || []).filter(u => {
+                    if (!userSearchTerm.trim()) return true;
+                    const term = userSearchTerm.toLowerCase();
+                    return (
+                      u.name?.toLowerCase().includes(term) ||
+                      u.phone?.toLowerCase().includes(term) ||
+                      u.email?.toLowerCase().includes(term) ||
+                      u.role?.toLowerCase().includes(term)
+                    );
+                  }).map(u => {
                     const isSelf = u.email?.toLowerCase() === 'biengwithash@gmail.com';
+                    const showPass = showPasswordsMap[u.id] || false;
                     return (
                       <tr key={u.id} className="hover:bg-slate-50/50 transition">
                         <td className="py-3 px-4">
-                          <div className="font-bold text-slate-800">{u.name}</div>
+                          <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                            {u.name}
+                            {isSelf && <span className="bg-amber-100 text-amber-800 text-[9px] font-black px-1.5 py-0.5 rounded uppercase">Super Admin</span>}
+                          </div>
                           <div className="text-[10px] text-slate-400 font-medium font-mono">
                             {u.phone} {u.email ? `• ${u.email}` : ''}
                           </div>
                         </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type={showPass ? 'text' : 'password'}
+                              value={u.password || '123456'}
+                              onChange={(e) => handleUpdateUserPassword(u.id, e.target.value)}
+                              className="w-28 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPasswordsMap(prev => ({ ...prev, [u.id]: !showPass }))}
+                              className="p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+                              title={showPass ? 'Hide password' : 'Show password'}
+                            >
+                              {showPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                            </button>
+                          </div>
+                        </td>
                         <td className="py-3 px-4 font-medium text-slate-500">
-                          <div className="font-semibold text-slate-800">{u.location || 'Maudaha Central'}</div>
                           <select
                             value={u.serviceAreaId || u.assignedArea || 'area-maudaha'}
                             disabled={isSelf}
                             onChange={(e) => handleUpdateUserArea(u.id, e.target.value)}
-                            className={`bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-bold py-1 px-2.5 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer transition font-sans mt-1 ${isSelf ? 'opacity-65 cursor-not-allowed' : 'hover:bg-slate-100'}`}
+                            className={`bg-slate-50 border border-slate-200 text-slate-600 text-[10px] font-bold py-1 px-2.5 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer transition font-sans ${isSelf ? 'opacity-65 cursor-not-allowed' : 'hover:bg-slate-100'}`}
                           >
                             {areas.map((a) => (
                               <option key={a.id} value={a.id}>
@@ -3828,7 +4216,7 @@ export default function ServiceAreaManager({
                               type="button"
                               onClick={() => setUserToDelete(u)}
                               className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer inline-flex items-center justify-center"
-                              title="Delete customer account"
+                              title="Delete user account"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -3839,12 +4227,228 @@ export default function ServiceAreaManager({
                   })}
                 </tbody>
               </table>
-              {users.length === 0 && (
-                <div className="py-12 flex flex-col items-center justify-center text-slate-400 space-y-2">
-                  <Search className="h-6 w-6 opacity-45" />
-                  <p className="text-xs font-bold text-slate-700">No registered customers</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'restaurants_admin' && (
+          <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-3xs animate-in fade-in slide-in-from-bottom-2 duration-300 font-sans space-y-5">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                  <Utensils className="h-4.5 w-4.5 text-emerald-600" /> Restaurants & Food Dining Outlets
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">Manage food vendors, cuisines, addresses, ratings, and UPI payment details in Firestore.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => openRestaurantModal()}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-3xs"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Restaurant
+              </button>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search restaurant by name, cuisine, address..."
+                value={restaurantSearchTerm}
+                onChange={(e) => setRestaurantSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(allRestaurants || []).filter(r => {
+                if (!restaurantSearchTerm.trim()) return true;
+                const term = restaurantSearchTerm.toLowerCase();
+                return r.name?.toLowerCase().includes(term) || r.cuisine?.toLowerCase().includes(term) || r.address?.toLowerCase().includes(term);
+              }).map(r => (
+                <div key={r.id} className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-3 relative group">
+                  <div className="h-28 w-full rounded-xl overflow-hidden relative bg-slate-200">
+                    <img referrerPolicy="no-referrer" src={r.banner} alt={r.name} className="w-full h-full object-cover" />
+                    <span className="absolute top-2 right-2 bg-white/90 backdrop-blur-xs text-emerald-700 font-extrabold text-[10px] px-2 py-0.5 rounded-full shadow-xs">
+                      ⭐ {r.rating}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-slate-900 text-sm">{r.name}</h4>
+                    <p className="text-[11px] text-slate-500 font-medium">{r.cuisine}</p>
+                    <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1"><MapPin className="h-3 w-3" /> {r.address}</p>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-2 border-t border-slate-200">
+                    <span>⏱️ {r.deliveryTime}</span>
+                    <span>Min Order: ₹{r.minOrder}</span>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => openRestaurantModal(r)}
+                      className="flex-1 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <Edit className="h-3.5 w-3.5" /> Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRestaurantToDelete(r)}
+                      className="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center"
+                      title="Delete restaurant"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
-              )}
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'boutiques_admin' && (
+          <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-3xs animate-in fade-in slide-in-from-bottom-2 duration-300 font-sans space-y-5">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                  <Shirt className="h-4.5 w-4.5 text-emerald-600" /> Fashion & Boutique Stores
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">Manage fashion stores, specialties, locations, ratings, and catalog listings.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => openBoutiqueModal()}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-3xs"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Boutique
+              </button>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search boutique by name, specialty, address..."
+                value={boutiqueSearchTerm}
+                onChange={(e) => setBoutiqueSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(allBoutiques || []).filter(b => {
+                if (!boutiqueSearchTerm.trim()) return true;
+                const term = boutiqueSearchTerm.toLowerCase();
+                return b.name?.toLowerCase().includes(term) || b.specialty?.toLowerCase().includes(term) || b.address?.toLowerCase().includes(term);
+              }).map(b => (
+                <div key={b.id} className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-3 relative group">
+                  <div className="h-28 w-full rounded-xl overflow-hidden relative bg-slate-200">
+                    <img referrerPolicy="no-referrer" src={b.banner} alt={b.name} className="w-full h-full object-cover" />
+                    <span className="absolute top-2 right-2 bg-white/90 backdrop-blur-xs text-purple-700 font-extrabold text-[10px] px-2 py-0.5 rounded-full shadow-xs">
+                      ⭐ {b.rating}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-slate-900 text-sm">{b.name}</h4>
+                    <p className="text-[11px] text-purple-600 font-semibold">{b.specialty}</p>
+                    <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1"><MapPin className="h-3 w-3" /> {b.address}</p>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-2 border-t border-slate-200">
+                    <span>🚚 {b.deliveryTime}</span>
+                    <span>Min Order: ₹{b.minOrder}</span>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => openBoutiqueModal(b)}
+                      className="flex-1 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <Edit className="h-3.5 w-3.5" /> Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBoutiqueToDelete(b)}
+                      className="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center"
+                      title="Delete boutique"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'services_admin' && (
+          <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-3xs animate-in fade-in slide-in-from-bottom-2 duration-300 font-sans space-y-5">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                  <Wrench className="h-4.5 w-4.5 text-emerald-600" /> Local Service Providers
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">Manage local plumbers, electricians, beauticians, and mechanics.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => openServiceModal()}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-3xs"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Service Provider
+              </button>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search local service by provider name, category, phone..."
+                value={serviceSearchTerm}
+                onChange={(e) => setServiceSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(allLocalServices || []).filter(s => {
+                if (!serviceSearchTerm.trim()) return true;
+                const term = serviceSearchTerm.toLowerCase();
+                return s.name?.toLowerCase().includes(term) || s.category?.toLowerCase().includes(term) || s.phone?.toLowerCase().includes(term);
+              }).map(s => (
+                <div key={s.id} className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-3 relative group">
+                  <div className="h-28 w-full rounded-xl overflow-hidden relative bg-slate-200">
+                    <img referrerPolicy="no-referrer" src={s.banner} alt={s.name} className="w-full h-full object-cover" />
+                    <span className="absolute top-2 right-2 bg-emerald-600 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full shadow-xs uppercase">
+                      {s.category}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-slate-900 text-sm">{s.name}</h4>
+                    <p className="text-[11px] text-slate-500 font-medium">📞 {s.phone} • {s.experience} yrs exp</p>
+                    <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1"><MapPin className="h-3 w-3" /> {s.address}</p>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 pt-2 border-t border-slate-200">
+                    <span>⭐ {s.rating}</span>
+                    <span className="text-emerald-700">Base Charge: ₹{s.baseCharge}</span>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => openServiceModal(s)}
+                      className="flex-1 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <Edit className="h-3.5 w-3.5" /> Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setServiceToDelete(s)}
+                      className="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center"
+                      title="Delete service provider"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -4482,10 +5086,22 @@ export default function ServiceAreaManager({
                     {/* Adding banner */}
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-slate-600">Add Carousel Banner URL</label>
-                      <div className="flex gap-2">
+                      <ImageUploadControl
+                        label="Upload Shop Carousel Banner"
+                        labelHi="दुकान का बैनर अपलोड करें"
+                        currentImageUrl=""
+                        type="store"
+                        identifier={selectedShop?.id || 'shop'}
+                        aspectRatio="banner"
+                        onImageUploaded={(url) => {
+                          setEditShopBanners([...editShopBanners, url]);
+                          if (!editShopBanner) setEditShopBanner(url);
+                        }}
+                      />
+                      <div className="flex gap-2 mt-2">
                         <input
                           type="text"
-                          placeholder="https://images.unsplash.com/photo-..."
+                          placeholder="Or paste external URL..."
                           value={newCarouselBannerUrl}
                           onChange={(e) => setNewCarouselBannerUrl(e.target.value)}
                           className="flex-1 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:border-indigo-500"
@@ -4686,14 +5302,25 @@ export default function ServiceAreaManager({
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Product Image URL</label>
-                  <input
-                    type="text"
-                    placeholder="https://..."
-                    value={newProdImage}
-                    onChange={(e) => setNewProdImage(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl p-3 text-sm font-medium text-slate-800 focus:outline-none focus:border-indigo-500"
+                  <ImageUploadControl
+                    label="Product Picture"
+                    labelHi="उत्पाद की तस्वीर"
+                    currentImageUrl={newProdImage}
+                    type="product"
+                    identifier={newProdName || 'product'}
+                    aspectRatio="square"
+                    onImageUploaded={(url) => setNewProdImage(url)}
                   />
+                  <div className="mt-2">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Or Direct Image URL</label>
+                    <input
+                      type="text"
+                      placeholder="https://..."
+                      value={newProdImage}
+                      onChange={(e) => setNewProdImage(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Category (e.g. Groceries, Snacks, Beverages, Fashion)</label>
@@ -4791,13 +5418,24 @@ export default function ServiceAreaManager({
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Product Image URL</label>
-                  <input
-                    type="text"
-                    value={editProdImage}
-                    onChange={(e) => setEditProdImage(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl p-3 text-sm font-medium text-slate-800 focus:outline-none focus:border-indigo-500"
+                  <ImageUploadControl
+                    label="Product Picture"
+                    labelHi="उत्पाद की तस्वीर"
+                    currentImageUrl={editProdImage}
+                    type="product"
+                    identifier={selectedProdToEdit?.id || 'prod_edit'}
+                    aspectRatio="square"
+                    onImageUploaded={(url) => setEditProdImage(url)}
                   />
+                  <div className="mt-2">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Or Direct Image URL</label>
+                    <input
+                      type="text"
+                      value={editProdImage}
+                      onChange={(e) => setEditProdImage(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Category</label>
@@ -4854,6 +5492,343 @@ export default function ServiceAreaManager({
             <div className="flex justify-end gap-3 w-full">
               <button type="button" onClick={() => setUserToDelete(null)} className="flex-1 px-5 py-3 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer">Cancel</button>
               <button type="button" onClick={confirmDeleteUser} className="flex-1 px-5 py-3 text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-sm transition cursor-pointer">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Add User */}
+      {showAddUserModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 duration-300 font-sans">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-emerald-600" /> Create User Account
+              </h3>
+              <button type="button" onClick={() => setShowAddUserModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); handleCreateUser(); }} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Rahul Sharma"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 9876543210"
+                  value={newUserPhone}
+                  onChange={(e) => setNewUserPhone(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Email Address (Optional)</label>
+                <input
+                  type="email"
+                  placeholder="e.g. rahul@maudahamart.com"
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Account Password</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Set initial password"
+                  value={newUserPassword}
+                  onChange={(e) => setNewUserPassword(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl p-2.5 text-xs font-medium font-mono text-slate-800 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">User Role</label>
+                  <select
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 bg-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    {AVAILABLE_ROLES.map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Service Area</label>
+                  <select
+                    value={newUserArea}
+                    onChange={(e) => setNewUserArea(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 bg-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    {areas.map(a => (
+                      <option key={a.id} value={a.id}>{a.area_name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" onClick={() => setShowAddUserModal(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+                <button type="submit" className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm">Save User</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Restaurant Add/Edit */}
+      {showRestaurantModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-in zoom-in-95 duration-300 font-sans max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <Utensils className="h-4 w-4 text-emerald-600" /> {editingRestaurant ? 'Edit Restaurant' : 'Add New Restaurant'}
+              </h3>
+              <button type="button" onClick={() => setShowRestaurantModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); handleSaveRestaurant(); }} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Name (English)</label>
+                  <input type="text" required value={restName} onChange={(e) => setRestName(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Name (Hindi)</label>
+                  <input type="text" value={restNameHiVal} onChange={(e) => setRestNameHiVal(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Cuisine / Tags</label>
+                <input type="text" required placeholder="e.g. North Indian, Biryani, Fast Food" value={restCuisine} onChange={(e) => setRestCuisine(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Address</label>
+                <input type="text" required value={restAddress} onChange={(e) => setRestAddress(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Rating</label>
+                  <input type="number" step="0.1" max="5" min="1" value={restRating} onChange={(e) => setRestRating(Number(e.target.value))} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Delivery Time</label>
+                  <input type="text" value={restDeliveryTime} onChange={(e) => setRestDeliveryTime(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Min Order (₹)</label>
+                  <input type="number" value={restMinOrder} onChange={(e) => setRestMinOrder(Number(e.target.value))} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Merchant UPI ID</label>
+                  <input type="text" placeholder="merchant@upi" value={restUpiId} onChange={(e) => setRestUpiId(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 font-mono" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Banner Image URL</label>
+                  <input type="text" value={restBanner} onChange={(e) => setRestBanner(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" onClick={() => setShowRestaurantModal(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+                <button type="submit" className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm">Save Restaurant</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Delete Restaurant */}
+      {restaurantToDelete && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="flex flex-col items-center text-center gap-3 mb-6">
+              <div className="h-12 w-12 bg-rose-100 rounded-full flex items-center justify-center mb-2">
+                <Trash2 className="h-6 w-6 text-rose-600" />
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-900">Delete Restaurant?</h3>
+              <p className="text-sm text-slate-500 font-medium">Are you sure you want to delete <strong className="text-slate-800">{restaurantToDelete.name}</strong> from Firestore?</p>
+            </div>
+            <div className="flex justify-end gap-3 w-full">
+              <button type="button" onClick={() => setRestaurantToDelete(null)} className="flex-1 px-5 py-3 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer">Cancel</button>
+              <button type="button" onClick={confirmDeleteRestaurant} className="flex-1 px-5 py-3 text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-sm transition cursor-pointer">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Boutique Add/Edit */}
+      {showBoutiqueModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-in zoom-in-95 duration-300 font-sans max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <Shirt className="h-4 w-4 text-emerald-600" /> {editingBoutique ? 'Edit Boutique' : 'Add New Boutique'}
+              </h3>
+              <button type="button" onClick={() => setShowBoutiqueModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); handleSaveBoutique(); }} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Name (English)</label>
+                  <input type="text" required value={btName} onChange={(e) => setBtName(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Name (Hindi)</label>
+                  <input type="text" value={btNameHiVal} onChange={(e) => setBtNameHiVal(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Specialty / Category</label>
+                <input type="text" required placeholder="e.g. Bridal Wear, Designer Sarees, Kids Wear" value={btSpecialty} onChange={(e) => setBtSpecialty(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Address</label>
+                <input type="text" required value={btAddress} onChange={(e) => setBtAddress(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Rating</label>
+                  <input type="number" step="0.1" max="5" min="1" value={btRating} onChange={(e) => setBtRating(Number(e.target.value))} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Delivery Time</label>
+                  <input type="text" value={btDeliveryTime} onChange={(e) => setBtDeliveryTime(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Min Order (₹)</label>
+                  <input type="number" value={btMinOrder} onChange={(e) => setBtMinOrder(Number(e.target.value))} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">UPI ID</label>
+                  <input type="text" placeholder="boutique@upi" value={btUpiId} onChange={(e) => setBtUpiId(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 font-mono" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Banner Image URL</label>
+                  <input type="text" value={btBanner} onChange={(e) => setBtBanner(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" onClick={() => setShowBoutiqueModal(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+                <button type="submit" className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm">Save Boutique</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Delete Boutique */}
+      {boutiqueToDelete && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="flex flex-col items-center text-center gap-3 mb-6">
+              <div className="h-12 w-12 bg-rose-100 rounded-full flex items-center justify-center mb-2">
+                <Trash2 className="h-6 w-6 text-rose-600" />
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-900">Delete Boutique?</h3>
+              <p className="text-sm text-slate-500 font-medium">Are you sure you want to delete <strong className="text-slate-800">{boutiqueToDelete.name}</strong> from Firestore?</p>
+            </div>
+            <div className="flex justify-end gap-3 w-full">
+              <button type="button" onClick={() => setBoutiqueToDelete(null)} className="flex-1 px-5 py-3 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer">Cancel</button>
+              <button type="button" onClick={confirmDeleteBoutique} className="flex-1 px-5 py-3 text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-sm transition cursor-pointer">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Local Service Add/Edit */}
+      {showServiceModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-in zoom-in-95 duration-300 font-sans max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-emerald-600" /> {editingService ? 'Edit Local Service' : 'Add New Local Service'}
+              </h3>
+              <button type="button" onClick={() => setShowServiceModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); handleSaveService(); }} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Provider Name</label>
+                  <input type="text" required value={svcName} onChange={(e) => setSvcName(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Category</label>
+                  <select
+                    value={svcCategory}
+                    onChange={(e) => setSvcCategory(e.target.value as any)}
+                    className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 bg-white font-bold cursor-pointer"
+                  >
+                    <option value="plumber">Plumber</option>
+                    <option value="electrician">Electrician</option>
+                    <option value="beauty">Beauty & Salon</option>
+                    <option value="mechanic">Mechanic</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Phone Number</label>
+                  <input type="text" required value={svcPhone} onChange={(e) => setSvcPhone(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 font-mono" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Experience (Years)</label>
+                  <input type="number" min="0" value={svcExperience} onChange={(e) => setSvcExperience(Number(e.target.value))} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Address / Location</label>
+                <input type="text" required value={svcAddress} onChange={(e) => setSvcAddress(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Rating</label>
+                  <input type="number" step="0.1" max="5" min="1" value={svcRating} onChange={(e) => setSvcRating(Number(e.target.value))} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Base Charge (₹)</label>
+                  <input type="number" value={svcBaseCharge} onChange={(e) => setSvcBaseCharge(Number(e.target.value))} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Image / Photo URL</label>
+                <input type="text" value={svcBanner} onChange={(e) => setSvcBanner(e.target.value)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800" />
+              </div>
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" onClick={() => setShowServiceModal(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+                <button type="submit" className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm">Save Service Provider</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Delete Service */}
+      {serviceToDelete && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="flex flex-col items-center text-center gap-3 mb-6">
+              <div className="h-12 w-12 bg-rose-100 rounded-full flex items-center justify-center mb-2">
+                <Trash2 className="h-6 w-6 text-rose-600" />
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-900">Delete Service Provider?</h3>
+              <p className="text-sm text-slate-500 font-medium">Are you sure you want to delete <strong className="text-slate-800">{serviceToDelete.name}</strong> from Firestore?</p>
+            </div>
+            <div className="flex justify-end gap-3 w-full">
+              <button type="button" onClick={() => setServiceToDelete(null)} className="flex-1 px-5 py-3 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer">Cancel</button>
+              <button type="button" onClick={confirmDeleteService} className="flex-1 px-5 py-3 text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-sm transition cursor-pointer">Delete</button>
             </div>
           </div>
         </div>

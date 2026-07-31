@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Store, Product, Review, Notification, RegisteredUser, SupportTicket, Order,LocalService } from './types';
+import { Store, Product, Review, Notification, RegisteredUser, SupportTicket, Order, LocalService, BeautyServiceItem } from './types';
 
 export const INITIAL_STORES: Store[] = [];
 
@@ -265,6 +265,7 @@ export const INITIAL_USERS: RegisteredUser[] = [
     id: 'user-owner-ash',
     name: 'Ash (Project Owner)',
     phone: '+91 99999 00000',
+    password: 'admin123',
     email: 'biengwithash@gmail.com',
     location: 'Maudaha Central',
     locationHi: 'मौदहा सेंट्रल',
@@ -283,6 +284,7 @@ export const INITIAL_USERS: RegisteredUser[] = [
     id: 'user-manager-banda',
     name: 'Banda Area Manager',
     phone: '+91 88888 77777',
+    password: 'manager123',
     location: 'Banda',
     locationHi: 'बांदा',
     role: 'manager',
@@ -294,6 +296,7 @@ export const INITIAL_USERS: RegisteredUser[] = [
     id: 'user-customer-banda',
     name: 'Ramesh (Banda)',
     phone: '+91 77777 66666',
+    password: '123456',
     location: 'Banda',
     locationHi: 'बांदा',
     role: 'customer',
@@ -305,6 +308,7 @@ export const INITIAL_USERS: RegisteredUser[] = [
     id: 'user-manager',
     name: 'Maudaha Area Manager',
     phone: '+91 99999 88888',
+    password: 'manager123',
     location: 'Maudaha',
     locationHi: 'मौदहा',
     role: 'manager',
@@ -316,6 +320,7 @@ export const INITIAL_USERS: RegisteredUser[] = [
     id: 'user-1',
     name: 'Amit Kumar Mishra',
     phone: '+91 94520 12345',
+    password: '123456',
     location: 'Station Road, Maudaha',
     locationHi: 'स्टेशन रोड, मौदहा',
     role: 'customer',
@@ -345,6 +350,7 @@ export const INITIAL_USERS: RegisteredUser[] = [
     id: 'user-3',
     name: 'Rajesh Gupta',
     phone: '+91 91400 45678',
+    password: '123456',
     location: 'Galla Mandi Lane, Maudaha',
     locationHi: 'गल्ला मंडी लेन, मौदहा',
     role: 'rider',
@@ -362,6 +368,7 @@ export const INITIAL_USERS: RegisteredUser[] = [
     id: 'user-4',
     name: 'Deepak Verma',
     phone: '+91 70075 54321',
+    password: '123456',
     location: 'Chauraha Bypass Road, Maudaha',
     locationHi: 'चौराहा बाईपास रोड, मौदहा',
     role: 'customer',
@@ -432,6 +439,174 @@ export const INITIAL_SUPPORT_TICKETS: SupportTicket[] = [
   }
 ];
 
+export const INITIAL_BEAUTY_ITEMS: BeautyServiceItem[] = [
+  // 1. Bridal Makeup
+  {
+    id: 'bm-1',
+    category: 'bridal_makeup',
+    title: 'HD Airbrush Bridal Makeup Package',
+    titleHi: 'एचडी एयरब्रश ब्राइडल मेकअप पैकेज',
+    price: 8500,
+    description: 'Long-lasting 24hr waterproof HD Airbrush makeup with eyelashes, hair styling, and saree/dupatta draping.',
+    descriptionHi: '24 घंटे तक चलने वाला वॉटरप्रूफ एयरब्रश मेकअप, आईलैशेस, हेयर स्टाइलिंग और दुपट्टा ड्रेपिंग सहित।',
+    image: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&q=80&w=600',
+    available: true
+  },
+  {
+    id: 'bm-2',
+    category: 'bridal_makeup',
+    title: '3D Glass Skin Royal Bridal Makeup',
+    titleHi: '3डी ग्लास स्किन रॉयल ब्राइडल मेकअप',
+    price: 11000,
+    description: 'Ultra-premium glow glass skin finish with MAC/Bobbi Brown products, hair accessories & jewel set placement.',
+    descriptionHi: 'मैक/बॉबी ब्राउन प्रोडक्ट्स के साथ अल्ट्रा-प्रीमियम ब्राइडल ग्लो, हेयर एक्सेसरीज व ज्वेलरी सेट फिटिंग।',
+    image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=600',
+    available: true
+  },
+  {
+    id: 'bm-3',
+    category: 'bridal_makeup',
+    title: 'Traditional Royal HD Bridal Look',
+    titleHi: 'ट्रेडिशनल रॉयल एचडी ब्राइडल लुक',
+    price: 6500,
+    description: 'Classic matte/dewy bridal finish with full hair bun decoration and dupatta fixing.',
+    descriptionHi: 'क्लासिक मैट/ड्यूई ब्राइडल मेकअप, बालों का जूड़ा डेकोरेशन और दुपट्टा फिक्सिंग।',
+    image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&q=80&w=600',
+    available: true
+  },
+
+  // 2. Side Makeup
+  {
+    id: 'sm-1',
+    category: 'side_makeup',
+    title: 'Party & Guest Side Makeup',
+    titleHi: 'पार्टी और गेस्ट साइड मेकअप',
+    price: 1800,
+    description: 'Light foundation, elegant eye makeup, lipstick, and simple hair styling for sisters/relatives.',
+    descriptionHi: 'हल्का फाउंडेशन, सुंदर आई मेकअप, लिपस्टिक और बहनों व रिश्तेदारों के लिए हेयर स्टाइलिंग।',
+    image: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?auto=format&fit=crop&q=80&w=600',
+    available: true
+  },
+  {
+    id: 'sm-2',
+    category: 'side_makeup',
+    title: 'Engagement & Sagan Glam Look',
+    titleHi: 'सगाई और सगन ग्लैम लुक',
+    price: 3500,
+    description: 'HD glam makeup with soft curls/bun and contouring for engagement or sagan functions.',
+    descriptionHi: 'सगाई या तिलकोत्सव के लिए एचडी ग्लैम मेकअप, सॉफ्ट कर्ल्स/जूड़ा और कंटूरिंग।',
+    image: 'https://images.unsplash.com/photo-1526045612212-70caf35c14df?auto=format&fit=crop&q=80&w=600',
+    available: true
+  },
+  {
+    id: 'sm-3',
+    category: 'side_makeup',
+    title: 'Reception Dewy Guest Makeup',
+    titleHi: 'रिसेप्शन ड्यूई गेस्ट मेकअप',
+    price: 2200,
+    description: 'Fresh dewy skin finish with shimmer eyes and braid/blowdry hair styling.',
+    descriptionHi: 'फ्रेश ड्यूई स्किन फिनिश, शिमर आईज और ब्रेड या ब्लो-ड्राई स्टाइलिंग।',
+    image: 'https://images.unsplash.com/photo-1500840218679-24220ec87fa2?auto=format&fit=crop&q=80&w=600',
+    available: true
+  },
+
+  // 3. Bridal Mehendi
+  {
+    id: 'bme-1',
+    category: 'bridal_mehendi',
+    title: 'Royal Portrait Full Hand & Feet Mehendi',
+    titleHi: 'रॉयल पोर्ट्रेट फुल हैंड और फीट मेहंदी',
+    price: 4500,
+    description: 'Intricate bride-groom figures, doli, baraat motifs covering full arms till elbows & feet.',
+    descriptionHi: 'दूल्हा-दुल्हन की बारीक आकृतियां, डोली-बारात डिजाइन, कोहनी और पैरों तक पूरी मेहंदी।',
+    image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=600',
+    available: true
+  },
+  {
+    id: 'bme-2',
+    category: 'bridal_mehendi',
+    title: 'Marwari Figure Traditional Bridal Design',
+    titleHi: 'मारवाड़ी फिगर ट्रेडिशनल ब्राइडल डिजाइन',
+    price: 5500,
+    description: 'Deep stain organic henna with elephant, peacock, and traditional Marwari intricate lace art.',
+    descriptionHi: 'गहरे रंग वाली प्राकृतिक हर्बल मेहंदी, हाथी-मोर आकृतियां और मारवाड़ी जाल डिजाइन।',
+    image: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&q=80&w=600',
+    available: true
+  },
+
+  // 4. Side Mehendi
+  {
+    id: 'sme-1',
+    category: 'side_mehendi',
+    title: 'Front & Back Palm Designer Mehendi',
+    titleHi: 'फ्रंट व बैक पाम डिजाइनर मेहंदी',
+    price: 600,
+    description: 'Beautiful palm motifs and back-hand lace pattern for family members.',
+    descriptionHi: 'परिवार के सदस्यों के लिए हथेली और हाथ के पीछे की सुंदर बेल/पैटर्न मेहंदी।',
+    image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=600',
+    available: true
+  },
+  {
+    id: 'sme-2',
+    category: 'side_mehendi',
+    title: 'Sangeet Mandala Side Mehendi',
+    titleHi: 'संगीत मंडला साइड मेहंदी',
+    price: 850,
+    description: 'Elegant mandala circle with finger detailing and wrist band pattern.',
+    descriptionHi: 'उंगलियों के विवरण और कलाई बैंड पैटर्न के साथ सुंदर मंडला सर्कल मेहंदी।',
+    image: 'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?auto=format&fit=crop&q=80&w=600',
+    available: true
+  },
+
+  // 5. Bridal Lehenga Variety
+  {
+    id: 'bl-1',
+    category: 'bridal_lehenga',
+    title: 'Royal Zardozi Velvet Red Bridal Lehenga',
+    titleHi: 'रॉयल ज़ारदोज़ी वेलवेट रेड ब्राइडल लहंगा',
+    price: 6500,
+    description: 'Heavy gold Zardozi embroidered velvet bridal lehenga with double dupatta (Rental Package).',
+    descriptionHi: 'भारी सुनहरी जरदोज़ी कढ़ाई वाला लाल वेलवेट लहंगा, डबल दुपट्टा के साथ (किराया पैकेज)।',
+    image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=600',
+    available: true
+  },
+  {
+    id: 'bl-2',
+    category: 'bridal_lehenga',
+    title: 'Sabyasachi Style Heritage Silk Red Lehenga',
+    titleHi: 'सब्यसाची स्टाइल हेरिटेज सिल्क लहंगा',
+    price: 8000,
+    description: 'Heritage handloom silk woven red & maroon bridal lehenga with royal can-can flare.',
+    descriptionHi: 'रॉयल केन-केन फ्लेयर के साथ हैरिटेज सिल्क रेड व मैरून ब्राइडल लहंगा (किराया)।',
+    image: 'https://images.unsplash.com/photo-1610030469239-e48f707f1d4d?auto=format&fit=crop&q=80&w=600',
+    available: true
+  },
+
+  // 6. Side Lehenga Variety
+  {
+    id: 'sl-1',
+    category: 'side_lehenga',
+    title: 'Mirror Work Georgette Side Lehenga',
+    titleHi: 'मिरर वर्क जॉर्जेट साइड लहंगा',
+    price: 1800,
+    description: 'Lightweight real mirror-work georgette lehenga perfect for sangeet & sisters.',
+    descriptionHi: 'संगीत और बहनों के लिए रियल मिरर-वर्क हल्का जॉर्जेट लहंगा (किराया)।',
+    image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=600',
+    available: true
+  },
+  {
+    id: 'sl-2',
+    category: 'side_lehenga',
+    title: 'Sequins Net Party Wear Side Lehenga',
+    titleHi: 'सीक्वेंस नेट पार्टी वियर साइड लहंगा',
+    price: 2400,
+    description: 'Glamorous champagne gold sequined net lehenga with designer choli.',
+    descriptionHi: 'डिजाइनर चोली के साथ शैम्पेन गोल्ड सीक्वेंस नेट पार्टी लहंगा (किराया)।',
+    image: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=600',
+    available: true
+  }
+];
+
 export const INITIAL_ORDERS: Order[] = [];
 export const INITIAL_SERVICES: LocalService[] = [
   // 1. Beauty Parlour & salon
@@ -447,22 +622,8 @@ export const INITIAL_SERVICES: LocalService[] = [
     addressHi: 'गांधी चौक के पास, मौदहा',
     baseCharge: 199,
     available: true,
-    banner: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=600'
-  },
-  // 2. Tailor
-  {
-    id: 'ser2',
-    category: 'tailor',
-    name: 'Raza Fashion Tailors & Drapers',
-    nameHi: 'रज़ा फैशन टेलर्स एंड ड्रेपर्स',
-    phone: '9876543210',
-    experience: 12,
-    rating: 4.9,
-    address: 'Naya Bazar Crossroad, Maudaha',
-    addressHi: 'नया बाजार चौराहा, मौदहा',
-    baseCharge: 250,
-    available: true,
-    banner: 'https://images.unsplash.com/photo-1525230071276-4a87f42f469e?auto=format&fit=crop&q=80&w=600'
+    banner: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=600',
+    beautyItems: INITIAL_BEAUTY_ITEMS
   },
   // 3. Plumber
   {

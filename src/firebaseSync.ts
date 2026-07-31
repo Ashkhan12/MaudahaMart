@@ -5,8 +5,8 @@
 
 import { collection, doc, setDoc, getDocs, writeBatch, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
-import { Store, Product, Review, Notification, RegisteredUser, SupportTicket, Order, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, Restaurant, ClothingBoutique, MerchantRequest, ServiceArea } from './types';
-import { INITIAL_STORES, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_NOTIFICATIONS, INITIAL_USERS, INITIAL_SUPPORT_TICKETS, INITIAL_ORDERS } from './data';
+import { Store, Product, Review, Notification, RegisteredUser, SupportTicket, Order, SystemSettings, CustomPanel, PayoutRequest, PriceChangeLog, Restaurant, ClothingBoutique, MerchantRequest, ServiceArea, LocalService, LocalServiceBooking } from './types';
+import { INITIAL_STORES, INITIAL_PRODUCTS, INITIAL_REVIEWS, INITIAL_NOTIFICATIONS, INITIAL_USERS, INITIAL_SUPPORT_TICKETS, INITIAL_ORDERS, INITIAL_SERVICES } from './data';
 import { INITIAL_RESTAURANTS } from './dataRestaurants';
 import { INITIAL_BOUTIQUES } from './dataClothing';
 
@@ -349,6 +349,17 @@ export async function seedDatabaseIfEmpty() {
       });
       await batch.commit();
     }
+
+    // Individual check to seed localServices if empty
+    const servicesSnapshot = await getDocs(collection(db, 'localServices'));
+    if (servicesSnapshot.empty) {
+      console.log('Firebase Firestore is missing local services. Seeding initial local services...');
+      const batch = writeBatch(db);
+      INITIAL_SERVICES.forEach((ser) => {
+        batch.set(doc(db, 'localServices', ser.id), ser);
+      });
+      await batch.commit();
+    }
   } catch (err) {
     console.error('Failed to check/seed Firestore:', err);
     handleFirestoreError(err, OperationType.WRITE, 'seedDatabaseIfEmpty');
@@ -373,7 +384,9 @@ export async function loadAllCollections() {
       restaurantsSnap,
       boutiquesSnap,
       merchantRequestsSnap,
-      serviceAreasSnap
+      serviceAreasSnap,
+      localServicesSnap,
+      localServiceBookingsSnap
     ] = await Promise.all([
       getDocs(collection(db, 'stores')),
       getDocs(collection(db, 'products')),
@@ -389,7 +402,9 @@ export async function loadAllCollections() {
       getDocs(collection(db, 'restaurants')),
       getDocs(collection(db, 'boutiques')),
       getDocs(collection(db, 'merchantRequests')),
-      getDocs(collection(db, 'serviceAreas'))
+      getDocs(collection(db, 'serviceAreas')),
+      getDocs(collection(db, 'localServices')),
+      getDocs(collection(db, 'localServiceBookings'))
     ]);
     
     const pathForGetDocs = 'serviceAreas'; // path is declared
@@ -409,7 +424,9 @@ export async function loadAllCollections() {
       restaurants: restaurantsSnap.docs.map(d => ({ ...d.data(), id: d.id } as Restaurant)),
       boutiques: boutiquesSnap.docs.map(d => ({ ...d.data(), id: d.id } as ClothingBoutique)),
       merchantRequests: merchantRequestsSnap.docs.map(d => ({ ...d.data(), id: d.id } as MerchantRequest)),
-      serviceAreas: serviceAreasSnap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceArea))
+      serviceAreas: serviceAreasSnap.docs.map(d => ({ ...d.data(), id: d.id } as ServiceArea)),
+      localServices: localServicesSnap.docs.map(d => ({ ...d.data(), id: d.id } as LocalService)),
+      localServiceBookings: localServiceBookingsSnap.docs.map(d => ({ ...d.data(), id: d.id } as LocalServiceBooking))
     };
   } catch (err) {
     console.error('Failed to load collections from Firestore:', err);

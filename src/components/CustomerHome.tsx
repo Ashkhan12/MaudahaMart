@@ -77,7 +77,7 @@ export default function CustomerHome({
     { 
       id: 'services', 
       name: language === 'en' ? 'Local Services' : 'स्थानीय सेवाएं', 
-      desc: language === 'en' ? 'Trusted Technicians & Tailors' : 'विश्वसनीय तकनीशियन और दर्जी',
+      desc: language === 'en' ? 'Trusted Local Technicians' : 'विश्वसनीय तकनीशियन और विशेषज्ञ',
       icon: Wrench, 
       color: 'text-indigo-600', 
       bg: 'bg-indigo-50/75 hover:bg-indigo-100/80 border-indigo-100',

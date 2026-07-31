@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { initializeFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAo0OBoIBeYNw_jykeu3ERQwcofCVyMDaQ",
@@ -16,6 +17,7 @@ export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true
 }, "ai-studio-maudahamart-55495b6b-a809-417b-b1ae-8472e7d6c620");
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 
 export const OperationType = {
   READ: 'read',
